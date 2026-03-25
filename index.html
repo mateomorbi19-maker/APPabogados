@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EstrategiaLegal - Análisis Penal con IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0e17; min-height: 100vh; overflow-x: hidden; }
+    @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    textarea:focus, button:focus { outline: none; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+    .bg-animated {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden;
+      background: linear-gradient(160deg, #0a0e17 0%, #111827 40%, #0f172a 100%);
+    }
+    .bg-blob-1 {
+      position: absolute; top: -20%; right: -10%; width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%);
+      border-radius: 50%; filter: blur(60px);
+    }
+    .bg-blob-2 {
+      position: absolute; bottom: -15%; left: -5%; width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%);
+      border-radius: 50%; filter: blur(80px);
+    }
+    .bg-grid {
+      position: absolute; inset: 0; opacity: 0.03;
+      background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    .container {
+      position: relative; z-index: 1;
+      max-width: 900px; margin: 0 auto;
+      padding: 40px 24px 80px;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .badge-proto {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 20px;
+      background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2);
+      margin-bottom: 20px;
+    }
+    .badge-proto span {
+      font-size: 10px; font-weight: 700; color: #a78bfa;
+      letter-spacing: 0.15em; font-family: 'IBM Plex Mono', monospace;
+    }
+    h1 {
+      font-size: clamp(32px, 5vw, 48px); font-weight: 400;
+      color: #f1f5f9; font-family: 'DM Serif Display', serif;
+      line-height: 1.15; margin-bottom: 12px;
+    }
+    h1 .accent { color: #8b5cf6; }
+    .subtitle {
+      font-size: 15px; color: #64748b; max-width: 500px;
+      margin: 0 auto; line-height: 1.6;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 32px; margin-bottom: 32px;
+      animation: fadeSlideIn 0.7s ease;
+    }
+    .label {
+      font-size: 12px; font-weight: 700; color: #94a3b8;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    textarea {
+      width: 100%; background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+      padding: 18px 20px; color: #e2e8f0; font-size: 14px; line-height: 1.7;
+      resize: vertical; font-family: 'IBM Plex Sans', sans-serif;
+      transition: border-color 0.3s;
+    }
+    textarea:focus { border-color: rgba(139,92,246,0.4); }
+
+    .btn-ejemplo {
+      background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25);
+      border-radius: 8px; padding: 6px 14px; font-size: 11px; color: #a78bfa;
+      cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600; letter-spacing: 0.05em; transition: all 0.2s;
+    }
+    .btn-ejemplo:hover { background: rgba(139,92,246,0.2); }
+
+    .rol-btn {
+      padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03); color: #94a3b8;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; transition: all 0.25s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .rol-btn.active {
+      border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.15); color: #c4b5fd;
+    }
+
+    .btn-analizar {
+      width: 100%; margin-top: 24px; padding: 16px; border-radius: 14px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #6366f1);
+      color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; letter-spacing: 0.02em;
+      transition: all 0.3s; box-shadow: 0 4px 24px rgba(124,58,237,0.3);
+    }
+    .btn-analizar:disabled {
+      background: rgba(139,92,246,0.15); color: #64748b;
+      cursor: not-allowed; box-shadow: none;
+    }
+
+    .error-box {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
+      color: #fca5a5; font-size: 14px; text-align: center;
+      animation: fadeSlideIn 0.4s ease;
+    }
+
+    .spinner-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 80px 20px; gap: 32px;
+      animation: fadeSlideIn 0.5s ease;
+    }
+    .spinner-outer {
+      position: relative; width: 64px; height: 64px;
+    }
+    .spinner-ring {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.06);
+    }
+    .spinner-ring-1 {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 2px solid transparent; border-top-color: #8b5cf6;
+      animation: spin 1s linear infinite;
+    }
+    .spinner-ring-2 {
+      position: absolute; inset: 8px; border-radius: 50%;
+      border: 2px solid transparent; border-top-color: #6366f1;
+      animation: spin 1.5s linear infinite reverse;
+    }
+
+    .results-panel {
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 32px; animation: fadeSlideIn 0.5s ease;
+      margin-bottom: 24px;
+    }
+    .results-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+    .results-title {
+      margin: 0; font-size: 22px; font-weight: 400;
+      font-family: 'DM Serif Display', serif;
+    }
+
+    .meta-chip {
+      padding: 8px 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+      display: inline-block; margin: 0 8px 8px 0;
+    }
+    .meta-chip-label {
+      font-size: 10px; font-weight: 700; color: #64748b;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 4px; font-family: 'IBM Plex Mono', monospace;
+    }
+    .meta-chip-value { font-size: 13px; color: #e2e8f0; font-family: 'IBM Plex Sans', sans-serif; }
+
+    .estrategia-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 28px 32px; cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1); margin-bottom: 12px;
+    }
+    .estrategia-card:hover { background: rgba(255,255,255,0.05); }
+    .estrategia-card.open { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
+
+    .est-header { display: flex; align-items: center; gap: 16px; }
+    .est-num {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; font-family: 'DM Serif Display', serif;
+      flex-shrink: 0;
+    }
+    .est-title {
+      margin: 0; font-size: 17px; font-weight: 600; color: #e2e8f0;
+      font-family: 'DM Serif Display', serif; letter-spacing: 0.01em;
+    }
+    .est-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      padding: 3px 10px; border-radius: 20px;
+      font-family: 'IBM Plex Mono', monospace; display: inline-block; margin-left: 8px;
+    }
+    .est-tesis {
+      margin: 6px 0 0; font-size: 13.5px; color: #94a3b8;
+      line-height: 1.5; font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .est-arrow {
+      font-size: 18px; color: #64748b; transition: transform 0.3s; margin-left: auto;
+    }
+    .estrategia-card.open .est-arrow { transform: rotate(180deg); }
+
+    .est-body { display: none; margin-top: 24px; }
+    .estrategia-card.open .est-body { display: block; animation: fadeSlideIn 0.35s ease; }
+
+    .section-title {
+      margin: 0 0 10px; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .legal-item {
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      font-size: 13px; color: #cbd5e1; line-height: 1.6;
+      font-family: 'IBM Plex Sans', sans-serif; margin-bottom: 8px;
+    }
+    .doctrina {
+      margin: 0; font-size: 13px; color: #94a3b8;
+      line-height: 1.7; font-style: italic;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .pill-item {
+      padding: 8px 12px; border-radius: 10px;
+      font-size: 13px; color: #cbd5e1; line-height: 1.5;
+      font-family: 'IBM Plex Sans', sans-serif; margin-bottom: 8px;
+    }
+    .paso-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.02);
+      margin-bottom: 8px;
+    }
+    .paso-num {
+      min-width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; font-family: 'IBM Plex Mono', monospace;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .paso-text { font-size: 13px; color: #cbd5e1; line-height: 1.6; font-family: 'IBM Plex Sans', sans-serif; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .section-block { margin-bottom: 16px; }
+
+    .metadata-bar {
+      background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.15);
+      border-radius: 12px; padding: 12px 18px; margin-bottom: 24px;
+      display: flex; gap: 24px; flex-wrap: wrap; animation: fadeSlideIn 0.4s ease;
+    }
+    .meta-item { font-size: 12px; color: #a78bfa; font-family: 'IBM Plex Mono', monospace; }
+    .meta-item strong { color: #c4b5fd; }
+
+    footer {
+      text-align: center; margin-top: 60px; padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    footer p {
+      font-size: 11px; color: #475569;
+      font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.05em;
+    }
+
+    @media (max-width: 600px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .container { padding: 20px 16px 60px; }
+      .card { padding: 20px; }
+      .estrategia-card { padding: 20px; }
+      .results-panel { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-animated">
+  <div class="bg-blob-1"></div>
+  <div class="bg-blob-2"></div>
+  <div class="bg-grid"></div>
+</div>
+
+<div class="container">
+  <!-- Header -->
+  <header style="text-align:center; margin-bottom:48px; animation:fadeSlideIn 0.6s ease">
+    <div class="badge-proto"><span>IA LEGAL · ANÁLISIS PENAL</span></div>
+    <h1>Estrategia<span class="accent">Legal</span></h1>
+    <p class="subtitle">Análisis penal con inteligencia artificial.<br>Cargá un caso y recibí estrategias fundamentadas en el Código Penal y doctrina.</p>
+  </header>
+
+  <!-- Input -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px">
+      <span class="label">Descripción del caso</span>
+      <button class="btn-ejemplo" onclick="cargarEjemplo()">CARGAR EJEMPLO</button>
+    </div>
+
+    <textarea id="caso" rows="8" placeholder="Describí los hechos del caso penal con el mayor detalle posible: quiénes son las partes, qué ocurrió, dónde, cuándo, y cualquier circunstancia relevante..."></textarea>
+
+    <div style="margin-top:20px">
+      <span class="label" style="display:block; margin-bottom:12px">Perspectiva de análisis</span>
+      <div id="roles" style="display:flex; gap:10px; flex-wrap:wrap">
+        <button class="rol-btn active" data-rol="ambos" onclick="setRol(this)">⚖️ Ambos roles</button>
+        <button class="rol-btn" data-rol="defensor" onclick="setRol(this)">🛡️ Defensa</button>
+        <button class="rol-btn" data-rol="querellante" onclick="setRol(this)">⚔️ Acusación</button>
+      </div>
+    </div>
+
+    <button class="btn-analizar" id="btnAnalizar" onclick="analizar()">⚖️  Analizar Caso</button>
+  </div>
+
+  <!-- Error -->
+  <div id="errorBox" class="error-box" style="display:none"></div>
+
+  <!-- Loading -->
+  <div id="loading" class="spinner-wrap" style="display:none">
+    <div class="spinner-outer">
+      <div class="spinner-ring"></div>
+      <div class="spinner-ring-1"></div>
+      <div class="spinner-ring-2"></div>
+    </div>
+    <div style="text-align:center">
+      <p style="font-size:15px; color:#e2e8f0; font-family:'DM Serif Display',serif">Generando estrategias</p>
+      <p id="loadingMsg" style="margin:10px 0 0; font-size:13px; color:#8b5cf6; font-family:'IBM Plex Mono',monospace"></p>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" style="display:none"></div>
+
+  <!-- Footer -->
+  <footer>
+    <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
+  </footer>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURACIÓN
+// ============================================================
+const N8N_WEBHOOK_URL = "https://n8n.teotec.org/webhook/analizar-caso";
+
+const EJEMPLO_CASO = `Jorge paseaba con su novia, de nombre Catalina -ambos miembros de la Policía Federal argentina, de 28 años Jorge y 26 Catalina- por una calle de la ciudad de Paraná, cuando en esa ocasión, Víctor, un vecino de la ciudad, que se cruzó con la pareja, le dijo a Catalina, que caminaba como una prostituta, que seguramente lo era, qué cuanto cobraba por sus servicios sexuales. Enojado, Jorge extrajo el arma reglamentaria y disparó en contra de Víctor, con la intención de matarlo, pero como Víctor salió corriendo, no pudo impactar ninguno de los proyectiles en la humanidad de Víctor, aunque uno de esos proyectiles impactó en el vientre de una mujer embarazada que pasaba por el lugar, muriendo el feto. Catalina, en tanto decidió querellar a Víctor, previo averiguar, a través de la fuerza policial que integraban, la identidad, domicilio etc. de Víctor, cuya imagen había quedado registrada en una cámara de seguridad de los comercios frente al lugar donde se habían desarrollado los hechos.`;
+
+let rolSeleccionado = "ambos";
+let cargando = false;
+
+// ============================================================
+// FUNCIONES
+// ============================================================
+
+function cargarEjemplo() {
+  document.getElementById('caso').value = EJEMPLO_CASO;
+}
+
+function setRol(btn) {
+  document.querySelectorAll('.rol-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  rolSeleccionado = btn.dataset.rol;
+}
+
+const loadingMessages = [
+  "Analizando los hechos del caso",
+  "Identificando tipos penales aplicables",
+  "Consultando artículos del Código Penal",
+  "Buscando doctrina relevante en los manuales",
+  "Evaluando jurisprudencia aplicable",
+  "Construyendo estrategias diferenciadas",
+  "Fundamentando cada línea argumentativa"
+];
+
+let msgInterval, dotInterval;
+
+function startLoadingAnimation() {
+  let msgIdx = 0, dots = 0;
+  const el = document.getElementById('loadingMsg');
+  dotInterval = setInterval(() => {
+    dots = (dots + 1) % 4;
+    el.textContent = loadingMessages[msgIdx] + '.'.repeat(dots);
+  }, 400);
+  msgInterval = setInterval(() => {
+    msgIdx = (msgIdx + 1) % loadingMessages.length;
+  }, 3000);
+}
+
+function stopLoadingAnimation() {
+  clearInterval(msgInterval);
+  clearInterval(dotInterval);
+}
+
+async function analizar() {
+  const caso = document.getElementById('caso').value.trim();
+  if (!caso || cargando) return;
+
+  cargando = true;
+  document.getElementById('btnAnalizar').disabled = true;
+  document.getElementById('btnAnalizar').textContent = 'Analizando...';
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  startLoadingAnimation();
+
+  try {
+    const resp = await fetch(N8N_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caso, rol: rolSeleccionado })
+    });
+
+    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`);
+
+    const data = await resp.json();
+
+    if (!data || (!data.defensor && !data.querellante)) {
+      throw new Error('Respuesta vacía del servidor');
+    }
+
+    renderResults(data);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('errorBox').textContent = 
+      'Error al procesar el caso: ' + err.message + '. Verificá que el servidor esté activo e intentá nuevamente.';
+    document.getElementById('errorBox').style.display = 'block';
+  } finally {
+    cargando = false;
+    stopLoadingAnimation();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('btnAnalizar').disabled = false;
+    document.getElementById('btnAnalizar').textContent = '⚖️  Analizar Caso';
+  }
+}
+
+function renderResults(data) {
+  const container = document.getElementById('results');
+  let html = '';
+
+  // Metadata
+  if (data.metadata) {
+    html += '<div class="metadata-bar">';
+    if (data.metadata.conceptos_extraidos) {
+      html += `<div class="meta-item"><strong>Conceptos:</strong> ${data.metadata.conceptos_extraidos.join(', ')}</div>`;
+    }
+    if (data.metadata.chunks_codigo_usados) {
+      html += `<div class="meta-item"><strong>Arts. consultados:</strong> ${data.metadata.chunks_codigo_usados}</div>`;
+    }
+    if (data.metadata.chunks_manual_usados) {
+      html += `<div class="meta-item"><strong>Secciones de manuales:</strong> ${data.metadata.chunks_manual_usados}</div>`;
+    }
+    html += '</div>';
+  }
+
+  html += '<div style="text-align:center; padding:16px 0; animation:fadeSlideIn 0.4s ease">';
+  html += '<h2 style="font-size:26px; font-weight:400; color:#f1f5f9; font-family:\'DM Serif Display\',serif; margin-bottom:6px">Estrategias Generadas</h2>';
+  html += '<p style="font-size:13px; color:#64748b">Hacé click en cada estrategia para ver el detalle completo</p>';
+  html += '</div>';
+
+  if (data.defensor) {
+    html += renderPanel(data.defensor, 'Estrategias de Defensa', '#3b82f6', '🛡️');
+  }
+  if (data.querellante) {
+    html += renderPanel(data.querellante, 'Estrategias de Acusación', '#ef4444', '⚔️');
+  }
+
+  container.innerHTML = html;
+  container.style.display = 'block';
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderPanel(data, titulo, color, icon) {
+  const badges = [
+    { label: 'CONSERVADORA', color: '#3b82f6' },
+    { label: 'MODERADA', color: '#8b5cf6' },
+    { label: 'AGRESIVA', color: '#ef4444' }
+  ];
+
+  let html = `<div class="results-panel">`;
+  html += `<div class="results-header">
+    <span style="font-size:28px">${icon}</span>
+    <h3 class="results-title" style="color:${color}">${titulo}</h3>
+  </div>`;
+
+  // Meta chips
+  html += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.06)">';
+  if (data.imputados_identificados) {
+    html += `<div class="meta-chip"><div class="meta-chip-label">Imputados</div><div class="meta-chip-value">${data.imputados_identificados.join(', ')}</div></div>`;
+  }
+  if (data.delitos_imputables) {
+    html += `<div class="meta-chip"><div class="meta-chip-label">Delitos</div><div class="meta-chip-value">${data.delitos_imputables.join(' · ')}</div></div>`;
+  }
+  html += '</div>';
+
+  // Estrategias
+  if (data.estrategias) {
+    data.estrategias.forEach((est, i) => {
+      const badge = badges[i] || badges[0];
+      const cardId = `est-${titulo.replace(/\s/g,'')}-${i}`;
+
+      html += `<div class="estrategia-card" id="${cardId}" onclick="toggleEstrategia('${cardId}')" style="border-left:3px solid ${color}">`;
+      html += `<div class="est-header">`;
+      html += `<div class="est-num" style="background:${color}22; color:${color}">${est.numero || i+1}</div>`;
+      html += `<div style="flex:1">`;
+      html += `<div style="display:flex; align-items:center; flex-wrap:wrap">`;
+      html += `<span class="est-title">${est.nombre}</span>`;
+      html += `<span class="est-badge" style="background:${badge.color}22; color:${badge.color}">${badge.label}</span>`;
+      html += `</div>`;
+      html += `<p class="est-tesis">${est.tesis_central}</p>`;
+      html += `</div>`;
+      html += `<span class="est-arrow">▾</span>`;
+      html += `</div>`;
+
+      // Body (hidden by default)
+      html += `<div class="est-body">`;
+
+      // Fundamento legal
+      html += `<div class="section-block"><div class="section-title" style="color:${color}">⚖️ Fundamento legal</div>`;
+      if (est.fundamento_legal) {
+        est.fundamento_legal.forEach(f => { html += `<div class="legal-item">${f}</div>`; });
+      }
+      html += '</div>';
+
+      // Doctrina
+      if (est.doctrina_aplicable) {
+        html += `<div class="section-block"><div class="section-title" style="color:${color}">📚 Doctrina aplicable</div>`;
+        html += `<p class="doctrina">${est.doctrina_aplicable}</p></div>`;
+      }
+
+      // Fortalezas y Riesgos
+      html += '<div class="grid-2">';
+      html += '<div><div class="section-title" style="color:#22c55e">✅ Fortalezas</div>';
+      if (est.fortalezas) {
+        est.fortalezas.forEach(f => {
+          html += `<div class="pill-item" style="background:#22c55e08; border-left:2px solid #22c55e44; border-radius:0">${f}</div>`;
+        });
+      }
+      html += '</div>';
+      html += '<div><div class="section-title" style="color:#f59e0b">⚠️ Riesgos</div>';
+      if (est.riesgos) {
+        est.riesgos.forEach(r => {
+          html += `<div class="pill-item" style="background:#f59e0b08; border-left:2px solid #f59e0b44; border-radius:0">${r}</div>`;
+        });
+      }
+      html += '</div></div>';
+
+      // Pasos procesales
+      if (est.pasos_procesales) {
+        html += `<div class="section-block" style="margin-top:16px"><div class="section-title" style="color:${color}">📋 Pasos procesales</div>`;
+        est.pasos_procesales.forEach((p, j) => {
+          html += `<div class="paso-item">`;
+          html += `<span class="paso-num" style="background:${color}22; color:${color}">${j+1}</span>`;
+          html += `<span class="paso-text">${p}</span></div>`;
+        });
+        html += '</div>';
+      }
+
+      html += '</div>'; // est-body
+      html += '</div>'; // estrategia-card
+    });
+  }
+
+  html += '</div>'; // results-panel
+  return html;
+}
+
+function toggleEstrategia(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+</script>
+
+</body>
+</html>
