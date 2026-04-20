@@ -677,27 +677,36 @@
 
   <footer>
     <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
-    <p style="margin-top:8px; opacity:0.5">build · v3.5</p>
+    <p style="margin-top:8px; opacity:0.5">build · v3.6 (debug panel)</p>
   </footer>
 </div>
 
 <script>
 // ============================================================
-// DEBUG: atrapa cualquier error y muestralo en pantalla
+// DEBUG: panel visible de eventos + atrapa errores
 // ============================================================
+function dbg(msg) {
+  let p = document.getElementById('dbgPanel');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'dbgPanel';
+    p.style.cssText = 'position:fixed;top:80px;right:20px;width:380px;max-height:60vh;overflow-y:auto;background:#0f172a;border:2px solid #8b5cf6;color:#e2e8f0;padding:12px;border-radius:10px;font-family:monospace;font-size:11px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.6)';
+    p.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong style="color:#a78bfa">DEBUG v3.6</strong><button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#64748b;cursor:pointer">✕</button></div><div id="dbgLog"></div>';
+    document.body.appendChild(p);
+  }
+  const log = document.getElementById('dbgLog');
+  const t = new Date().toTimeString().slice(0,8);
+  const line = document.createElement('div');
+  line.style.cssText = 'padding:3px 0;border-top:1px solid rgba(255,255,255,0.05)';
+  line.textContent = '[' + t + '] ' + msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
 window.addEventListener('error', (e) => {
-  const box = document.createElement('div');
-  box.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;background:#ef4444;color:#fff;padding:14px 20px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5)';
-  box.textContent = '[JS ERROR] ' + e.message + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?');
-  document.body.appendChild(box);
-  setTimeout(() => box.remove(), 30000);
+  dbg('❌ JS ERROR: ' + e.message + ' @ line ' + (e.lineno || '?'));
 });
 window.addEventListener('unhandledrejection', (e) => {
-  const box = document.createElement('div');
-  box.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;background:#f59e0b;color:#000;padding:14px 20px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999';
-  box.textContent = '[PROMISE ERROR] ' + (e.reason && e.reason.message || e.reason || 'unknown');
-  document.body.appendChild(box);
-  setTimeout(() => box.remove(), 30000);
+  dbg('❌ PROMISE ERROR: ' + (e.reason && e.reason.message || e.reason || 'unknown'));
 });
 
 // ============================================================
@@ -724,7 +733,9 @@ let cargando = false;
 // AUTH
 // ============================================================
 function init() {
+  dbg('init()');
   const u = localStorage.getItem('usuario_activo');
+  dbg('  localStorage user=' + u);
   if (u && USER_COLORS[u]) {
     mostrarPanel(u);
   } else {
@@ -781,9 +792,15 @@ function cerrarSesion() {
 // TABS
 // ============================================================
 function setTab(name) {
+  dbg('setTab(' + name + ')');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  document.getElementById('tabAnalisis').style.display = name === 'analisis' ? 'block' : 'none';
-  document.getElementById('tabConsumo').style.display = name === 'consumo' ? 'block' : 'none';
+  const tA = document.getElementById('tabAnalisis');
+  const tC = document.getElementById('tabConsumo');
+  if (!tA) dbg('❌ tabAnalisis NO EXISTE');
+  if (!tC) dbg('❌ tabConsumo NO EXISTE');
+  if (tA) tA.style.display = name === 'analisis' ? 'block' : 'none';
+  if (tC) tC.style.display = name === 'consumo' ? 'block' : 'none';
+  dbg('  tabConsumo.display=' + (tC ? tC.style.display : '?') + ' offsetHeight=' + (tC ? tC.offsetHeight : '?'));
   if (name === 'consumo') cargarConsumo();
 }
 
@@ -791,18 +808,22 @@ function setTab(name) {
 // CONSUMO
 // ============================================================
 async function cargarConsumo() {
-  if (!usuarioActivo) return;
+  dbg('cargarConsumo() user=' + usuarioActivo);
+  if (!usuarioActivo) { dbg('  abort: no usuarioActivo'); return; }
   try {
+    dbg('  fetching ' + URL_CONSUMO);
     const resp = await fetch(URL_CONSUMO, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usuario: usuarioActivo })
     });
+    dbg('  resp status=' + resp.status);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
+    dbg('  body length=' + text.length);
     let data;
     if (text && text.trim()) {
-      try { data = JSON.parse(text); } catch (e) { data = null; }
+      try { data = JSON.parse(text); } catch (e) { data = null; dbg('  JSON parse fail: ' + e.message); }
     }
     if (!data || !data.consumo) {
       data = {
@@ -823,8 +844,9 @@ async function cargarConsumo() {
 }
 
 function renderConsumo(data) {
+  dbg('renderConsumo() called, historial len=' + ((data && data.historial && data.historial.length) || 0));
   const host = document.getElementById('consumoContent');
-  if (!host) return;
+  if (!host) { dbg('  ❌ consumoContent NO EXISTE'); return; }
   try {
     const c = (data && data.consumo) || {};
     const limite = Number(c.limite_tokens_mensual) || 1000000;
@@ -864,7 +886,7 @@ function renderConsumo(data) {
       tablaHtml += '</tbody></table>';
     }
 
-    host.innerHTML = `
+    const htmlContent = `
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;gap:16px;flex-wrap:wrap">
         <div>
           <h2 style="font-size:28px;font-weight:400;color:#f1f5f9;font-family:'DM Serif Display',serif;line-height:1.2;margin:0">
@@ -902,9 +924,12 @@ function renderConsumo(data) {
         ${tablaHtml}
       </div>
     `;
+    host.innerHTML = htmlContent;
+    dbg('  ✓ innerHTML set, length=' + htmlContent.length);
   } catch (err) {
+    dbg('❌ renderConsumo threw: ' + (err.message || err));
     console.error('renderConsumo failed:', err);
-    host.innerHTML = '<div style="background:#ef4444;color:#fff;padding:20px;border-radius:12px;font-family:monospace">[renderConsumo error] ' + escapeHtml(err && err.message || String(err)) + '</div>';
+    host.innerHTML = '<div style="background:#ef4444;color:#fff;padding:20px;border-radius:12px;font-family:monospace">[renderConsumo error] ' + (err && err.message || String(err)) + '</div>';
   }
 }
 
