@@ -136,6 +136,19 @@
     .consumo-bar-fill.warn { background: #f59e0b; }
     .consumo-bar-fill.alert { background: #ef4444; }
 
+    .consumo-page-header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
+      animation: fadeSlideIn 0.4s ease;
+    }
+    .consumo-page-title {
+      font-size: 28px; font-weight: 400; color: #f1f5f9;
+      font-family: 'DM Serif Display', serif; line-height: 1.2;
+    }
+    .consumo-page-title span { color: #8b5cf6; }
+    .consumo-page-sub {
+      margin-top: 6px; font-size: 13px; color: #64748b;
+    }
     .consumo-hero {
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.08);
@@ -602,7 +615,7 @@
 
   <nav class="tabs-bar">
     <button class="tab-btn active" data-tab="analisis" onclick="setTab('analisis')">Nuevo análisis</button>
-    <button class="tab-btn" data-tab="consumo" onclick="setTab('consumo')">Mi consumo</button>
+    <button class="tab-btn" data-tab="consumo" onclick="setTab('consumo')">Consumo</button>
   </nav>
 
   <!-- TAB: NUEVO ANÁLISIS -->
@@ -648,8 +661,16 @@
     <div id="results" style="display:none"></div>
   </div>
 
-  <!-- TAB: MI CONSUMO -->
+  <!-- TAB: CONSUMO -->
   <div id="tabConsumo" class="container-wide" style="display:none">
+    <div class="consumo-page-header">
+      <div>
+        <h2 class="consumo-page-title">Consumo de <span id="consumoUserName">—</span></h2>
+        <p class="consumo-page-sub">Tokens consumidos este mes y detalle de cada ejecución</p>
+      </div>
+      <button class="btn-ejemplo" onclick="cargarConsumo()">↻ ACTUALIZAR</button>
+    </div>
+
     <div class="consumo-hero">
       <div class="consumo-hero-top">
         <span class="label">Consumo del mes</span>
@@ -666,7 +687,6 @@
     <div class="table-wrap">
       <div class="table-header">
         <span class="table-title">Historial de ejecuciones</span>
-        <button class="btn-ejemplo" onclick="cargarConsumo()">↻ ACTUALIZAR</button>
       </div>
       <div id="historialTable"></div>
     </div>
@@ -730,6 +750,8 @@ function mostrarPanel(nombre) {
   av.textContent = inicial;
   av.style.background = USER_COLORS[nombre].bg;
   document.getElementById('userName').textContent = nombre;
+  const cu = document.getElementById('consumoUserName');
+  if (cu) cu.textContent = nombre;
 
   setTab('analisis');
   cargarConsumo();
