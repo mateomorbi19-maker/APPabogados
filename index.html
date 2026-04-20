@@ -251,6 +251,7 @@
       font-family: 'IBM Plex Sans', sans-serif;
     }
     .container-wide {
+      position: relative; z-index: 1;
       max-width: 1200px; margin: 0 auto;
       padding: 32px 24px 80px;
       font-family: 'IBM Plex Sans', sans-serif;
@@ -677,37 +678,15 @@
 
   <footer>
     <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
-    <p style="margin-top:8px; opacity:0.5">build · v3.6 (debug panel)</p>
+    <p style="margin-top:8px; opacity:0.5">build · v3.7</p>
   </footer>
 </div>
 
 <script>
-// ============================================================
-// DEBUG: panel visible de eventos + atrapa errores
-// ============================================================
-function dbg(msg) {
-  let p = document.getElementById('dbgPanel');
-  if (!p) {
-    p = document.createElement('div');
-    p.id = 'dbgPanel';
-    p.style.cssText = 'position:fixed;top:80px;right:20px;width:380px;max-height:60vh;overflow-y:auto;background:#0f172a;border:2px solid #8b5cf6;color:#e2e8f0;padding:12px;border-radius:10px;font-family:monospace;font-size:11px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.6)';
-    p.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong style="color:#a78bfa">DEBUG v3.6</strong><button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#64748b;cursor:pointer">✕</button></div><div id="dbgLog"></div>';
-    document.body.appendChild(p);
-  }
-  const log = document.getElementById('dbgLog');
-  const t = new Date().toTimeString().slice(0,8);
-  const line = document.createElement('div');
-  line.style.cssText = 'padding:3px 0;border-top:1px solid rgba(255,255,255,0.05)';
-  line.textContent = '[' + t + '] ' + msg;
-  log.appendChild(line);
-  log.scrollTop = log.scrollHeight;
-}
-window.addEventListener('error', (e) => {
-  dbg('❌ JS ERROR: ' + e.message + ' @ line ' + (e.lineno || '?'));
-});
-window.addEventListener('unhandledrejection', (e) => {
-  dbg('❌ PROMISE ERROR: ' + (e.reason && e.reason.message || e.reason || 'unknown'));
-});
+// Noop dbg (debug panel retirado tras diagnosticar el bug de z-index)
+function dbg() {}
+window.addEventListener('error', (e) => console.error('[JS ERROR]', e.message, e.filename, e.lineno));
+window.addEventListener('unhandledrejection', (e) => console.error('[PROMISE]', e.reason));
 
 // ============================================================
 // CONFIG
