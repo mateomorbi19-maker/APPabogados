@@ -607,8 +607,8 @@
     <div class="panel-header-inner">
       <div class="brand">Estrategia<span class="accent">Legal</span></div>
       <nav class="tabs-bar">
-        <button class="tab-btn active" data-tab="analisis" onclick="setTab('analisis')">📝 Nuevo análisis</button>
-        <button class="tab-btn" data-tab="consumo" onclick="setTab('consumo')">📊 Consumo</button>
+        <button class="tab-btn active" data-tab="analisis" onclick="setTab('analisis')">Nuevo análisis</button>
+        <button class="tab-btn" data-tab="consumo" onclick="setTab('consumo')">Consumo</button>
       </nav>
       <div style="flex:1"></div>
       <div class="user-menu">
@@ -701,7 +701,7 @@
 
   <footer>
     <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
-    <p style="margin-top:8px; opacity:0.5">build · v3.2 · tabs en header</p>
+    <p style="margin-top:8px; opacity:0.5">build · v3.3</p>
   </footer>
 </div>
 
@@ -805,10 +805,26 @@ async function cargarConsumo() {
       body: JSON.stringify({ usuario: usuarioActivo })
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
+    const text = await resp.text();
+    let data;
+    if (text && text.trim()) {
+      try { data = JSON.parse(text); } catch (e) { data = null; }
+    }
+    if (!data || !data.consumo) {
+      data = {
+        consumo: { nombre: usuarioActivo, tokens_usados_mes: 0, gasto_usd_mes: 0,
+                   ejecuciones_mes: 0, tokens_restantes: 1000000, limite_tokens_mensual: 1000000 },
+        historial: []
+      };
+    }
     renderConsumo(data);
   } catch (err) {
     console.error('Error cargando consumo:', err);
+    renderConsumo({
+      consumo: { nombre: usuarioActivo, tokens_usados_mes: 0, gasto_usd_mes: 0,
+                 ejecuciones_mes: 0, tokens_restantes: 1000000, limite_tokens_mensual: 1000000 },
+      historial: []
+    });
   }
 }
 
