@@ -670,38 +670,14 @@
 
   <!-- TAB: CONSUMO -->
   <div id="tabConsumo" class="container-wide" style="display:none">
-    <div class="consumo-page-header">
-      <div>
-        <h2 class="consumo-page-title">Consumo de <span id="consumoUserName">—</span></h2>
-        <p class="consumo-page-sub">Tokens consumidos este mes y detalle de cada ejecución</p>
-      </div>
-      <button class="btn-ejemplo" onclick="cargarConsumo()">↻ ACTUALIZAR</button>
-    </div>
-
-    <div class="consumo-hero">
-      <div class="consumo-hero-top">
-        <span class="label">Consumo del mes</span>
-        <span id="consumoHeroPct" class="consumo-hero-pct">0%</span>
-      </div>
-      <div class="consumo-hero-bar">
-        <div id="consumoFill" class="consumo-bar-fill"></div>
-      </div>
-      <div class="consumo-hero-text">
-        <span id="consumoText"><strong>0</strong> / 1M tokens</span>
-      </div>
-    </div>
-    <div id="consumoMetrics" class="metric-grid"></div>
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">Historial de ejecuciones</span>
-      </div>
-      <div id="historialTable"></div>
+    <div id="consumoContent">
+      <p style="color:#94a3b8; text-align:center; padding:40px">Cargando consumo...</p>
     </div>
   </div>
 
   <footer>
     <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
-    <p style="margin-top:8px; opacity:0.5">build · v3.4</p>
+    <p style="margin-top:8px; opacity:0.5">build · v3.5</p>
   </footer>
 </div>
 
@@ -847,79 +823,97 @@ async function cargarConsumo() {
 }
 
 function renderConsumo(data) {
+  const host = document.getElementById('consumoContent');
+  if (!host) return;
   try {
-  const c = (data && data.consumo) || {};
-  const limite = Number(c.limite_tokens_mensual) || 1000000;
-  const usados = Number(c.tokens_usados_mes) || 0;
-  const pct = Math.min(100, Math.round((usados / limite) * 100));
+    const c = (data && data.consumo) || {};
+    const limite = Number(c.limite_tokens_mensual) || 1000000;
+    const usados = Number(c.tokens_usados_mes) || 0;
+    const gasto = Number(c.gasto_usd_mes) || 0;
+    const ejecs = Number(c.ejecuciones_mes) || 0;
+    const restantes = Number(c.tokens_restantes) || (limite - usados);
+    const pct = Math.min(100, Math.round((usados / limite) * 100));
+    const barColor = pct >= 85 ? '#ef4444' : (pct >= 60 ? '#f59e0b' : '#22c55e');
+    const nombre = c.nombre || usuarioActivo || '—';
 
-  // Hero bar (en tab Mi consumo)
-  const fill = document.getElementById('consumoFill');
-  if (fill) {
-    fill.style.width = pct + '%';
-    fill.classList.remove('warn', 'alert');
-    if (pct >= 85) fill.classList.add('alert');
-    else if (pct >= 60) fill.classList.add('warn');
-  }
-  const heroPct = document.getElementById('consumoHeroPct');
-  if (heroPct) heroPct.textContent = pct + '%';
-  const txt = document.getElementById('consumoText');
-  if (txt) txt.innerHTML = '<strong>' + fmtNum(usados) + '</strong> / ' + fmtTokens(limite) + ' tokens';
+    const hist = (data && Array.isArray(data.historial)) ? data.historial : [];
+    const historialOrdenado = hist.slice().sort((a, b) => new Date(b.ejecutado_en) - new Date(a.ejecutado_en));
 
-  // Metrics cards (only render if tab visible to avoid flicker)
-  const grid = document.getElementById('consumoMetrics');
-  if (grid) {
-    grid.innerHTML = `
-      <div class="metric-card">
-        <div class="metric-label">Tokens este mes</div>
-        <div class="metric-value">${fmtNum(usados)}</div>
-        <div class="metric-sub">${pct}% del límite</div>
+    let tablaHtml;
+    if (!historialOrdenado.length) {
+      tablaHtml = '<div style="padding:60px 24px;text-align:center;color:#64748b;font-size:14px">Sin ejecuciones todavía. Hacé tu primer análisis para ver datos acá.</div>';
+    } else {
+      tablaHtml = '<table style="width:100%;border-collapse:collapse">';
+      tablaHtml += '<thead><tr>';
+      ['Fecha', 'ID', 'Modelo', 'Tokens', 'Costo USD'].forEach((h, i) => {
+        const align = i >= 3 ? 'right' : 'left';
+        tablaHtml += `<th style="padding:12px 20px;text-align:${align};font-size:11px;font-weight:700;color:#64748b;letter-spacing:0.08em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)">${h}</th>`;
+      });
+      tablaHtml += '</tr></thead><tbody>';
+      historialOrdenado.forEach(h => {
+        const modeloSimple = (h.modelo || '').replace('claude-', '').replace('-20250929', '').replace('-20251001', '');
+        const totalTok = Number(h.total_tokens || 0) || (Number(h.input_tokens || 0) + Number(h.output_tokens || 0));
+        tablaHtml += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
+        tablaHtml += `<td style="padding:14px 20px;font-size:13px;color:#cbd5e1;font-family:'IBM Plex Mono',monospace">${fmtFecha(h.ejecutado_en)}</td>`;
+        tablaHtml += `<td style="padding:14px 20px;font-size:13px;color:#64748b;font-family:'IBM Plex Mono',monospace">${(h.id || '').slice(0,8)}</td>`;
+        tablaHtml += `<td style="padding:14px 20px;font-size:13px;color:#cbd5e1">${escapeHtml(modeloSimple)}</td>`;
+        tablaHtml += `<td style="padding:14px 20px;text-align:right;font-size:13px;color:#cbd5e1;font-family:'IBM Plex Mono',monospace">${fmtNum(totalTok)}</td>`;
+        tablaHtml += `<td style="padding:14px 20px;text-align:right;font-size:13px;color:#cbd5e1;font-family:'IBM Plex Mono',monospace">$${Number(h.costo_usd || 0).toFixed(6)}</td>`;
+        tablaHtml += '</tr>';
+      });
+      tablaHtml += '</tbody></table>';
+    }
+
+    host.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;gap:16px;flex-wrap:wrap">
+        <div>
+          <h2 style="font-size:28px;font-weight:400;color:#f1f5f9;font-family:'DM Serif Display',serif;line-height:1.2;margin:0">
+            Consumo de <span style="color:#8b5cf6">${escapeHtml(nombre)}</span>
+          </h2>
+          <p style="margin:6px 0 0;font-size:13px;color:#94a3b8">Tokens consumidos este mes y detalle de cada ejecución</p>
+        </div>
+        <button onclick="cargarConsumo()" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:8px 16px;font-size:12px;color:#a78bfa;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:600">↻ ACTUALIZAR</button>
       </div>
-      <div class="metric-card">
-        <div class="metric-label">Gasto USD</div>
-        <div class="metric-value">$${Number(c.gasto_usd_mes || 0).toFixed(4)}</div>
-        <div class="metric-sub">en ${c.ejecuciones_mes || 0} ejecución${(c.ejecuciones_mes || 0) === 1 ? '' : 'es'}</div>
+
+      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:24px 28px;margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+          <span style="font-size:12px;font-weight:700;color:#cbd5e1;letter-spacing:0.1em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace">Consumo del mes</span>
+          <span style="font-size:26px;font-weight:600;color:#f1f5f9;font-family:'DM Serif Display',serif">${pct}%</span>
+        </div>
+        <div style="height:12px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:999px;transition:width 0.5s ease"></div>
+        </div>
+        <div style="margin-top:10px;font-size:13px;color:#cbd5e1;font-family:'IBM Plex Mono',monospace">
+          <strong style="color:#f1f5f9">${fmtNum(usados)}</strong> / ${fmtTokens(limite)} tokens
+        </div>
       </div>
-      <div class="metric-card">
-        <div class="metric-label">Ejecuciones</div>
-        <div class="metric-value">${c.ejecuciones_mes || 0}</div>
-        <div class="metric-sub">este mes</div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px">
+        ${metricCard('Tokens este mes', fmtNum(usados), pct + '% del límite')}
+        ${metricCard('Gasto USD', '$' + gasto.toFixed(4), 'en ' + ejecs + ' ejecución' + (ejecs === 1 ? '' : 'es'))}
+        ${metricCard('Ejecuciones', String(ejecs), 'este mes')}
+        ${metricCard('Tokens restantes', fmtNum(restantes), 'de ' + fmtTokens(limite))}
       </div>
-      <div class="metric-card">
-        <div class="metric-label">Tokens restantes</div>
-        <div class="metric-value">${fmtNum(c.tokens_restantes || 0)}</div>
-        <div class="metric-sub">de ${fmtTokens(limite)}</div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden">
+        <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.08)">
+          <span style="font-size:15px;font-weight:600;color:#f1f5f9;font-family:'DM Serif Display',serif">Historial de ejecuciones</span>
+        </div>
+        ${tablaHtml}
       </div>
     `;
-  }
-
-  // History table
-  const histDiv = document.getElementById('historialTable');
-  const hist = data.historial || [];
-  if (!hist.length) {
-    histDiv.innerHTML = '<div class="empty-state">Sin ejecuciones todavía. Hacé tu primer análisis para ver datos acá.</div>';
-    return;
-  }
-  let html = '<table><thead><tr><th>Fecha</th><th>ID</th><th>Modelo</th><th class="num">Tokens</th><th class="num">Costo USD</th></tr></thead><tbody>';
-  hist.forEach(h => {
-    html += '<tr>';
-    html += '<td class="mono">' + fmtFecha(h.ejecutado_en) + '</td>';
-    html += '<td class="mono" style="color:#64748b">' + (h.id || '').slice(0, 8) + '</td>';
-    html += '<td>' + (h.modelo || '').replace('claude-', '').replace('-20250929', '').replace('-20251001', '') + '</td>';
-    html += '<td class="num mono">' + fmtNum(h.total_tokens || (Number(h.input_tokens || 0) + Number(h.output_tokens || 0))) + '</td>';
-    html += '<td class="num mono">$' + Number(h.costo_usd || 0).toFixed(6) + '</td>';
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  histDiv.innerHTML = html;
   } catch (err) {
     console.error('renderConsumo failed:', err);
-    const box = document.createElement('div');
-    box.style.cssText = 'position:fixed;top:80px;left:20px;right:20px;background:#ef4444;color:#fff;padding:14px 20px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999';
-    box.textContent = '[renderConsumo] ' + (err && err.message || err);
-    document.body.appendChild(box);
-    setTimeout(() => box.remove(), 30000);
+    host.innerHTML = '<div style="background:#ef4444;color:#fff;padding:20px;border-radius:12px;font-family:monospace">[renderConsumo error] ' + escapeHtml(err && err.message || String(err)) + '</div>';
   }
+}
+
+function metricCard(label, value, sub) {
+  return `<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px">
+    <div style="font-size:11px;color:#94a3b8;letter-spacing:0.1em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;margin-bottom:10px">${label}</div>
+    <div style="font-size:28px;font-weight:600;color:#f1f5f9;font-family:'DM Serif Display',serif;line-height:1.1">${value}</div>
+    <div style="margin-top:6px;font-size:12px;color:#94a3b8">${sub}</div>
+  </div>`;
 }
 
 function fmtNum(n) { return Number(n).toLocaleString('es-AR'); }
