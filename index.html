@@ -11,7 +11,7 @@
     body { background: #0a0e17; min-height: 100vh; overflow-x: hidden; }
     @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin { to { transform: rotate(360deg); } }
-    textarea:focus, button:focus { outline: none; }
+    textarea:focus, button:focus, select:focus, input:focus { outline: none; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
@@ -76,14 +76,26 @@
       font-family: 'IBM Plex Mono', monospace;
     }
 
-    textarea {
+    textarea, .form-input {
       width: 100%; background: rgba(0,0,0,0.3);
       border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
-      padding: 18px 20px; color: #e2e8f0; font-size: 14px; line-height: 1.7;
+      padding: 14px 18px; color: #e2e8f0; font-size: 14px; line-height: 1.7;
       resize: vertical; font-family: 'IBM Plex Sans', sans-serif;
       transition: border-color 0.3s;
     }
-    textarea:focus { border-color: rgba(139,92,246,0.4); }
+    textarea:focus, .form-input:focus { border-color: rgba(139,92,246,0.4); }
+    textarea { padding: 18px 20px; }
+
+    select.form-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg fill='%2394a3b8' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 18px;
+      padding-right: 40px;
+      cursor: pointer;
+    }
+    select.form-input option { background: #0f172a; color: #e2e8f0; }
 
     .btn-ejemplo {
       background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25);
@@ -93,16 +105,14 @@
     }
     .btn-ejemplo:hover { background: rgba(139,92,246,0.2); }
 
-    .rol-btn {
-      padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.03); color: #94a3b8;
-      font-size: 13px; font-weight: 500; cursor: pointer;
-      font-family: 'IBM Plex Sans', sans-serif; transition: all 0.25s;
-      display: inline-flex; align-items: center; gap: 8px;
+    .btn-volver {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 8px 16px; font-size: 12px; color: #94a3b8;
+      cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600; letter-spacing: 0.05em; transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 6px;
     }
-    .rol-btn.active {
-      border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.15); color: #c4b5fd;
-    }
+    .btn-volver:hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
 
     .btn-analizar {
       width: 100%; margin-top: 24px; padding: 16px; border-radius: 14px; border: none;
@@ -116,6 +126,65 @@
       cursor: not-allowed; box-shadow: none;
     }
 
+    .resumen-box {
+      background: rgba(139,92,246,0.07); border: 1px solid rgba(139,92,246,0.2);
+      border-radius: 16px; padding: 20px 24px; margin-bottom: 24px;
+      animation: fadeSlideIn 0.5s ease;
+    }
+    .resumen-box .label { color: #c4b5fd; margin-bottom: 8px; display: block; }
+    .resumen-box p { font-size: 14px; color: #e2e8f0; line-height: 1.6; }
+    .resumen-detectados {
+      margin-top: 14px; padding-top: 14px;
+      border-top: 1px solid rgba(139,92,246,0.15);
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .det-chip {
+      padding: 6px 12px; border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      font-size: 12px; color: #cbd5e1;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .det-chip strong { color: #a78bfa; margin-right: 6px; }
+
+    .form-field {
+      margin-bottom: 20px;
+      animation: fadeSlideIn 0.4s ease;
+    }
+    .form-field-label {
+      display: block; margin-bottom: 8px;
+      font-size: 13px; font-weight: 600; color: #e2e8f0;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .form-field-label .required { color: #f87171; margin-left: 4px; }
+    .form-field-motivo {
+      display: block; margin-top: 6px;
+      font-size: 11.5px; color: #64748b;
+      font-style: italic; line-height: 1.5;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .radio-btn {
+      padding: 10px 18px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03); color: #94a3b8;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; transition: all 0.25s;
+    }
+    .radio-btn.active {
+      border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.15); color: #c4b5fd;
+    }
+
+    .checkbox-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: #8b5cf6;
+      cursor: pointer;
+    }
+    .checkbox-row label { font-size: 13.5px; color: #cbd5e1; cursor: pointer; }
+
     .error-box {
       background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
       border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
@@ -128,9 +197,7 @@
       justify-content: center; padding: 80px 20px; gap: 32px;
       animation: fadeSlideIn 0.5s ease;
     }
-    .spinner-outer {
-      position: relative; width: 64px; height: 64px;
-    }
+    .spinner-outer { position: relative; width: 64px; height: 64px; }
     .spinner-ring {
       position: absolute; inset: 0; border-radius: 50%;
       border: 2px solid rgba(255,255,255,0.06);
@@ -284,25 +351,36 @@
     <p class="subtitle">Analisis penal con inteligencia artificial.<br>Carga un caso y recibi estrategias fundamentadas en el codigo penal, procesal y doctrina</p>
   </header>
 
-  <!-- Input -->
-  <div class="card">
+  <!-- PASO 1: Input del caso -->
+  <div class="card" id="cardCaso">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px">
-      <span class="label">Descripción del caso</span>
+      <span class="label">Paso 1 · Descripción del caso</span>
       <button class="btn-ejemplo" onclick="cargarEjemplo()">CARGAR EJEMPLO</button>
     </div>
 
     <textarea id="caso" rows="8" placeholder="Describí los hechos del caso penal con el mayor detalle posible: quiénes son las partes, qué ocurrió, dónde, cuándo, y cualquier circunstancia relevante..."></textarea>
 
-    <div style="margin-top:20px">
-      <span class="label" style="display:block; margin-bottom:12px">Perspectiva de análisis</span>
-      <div id="roles" style="display:flex; gap:10px; flex-wrap:wrap">
-        <button class="rol-btn active" data-rol="ambos" onclick="setRol(this)">⚖️ Ambos roles</button>
-        <button class="rol-btn" data-rol="defensor" onclick="setRol(this)">🛡️ Defensa</button>
-        <button class="rol-btn" data-rol="querellante" onclick="setRol(this)">⚔️ Acusación</button>
-      </div>
+    <button class="btn-analizar" id="btnContinuar" onclick="preAnalizar()">Continuar →</button>
+  </div>
+
+  <!-- PASO 2: Formulario dinámico -->
+  <div id="cardFormulario" style="display:none">
+    <div style="margin-bottom:16px">
+      <button class="btn-volver" onclick="volverACaso()">← Volver y editar caso</button>
     </div>
 
-    <button class="btn-analizar" id="btnAnalizar" onclick="analizar()">⚖️  Analizar Caso</button>
+    <div id="resumenBox" class="resumen-box"></div>
+
+    <div class="card">
+      <div style="margin-bottom:24px">
+        <span class="label">Paso 2 · Completá el contexto</span>
+        <p style="margin-top:6px; font-size:13px; color:#64748b">La IA detectó algunos datos y generó preguntas para afinar el análisis</p>
+      </div>
+
+      <form id="formContexto"></form>
+
+      <button class="btn-analizar" id="btnAnalizar" onclick="analizar()">⚖️  Analizar caso</button>
+    </div>
   </div>
 
   <!-- Error -->
@@ -316,7 +394,7 @@
       <div class="spinner-ring-2"></div>
     </div>
     <div style="text-align:center">
-      <p style="font-size:15px; color:#e2e8f0; font-family:'DM Serif Display',serif">Generando estrategias</p>
+      <p id="loadingTitle" style="font-size:15px; color:#e2e8f0; font-family:'DM Serif Display',serif">Generando estrategias</p>
       <p id="loadingMsg" style="margin:10px 0 0; font-size:13px; color:#8b5cf6; font-family:'IBM Plex Mono',monospace"></p>
     </div>
   </div>
@@ -334,28 +412,25 @@
 // ============================================================
 // CONFIGURACIÓN
 // ============================================================
-const N8N_WEBHOOK_URL = "https://n8n.teotec.org/webhook/analizar-caso";
+const N8N_BASE = "https://app-n8n.udmrwg.easypanel.host";
+const URL_PRE_ANALISIS = N8N_BASE + "/webhook/pre-analisis";
+const URL_ANALIZAR = N8N_BASE + "/webhook/analizar-caso";
 
 const EJEMPLO_CASO = `Jorge paseaba con su novia, de nombre Catalina -ambos miembros de la Policía Federal argentina, de 28 años Jorge y 26 Catalina- por una calle de la ciudad de Paraná, cuando en esa ocasión, Víctor, un vecino de la ciudad, que se cruzó con la pareja, le dijo a Catalina, que caminaba como una prostituta, que seguramente lo era, qué cuanto cobraba por sus servicios sexuales. Enojado, Jorge extrajo el arma reglamentaria y disparó en contra de Víctor, con la intención de matarlo, pero como Víctor salió corriendo, no pudo impactar ninguno de los proyectiles en la humanidad de Víctor, aunque uno de esos proyectiles impactó en el vientre de una mujer embarazada que pasaba por el lugar, muriendo el feto. Catalina, en tanto decidió querellar a Víctor, previo averiguar, a través de la fuerza policial que integraban, la identidad, domicilio etc. de Víctor, cuya imagen había quedado registrada en una cámara de seguridad de los comercios frente al lugar donde se habían desarrollado los hechos.`;
 
-let rolSeleccionado = "ambos";
+let preAnalisisData = null;   // respuesta del /pre-analisis
 let cargando = false;
 
 // ============================================================
-// FUNCIONES
+// LOADING ANIMATION
 // ============================================================
-
-function cargarEjemplo() {
-  document.getElementById('caso').value = EJEMPLO_CASO;
-}
-
-function setRol(btn) {
-  document.querySelectorAll('.rol-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  rolSeleccionado = btn.dataset.rol;
-}
-
-const loadingMessages = [
+const LOADING_PRE = [
+  "Leyendo el caso",
+  "Detectando jurisdicción",
+  "Identificando delitos posibles",
+  "Generando preguntas relevantes"
+];
+const LOADING_ANALISIS = [
   "Analizando los hechos del caso",
   "Identificando tipos penales aplicables",
   "Consultando artículos del Código Penal",
@@ -367,44 +442,293 @@ const loadingMessages = [
 
 let msgInterval, dotInterval;
 
-function startLoadingAnimation() {
+function startLoading(titulo, mensajes) {
+  document.getElementById('loadingTitle').textContent = titulo;
   let msgIdx = 0, dots = 0;
   const el = document.getElementById('loadingMsg');
+  el.textContent = mensajes[0];
   dotInterval = setInterval(() => {
     dots = (dots + 1) % 4;
-    el.textContent = loadingMessages[msgIdx] + '.'.repeat(dots);
+    el.textContent = mensajes[msgIdx] + '.'.repeat(dots);
   }, 400);
   msgInterval = setInterval(() => {
-    msgIdx = (msgIdx + 1) % loadingMessages.length;
+    msgIdx = (msgIdx + 1) % mensajes.length;
   }, 3000);
+  document.getElementById('loading').style.display = 'flex';
 }
 
-function stopLoadingAnimation() {
+function stopLoading() {
   clearInterval(msgInterval);
   clearInterval(dotInterval);
+  document.getElementById('loading').style.display = 'none';
 }
 
-async function analizar() {
+function mostrarError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function ocultarError() {
+  document.getElementById('errorBox').style.display = 'none';
+}
+
+// ============================================================
+// PASO 1: cargar ejemplo / pre-analizar
+// ============================================================
+function cargarEjemplo() {
+  document.getElementById('caso').value = EJEMPLO_CASO;
+}
+
+async function preAnalizar() {
   const caso = document.getElementById('caso').value.trim();
-  if (!caso || cargando) return;
+  if (cargando) return;
+  if (caso.length < 20) {
+    mostrarError('El caso es demasiado corto. Describí los hechos con más detalle.');
+    return;
+  }
+
+  cargando = true;
+  ocultarError();
+  document.getElementById('btnContinuar').disabled = true;
+  document.getElementById('btnContinuar').textContent = 'Analizando...';
+  document.getElementById('cardCaso').style.display = 'none';
+  startLoading('Pre-analizando el caso', LOADING_PRE);
+
+  try {
+    const resp = await fetch(URL_PRE_ANALISIS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caso })
+    });
+
+    if (!resp.ok) throw new Error('Error del servidor: ' + resp.status);
+    const data = await resp.json();
+
+    if (!data || !Array.isArray(data.preguntas) || data.preguntas.length === 0) {
+      throw new Error('Respuesta inválida del pre-análisis');
+    }
+
+    preAnalisisData = data;
+    renderFormulario(data);
+  } catch (err) {
+    console.error(err);
+    mostrarError('No se pudo pre-analizar el caso: ' + err.message);
+    document.getElementById('cardCaso').style.display = 'block';
+  } finally {
+    cargando = false;
+    stopLoading();
+    document.getElementById('btnContinuar').disabled = false;
+    document.getElementById('btnContinuar').textContent = 'Continuar →';
+  }
+}
+
+function volverACaso() {
+  preAnalisisData = null;
+  document.getElementById('cardFormulario').style.display = 'none';
+  document.getElementById('cardCaso').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  ocultarError();
+  document.getElementById('caso').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ============================================================
+// PASO 2: render del formulario dinámico
+// ============================================================
+function renderFormulario(data) {
+  // Resumen
+  const resumenBox = document.getElementById('resumenBox');
+  let resumenHtml = '<span class="label">Resumen del caso (según la IA)</span>';
+  resumenHtml += '<p>' + escapeHtml(data.resumen_preliminar || '') + '</p>';
+
+  const det = data.datos_detectados || {};
+  const chips = [];
+  if (det.jurisdiccion_inferida) chips.push('<div class="det-chip"><strong>Jurisdicción:</strong>' + escapeHtml(det.jurisdiccion_inferida) + '</div>');
+  if (Array.isArray(det.delitos_posibles) && det.delitos_posibles.length) chips.push('<div class="det-chip"><strong>Delitos posibles:</strong>' + escapeHtml(det.delitos_posibles.join(' · ')) + '</div>');
+  if (det.etapa_procesal) chips.push('<div class="det-chip"><strong>Etapa:</strong>' + escapeHtml(det.etapa_procesal) + '</div>');
+  if (chips.length) resumenHtml += '<div class="resumen-detectados">' + chips.join('') + '</div>';
+  resumenBox.innerHTML = resumenHtml;
+
+  // Form
+  const form = document.getElementById('formContexto');
+  form.innerHTML = '';
+
+  data.preguntas.forEach((p, idx) => {
+    const field = document.createElement('div');
+    field.className = 'form-field';
+    field.dataset.preguntaId = p.id;
+    field.dataset.tipo = p.tipo;
+
+    const labelEl = document.createElement('label');
+    labelEl.className = 'form-field-label';
+    labelEl.innerHTML = escapeHtml(p.label) + (p.requerido ? '<span class="required">*</span>' : '');
+    field.appendChild(labelEl);
+
+    if (p.tipo === 'select') {
+      const sel = document.createElement('select');
+      sel.className = 'form-input';
+      sel.name = p.id;
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '— Seleccioná una opción —';
+      sel.appendChild(placeholder);
+      (p.opciones || []).forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (p.valor_sugerido && String(opt).toLowerCase() === String(p.valor_sugerido).toLowerCase()) o.selected = true;
+        sel.appendChild(o);
+      });
+      field.appendChild(sel);
+    } else if (p.tipo === 'radio') {
+      const group = document.createElement('div');
+      group.className = 'radio-group';
+      group.dataset.name = p.id;
+      (p.opciones || []).forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'radio-btn';
+        btn.dataset.value = opt;
+        btn.textContent = opt;
+        if (p.valor_sugerido && String(opt).toLowerCase() === String(p.valor_sugerido).toLowerCase()) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+          group.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+        group.appendChild(btn);
+      });
+      field.appendChild(group);
+    } else if (p.tipo === 'checkbox') {
+      const opciones = (p.opciones && p.opciones.length) ? p.opciones : [p.label];
+      opciones.forEach((opt, i) => {
+        const row = document.createElement('div');
+        row.className = 'checkbox-row';
+        const inp = document.createElement('input');
+        inp.type = 'checkbox';
+        inp.id = p.id + '_' + i;
+        inp.dataset.value = opt;
+        if (p.valor_sugerido === true || (Array.isArray(p.valor_sugerido) && p.valor_sugerido.includes(opt))) inp.checked = true;
+        const lab = document.createElement('label');
+        lab.htmlFor = inp.id;
+        lab.textContent = opt;
+        row.appendChild(inp);
+        row.appendChild(lab);
+        field.appendChild(row);
+      });
+    } else {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'form-input';
+      inp.name = p.id;
+      if (p.valor_sugerido) inp.value = p.valor_sugerido;
+      field.appendChild(inp);
+    }
+
+    if (p.motivo) {
+      const mot = document.createElement('span');
+      mot.className = 'form-field-motivo';
+      mot.textContent = '↳ ' + p.motivo;
+      field.appendChild(mot);
+    }
+
+    form.appendChild(field);
+  });
+
+  document.getElementById('cardFormulario').style.display = 'block';
+  document.getElementById('cardFormulario').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function recolectarContexto() {
+  const form = document.getElementById('formContexto');
+  const contexto = {};
+  let rolFromForm = null;
+
+  form.querySelectorAll('.form-field').forEach(field => {
+    const id = field.dataset.preguntaId;
+    const tipo = field.dataset.tipo;
+    let valor;
+
+    if (tipo === 'select') {
+      const sel = field.querySelector('select');
+      valor = sel ? sel.value : '';
+    } else if (tipo === 'radio') {
+      const active = field.querySelector('.radio-btn.active');
+      valor = active ? active.dataset.value : '';
+    } else if (tipo === 'checkbox') {
+      const checks = field.querySelectorAll('input[type="checkbox"]:checked');
+      valor = Array.from(checks).map(c => c.dataset.value);
+      if (valor.length === 0) valor = '';
+    } else {
+      const inp = field.querySelector('input[type="text"]');
+      valor = inp ? inp.value.trim() : '';
+    }
+
+    if (id === 'rol' && valor) {
+      rolFromForm = String(valor).toLowerCase();
+      if (rolFromForm === 'querellante') rolFromForm = 'querellante';
+      else if (rolFromForm === 'defensor') rolFromForm = 'defensor';
+      else rolFromForm = 'ambos';
+    } else if (valor !== '' && !(Array.isArray(valor) && valor.length === 0)) {
+      contexto[id] = valor;
+    }
+  });
+
+  return { contexto, rol: rolFromForm };
+}
+
+function validarRequeridos() {
+  const form = document.getElementById('formContexto');
+  let primerFaltante = null;
+
+  form.querySelectorAll('.form-field').forEach(field => {
+    const id = field.dataset.preguntaId;
+    const pregunta = preAnalisisData.preguntas.find(p => p.id === id);
+    if (!pregunta || !pregunta.requerido) return;
+
+    const tipo = field.dataset.tipo;
+    let lleno = false;
+    if (tipo === 'select') lleno = !!field.querySelector('select').value;
+    else if (tipo === 'radio') lleno = !!field.querySelector('.radio-btn.active');
+    else if (tipo === 'checkbox') lleno = field.querySelectorAll('input:checked').length > 0;
+    else lleno = !!field.querySelector('input[type="text"]').value.trim();
+
+    if (!lleno && !primerFaltante) primerFaltante = pregunta.label;
+  });
+
+  return primerFaltante;
+}
+
+// ============================================================
+// PASO 3: ANALIZAR (con contexto)
+// ============================================================
+async function analizar() {
+  if (cargando) return;
+  ocultarError();
+
+  const faltante = validarRequeridos();
+  if (faltante) {
+    mostrarError('Falta completar: "' + faltante + '"');
+    return;
+  }
+
+  const { contexto, rol } = recolectarContexto();
+  const caso = document.getElementById('caso').value.trim();
 
   cargando = true;
   document.getElementById('btnAnalizar').disabled = true;
   document.getElementById('btnAnalizar').textContent = 'Analizando...';
-  document.getElementById('errorBox').style.display = 'none';
   document.getElementById('results').style.display = 'none';
-  document.getElementById('loading').style.display = 'flex';
-  startLoadingAnimation();
+  startLoading('Generando estrategias', LOADING_ANALISIS);
 
   try {
-    const resp = await fetch(N8N_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ caso, rol: rolSeleccionado })
+    const resp = await fetch(URL_ANALIZAR, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caso, rol: rol || 'ambos', contexto })
     });
 
-    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`);
-
+    if (!resp.ok) throw new Error('Error del servidor: ' + resp.status);
     const data = await resp.json();
 
     if (!data || (!data.defensor && !data.querellante)) {
@@ -414,33 +738,32 @@ async function analizar() {
     renderResults(data);
   } catch (err) {
     console.error(err);
-    document.getElementById('errorBox').textContent = 
-      'Error al procesar el caso: ' + err.message + '. Verificá que el servidor esté activo e intentá nuevamente.';
-    document.getElementById('errorBox').style.display = 'block';
+    mostrarError('Error al procesar el caso: ' + err.message);
   } finally {
     cargando = false;
-    stopLoadingAnimation();
-    document.getElementById('loading').style.display = 'none';
+    stopLoading();
     document.getElementById('btnAnalizar').disabled = false;
-    document.getElementById('btnAnalizar').textContent = '⚖️  Analizar Caso';
+    document.getElementById('btnAnalizar').textContent = '⚖️  Analizar caso';
   }
 }
 
+// ============================================================
+// RENDER RESULTADOS (igual que antes)
+// ============================================================
 function renderResults(data) {
   const container = document.getElementById('results');
   let html = '';
 
-  // Metadata
   if (data.metadata) {
     html += '<div class="metadata-bar">';
     if (data.metadata.conceptos_extraidos) {
-      html += `<div class="meta-item"><strong>Conceptos:</strong> ${data.metadata.conceptos_extraidos.join(', ')}</div>`;
+      html += '<div class="meta-item"><strong>Conceptos:</strong> ' + escapeHtml(data.metadata.conceptos_extraidos.join(', ')) + '</div>';
     }
     if (data.metadata.chunks_codigo_usados) {
-      html += `<div class="meta-item"><strong>Arts. consultados:</strong> ${data.metadata.chunks_codigo_usados}</div>`;
+      html += '<div class="meta-item"><strong>Arts. consultados:</strong> ' + data.metadata.chunks_codigo_usados + '</div>';
     }
     if (data.metadata.chunks_manual_usados) {
-      html += `<div class="meta-item"><strong>Secciones de manuales:</strong> ${data.metadata.chunks_manual_usados}</div>`;
+      html += '<div class="meta-item"><strong>Secciones de manuales:</strong> ' + data.metadata.chunks_manual_usados + '</div>';
     }
     html += '</div>';
   }
@@ -450,12 +773,8 @@ function renderResults(data) {
   html += '<p style="font-size:13px; color:#64748b">Hacé click en cada estrategia para ver el detalle completo</p>';
   html += '</div>';
 
-  if (data.defensor) {
-    html += renderPanel(data.defensor, 'Estrategias de Defensa', '#3b82f6', '🛡️');
-  }
-  if (data.querellante) {
-    html += renderPanel(data.querellante, 'Estrategias de Acusación', '#ef4444', '⚔️');
-  }
+  if (data.defensor) html += renderPanel(data.defensor, 'Estrategias de Defensa', '#3b82f6', '🛡️');
+  if (data.querellante) html += renderPanel(data.querellante, 'Estrategias de Acusación', '#ef4444', '⚔️');
 
   container.innerHTML = html;
   container.style.display = 'block';
@@ -469,96 +788,73 @@ function renderPanel(data, titulo, color, icon) {
     { label: 'AGRESIVA', color: '#ef4444' }
   ];
 
-  let html = `<div class="results-panel">`;
-  html += `<div class="results-header">
-    <span style="font-size:28px">${icon}</span>
-    <h3 class="results-title" style="color:${color}">${titulo}</h3>
-  </div>`;
+  let html = '<div class="results-panel">';
+  html += '<div class="results-header"><span style="font-size:28px">' + icon + '</span><h3 class="results-title" style="color:' + color + '">' + titulo + '</h3></div>';
 
-  // Meta chips
   html += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.06)">';
   if (data.imputados_identificados) {
-    html += `<div class="meta-chip"><div class="meta-chip-label">Imputados</div><div class="meta-chip-value">${data.imputados_identificados.join(', ')}</div></div>`;
+    html += '<div class="meta-chip"><div class="meta-chip-label">Imputados</div><div class="meta-chip-value">' + escapeHtml(data.imputados_identificados.join(', ')) + '</div></div>';
   }
   if (data.delitos_imputables) {
-    html += `<div class="meta-chip"><div class="meta-chip-label">Delitos</div><div class="meta-chip-value">${data.delitos_imputables.join(' · ')}</div></div>`;
+    html += '<div class="meta-chip"><div class="meta-chip-label">Delitos</div><div class="meta-chip-value">' + escapeHtml(data.delitos_imputables.join(' · ')) + '</div></div>';
   }
   html += '</div>';
 
-  // Estrategias
   if (data.estrategias) {
     data.estrategias.forEach((est, i) => {
       const badge = badges[i] || badges[0];
-      const cardId = `est-${titulo.replace(/\s/g,'')}-${i}`;
+      const cardId = 'est-' + titulo.replace(/\s/g, '') + '-' + i;
 
-      html += `<div class="estrategia-card" id="${cardId}" onclick="toggleEstrategia('${cardId}')" style="border-left:3px solid ${color}">`;
-      html += `<div class="est-header">`;
-      html += `<div class="est-num" style="background:${color}22; color:${color}">${est.numero || i+1}</div>`;
-      html += `<div style="flex:1">`;
-      html += `<div style="display:flex; align-items:center; flex-wrap:wrap">`;
-      html += `<span class="est-title">${est.nombre}</span>`;
-      html += `<span class="est-badge" style="background:${badge.color}22; color:${badge.color}">${badge.label}</span>`;
-      html += `</div>`;
-      html += `<p class="est-tesis">${est.tesis_central}</p>`;
-      html += `</div>`;
-      html += `<span class="est-arrow">▾</span>`;
-      html += `</div>`;
+      html += '<div class="estrategia-card" id="' + cardId + '" onclick="toggleEstrategia(\'' + cardId + '\')" style="border-left:3px solid ' + color + '">';
+      html += '<div class="est-header">';
+      html += '<div class="est-num" style="background:' + color + '22; color:' + color + '">' + (est.numero || (i + 1)) + '</div>';
+      html += '<div style="flex:1"><div style="display:flex; align-items:center; flex-wrap:wrap">';
+      html += '<span class="est-title">' + escapeHtml(est.nombre || '') + '</span>';
+      html += '<span class="est-badge" style="background:' + badge.color + '22; color:' + badge.color + '">' + badge.label + '</span>';
+      html += '</div><p class="est-tesis">' + escapeHtml(est.tesis_central || '') + '</p></div>';
+      html += '<span class="est-arrow">▾</span></div>';
 
-      // Body (hidden by default)
-      html += `<div class="est-body">`;
+      html += '<div class="est-body">';
 
-      // Fundamento legal
-      html += `<div class="section-block"><div class="section-title" style="color:${color}">⚖️ Fundamento legal</div>`;
-      if (est.fundamento_legal) {
-        est.fundamento_legal.forEach(f => { html += `<div class="legal-item">${f}</div>`; });
-      }
+      html += '<div class="section-block"><div class="section-title" style="color:' + color + '">⚖️ Fundamento legal</div>';
+      if (est.fundamento_legal) est.fundamento_legal.forEach(f => { html += '<div class="legal-item">' + escapeHtml(f) + '</div>'; });
       html += '</div>';
 
-      // Doctrina
       if (est.doctrina_aplicable) {
-        html += `<div class="section-block"><div class="section-title" style="color:${color}">📚 Doctrina aplicable</div>`;
-        html += `<p class="doctrina">${est.doctrina_aplicable}</p></div>`;
+        html += '<div class="section-block"><div class="section-title" style="color:' + color + '">📚 Doctrina aplicable</div>';
+        html += '<p class="doctrina">' + escapeHtml(est.doctrina_aplicable) + '</p></div>';
       }
 
-      // Fortalezas y Riesgos
       html += '<div class="grid-2">';
       html += '<div><div class="section-title" style="color:#22c55e">✅ Fortalezas</div>';
-      if (est.fortalezas) {
-        est.fortalezas.forEach(f => {
-          html += `<div class="pill-item" style="background:#22c55e08; border-left:2px solid #22c55e44; border-radius:0">${f}</div>`;
-        });
-      }
-      html += '</div>';
-      html += '<div><div class="section-title" style="color:#f59e0b">⚠️ Riesgos</div>';
-      if (est.riesgos) {
-        est.riesgos.forEach(r => {
-          html += `<div class="pill-item" style="background:#f59e0b08; border-left:2px solid #f59e0b44; border-radius:0">${r}</div>`;
-        });
-      }
+      if (est.fortalezas) est.fortalezas.forEach(f => { html += '<div class="pill-item" style="background:#22c55e08; border-left:2px solid #22c55e44; border-radius:0">' + escapeHtml(f) + '</div>'; });
+      html += '</div><div><div class="section-title" style="color:#f59e0b">⚠️ Riesgos</div>';
+      if (est.riesgos) est.riesgos.forEach(r => { html += '<div class="pill-item" style="background:#f59e0b08; border-left:2px solid #f59e0b44; border-radius:0">' + escapeHtml(r) + '</div>'; });
       html += '</div></div>';
 
-      // Pasos procesales
       if (est.pasos_procesales) {
-        html += `<div class="section-block" style="margin-top:16px"><div class="section-title" style="color:${color}">📋 Pasos procesales</div>`;
+        html += '<div class="section-block" style="margin-top:16px"><div class="section-title" style="color:' + color + '">📋 Pasos procesales</div>';
         est.pasos_procesales.forEach((p, j) => {
-          html += `<div class="paso-item">`;
-          html += `<span class="paso-num" style="background:${color}22; color:${color}">${j+1}</span>`;
-          html += `<span class="paso-text">${p}</span></div>`;
+          html += '<div class="paso-item"><span class="paso-num" style="background:' + color + '22; color:' + color + '">' + (j + 1) + '</span><span class="paso-text">' + escapeHtml(p) + '</span></div>';
         });
         html += '</div>';
       }
 
-      html += '</div>'; // est-body
-      html += '</div>'; // estrategia-card
+      html += '</div></div>';
     });
   }
 
-  html += '</div>'; // results-panel
+  html += '</div>';
   return html;
 }
 
 function toggleEstrategia(id) {
   document.getElementById(id).classList.toggle('open');
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 </script>
 
