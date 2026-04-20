@@ -127,29 +127,43 @@
     }
     .brand .accent { color: #8b5cf6; }
 
-    .consumo-bar-wrap {
-      flex: 1; min-width: 200px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .consumo-bar {
-      flex: 1; height: 8px; background: rgba(255,255,255,0.06);
-      border-radius: 4px; overflow: hidden;
-      position: relative;
-    }
     .consumo-bar-fill {
       height: 100%; width: 0%;
       background: #22c55e;
-      border-radius: 4px;
+      border-radius: 999px;
       transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background-color 0.4s;
     }
     .consumo-bar-fill.warn { background: #f59e0b; }
     .consumo-bar-fill.alert { background: #ef4444; }
-    .consumo-text {
-      font-size: 11.5px; color: #94a3b8;
-      font-family: 'IBM Plex Mono', monospace;
-      white-space: nowrap;
+
+    .consumo-hero {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      animation: fadeSlideIn 0.4s ease;
     }
-    .consumo-text strong { color: #cbd5e1; }
+    .consumo-hero-top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 14px;
+    }
+    .consumo-hero-pct {
+      font-size: 22px; font-weight: 600; color: #f1f5f9;
+      font-family: 'DM Serif Display', serif;
+    }
+    .consumo-hero-bar {
+      height: 12px; background: rgba(255,255,255,0.06);
+      border-radius: 999px; overflow: hidden;
+      position: relative;
+    }
+    .consumo-hero-text {
+      margin-top: 10px;
+      font-size: 12.5px; color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .consumo-hero-text strong { color: #cbd5e1; }
 
     .user-menu { position: relative; }
     .user-btn {
@@ -528,7 +542,7 @@
       .estrategia-card { padding: 20px; }
       .results-panel { padding: 20px; }
       .panel-header-inner { gap: 12px; }
-      .consumo-bar-wrap { order: 3; flex-basis: 100%; }
+      .consumo-hero { padding: 18px 20px; }
       thead th, tbody td { padding: 10px 12px; }
     }
   </style>
@@ -571,10 +585,7 @@
   <header class="panel-header">
     <div class="panel-header-inner">
       <div class="brand">Estrategia<span class="accent">Legal</span></div>
-      <div class="consumo-bar-wrap">
-        <div class="consumo-bar"><div id="consumoFill" class="consumo-bar-fill"></div></div>
-        <span id="consumoText" class="consumo-text"><strong>—</strong> / 1M tokens</span>
-      </div>
+      <div style="flex:1"></div>
       <div class="user-menu">
         <button class="user-btn" onclick="toggleUserMenu(event)">
           <div id="userAvatar" class="avatar-sm">?</div>
@@ -639,6 +650,18 @@
 
   <!-- TAB: MI CONSUMO -->
   <div id="tabConsumo" class="container-wide" style="display:none">
+    <div class="consumo-hero">
+      <div class="consumo-hero-top">
+        <span class="label">Consumo del mes</span>
+        <span id="consumoHeroPct" class="consumo-hero-pct">0%</span>
+      </div>
+      <div class="consumo-hero-bar">
+        <div id="consumoFill" class="consumo-bar-fill"></div>
+      </div>
+      <div class="consumo-hero-text">
+        <span id="consumoText"><strong>0</strong> / 1M tokens</span>
+      </div>
+    </div>
     <div id="consumoMetrics" class="metric-grid"></div>
     <div class="table-wrap">
       <div class="table-header">
@@ -765,13 +788,18 @@ function renderConsumo(data) {
   const usados = c.tokens_usados_mes || 0;
   const pct = Math.min(100, Math.round((usados / limite) * 100));
 
-  // Header bar
+  // Hero bar (en tab Mi consumo)
   const fill = document.getElementById('consumoFill');
-  fill.style.width = pct + '%';
-  fill.classList.remove('warn', 'alert');
-  if (pct >= 85) fill.classList.add('alert');
-  else if (pct >= 60) fill.classList.add('warn');
-  document.getElementById('consumoText').innerHTML = '<strong>' + fmtNum(usados) + '</strong> / ' + fmtTokens(limite) + ' tokens';
+  if (fill) {
+    fill.style.width = pct + '%';
+    fill.classList.remove('warn', 'alert');
+    if (pct >= 85) fill.classList.add('alert');
+    else if (pct >= 60) fill.classList.add('warn');
+  }
+  const heroPct = document.getElementById('consumoHeroPct');
+  if (heroPct) heroPct.textContent = pct + '%';
+  const txt = document.getElementById('consumoText');
+  if (txt) txt.innerHTML = '<strong>' + fmtNum(usados) + '</strong> / ' + fmtTokens(limite) + ' tokens';
 
   // Metrics cards (only render if tab visible to avoid flicker)
   const grid = document.getElementById('consumoMetrics');
