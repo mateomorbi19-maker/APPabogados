@@ -11,6 +11,7 @@
     body { background: #0a0e17; min-height: 100vh; overflow-x: hidden; }
     @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
     textarea:focus, button:focus, select:focus, input:focus { outline: none; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -37,38 +38,194 @@
       background-size: 60px 60px;
     }
 
+    /* ================== LOGIN ================== */
+    .login-wrap {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 24px;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .login-header { text-align: center; margin-bottom: 56px; animation: fadeSlideIn 0.6s ease; }
+    .login-header h1 {
+      font-size: clamp(36px, 6vw, 56px); font-weight: 400;
+      color: #f1f5f9; font-family: 'DM Serif Display', serif;
+      line-height: 1.1; margin-bottom: 14px;
+    }
+    .login-header h1 .accent { color: #8b5cf6; }
+    .login-header p {
+      font-size: 14px; color: #64748b;
+      font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.05em;
+    }
+
+    .login-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      max-width: 800px; width: 100%;
+    }
+    .login-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 32px 24px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+      text-align: center;
+      animation: popIn 0.5s ease backwards;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .login-card:nth-child(1) { animation-delay: 0.1s; }
+    .login-card:nth-child(2) { animation-delay: 0.2s; }
+    .login-card:nth-child(3) { animation-delay: 0.3s; }
+    .login-card:hover {
+      transform: translateY(-4px);
+      background: rgba(255,255,255,0.05);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .login-card .avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; font-weight: 700; font-family: 'DM Serif Display', serif;
+      margin: 0 auto 16px;
+      color: #fff;
+      transition: transform 0.3s;
+    }
+    .login-card:hover .avatar { transform: scale(1.05); }
+    .login-card .nombre {
+      font-size: 20px; font-weight: 600; color: #e2e8f0;
+      font-family: 'DM Serif Display', serif;
+    }
+    .login-card .role {
+      margin-top: 6px;
+      font-size: 11px; color: #64748b;
+      font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.1em;
+    }
+    .login-card[data-color="azul"] .avatar { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .login-card[data-color="azul"]:hover { border-color: rgba(59,130,246,0.4); }
+    .login-card[data-color="verde"] .avatar { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .login-card[data-color="verde"]:hover { border-color: rgba(34,197,94,0.4); }
+    .login-card[data-color="purpura"] .avatar { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .login-card[data-color="purpura"]:hover { border-color: rgba(139,92,246,0.4); }
+
+    /* ================== HEADER PANEL ================== */
+    .panel-header {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(10,14,23,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 14px 24px;
+    }
+    .panel-header-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px; color: #f1f5f9;
+      flex-shrink: 0;
+    }
+    .brand .accent { color: #8b5cf6; }
+
+    .consumo-bar-wrap {
+      flex: 1; min-width: 200px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .consumo-bar {
+      flex: 1; height: 8px; background: rgba(255,255,255,0.06);
+      border-radius: 4px; overflow: hidden;
+      position: relative;
+    }
+    .consumo-bar-fill {
+      height: 100%; width: 0%;
+      background: #22c55e;
+      border-radius: 4px;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background-color 0.4s;
+    }
+    .consumo-bar-fill.warn { background: #f59e0b; }
+    .consumo-bar-fill.alert { background: #ef4444; }
+    .consumo-text {
+      font-size: 11.5px; color: #94a3b8;
+      font-family: 'IBM Plex Mono', monospace;
+      white-space: nowrap;
+    }
+    .consumo-text strong { color: #cbd5e1; }
+
+    .user-menu { position: relative; }
+    .user-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 14px 6px 6px; border-radius: 30px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer; transition: background 0.2s;
+      color: #e2e8f0; font-size: 13.5px; font-weight: 500;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .user-btn:hover { background: rgba(255,255,255,0.07); }
+    .user-btn .avatar-sm {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 12px;
+      font-family: 'DM Serif Display', serif;
+    }
+    .user-btn .chev { color: #64748b; font-size: 11px; }
+    .user-dropdown {
+      position: absolute; right: 0; top: calc(100% + 8px);
+      background: #111827; border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      min-width: 180px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      overflow: hidden;
+      display: none;
+      animation: fadeSlideIn 0.2s ease;
+    }
+    .user-dropdown.open { display: block; }
+    .user-dropdown button {
+      display: block; width: 100%; padding: 12px 16px;
+      background: none; border: none; text-align: left;
+      color: #cbd5e1; font-size: 13px; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif;
+      transition: background 0.15s;
+    }
+    .user-dropdown button:hover { background: rgba(139,92,246,0.1); color: #c4b5fd; }
+
+    /* ================== TABS ================== */
+    .tabs-bar {
+      max-width: 1200px; margin: 24px auto 0;
+      padding: 0 24px;
+      display: flex; gap: 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .tab-btn {
+      padding: 12px 20px;
+      background: none; border: none;
+      color: #64748b; font-size: 13.5px; font-weight: 500;
+      font-family: 'IBM Plex Sans', sans-serif;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .tab-btn:hover { color: #cbd5e1; }
+    .tab-btn.active { color: #c4b5fd; border-bottom-color: #8b5cf6; }
+
+    /* ================== CONTAINER ================== */
     .container {
       position: relative; z-index: 1;
       max-width: 900px; margin: 0 auto;
-      padding: 40px 24px 80px;
+      padding: 32px 24px 80px;
       font-family: 'IBM Plex Sans', sans-serif;
     }
-
-    .badge-proto {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 16px; border-radius: 20px;
-      background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2);
-      margin-bottom: 20px;
-    }
-    .badge-proto span {
-      font-size: 10px; font-weight: 700; color: #a78bfa;
-      letter-spacing: 0.15em; font-family: 'IBM Plex Mono', monospace;
-    }
-    h1 {
-      font-size: clamp(32px, 5vw, 48px); font-weight: 400;
-      color: #f1f5f9; font-family: 'DM Serif Display', serif;
-      line-height: 1.15; margin-bottom: 12px;
-    }
-    h1 .accent { color: #8b5cf6; }
-    .subtitle {
-      font-size: 15px; color: #64748b; max-width: 500px;
-      margin: 0 auto; line-height: 1.6;
+    .container-wide {
+      max-width: 1200px; margin: 0 auto;
+      padding: 32px 24px 80px;
+      font-family: 'IBM Plex Sans', sans-serif;
     }
 
     .card {
       background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
       border-radius: 20px; padding: 32px; margin-bottom: 32px;
-      animation: fadeSlideIn 0.7s ease;
+      animation: fadeSlideIn 0.5s ease;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
     }
     .label {
       font-size: 12px; font-weight: 700; color: #94a3b8;
@@ -146,10 +303,7 @@
     }
     .det-chip strong { color: #a78bfa; margin-right: 6px; }
 
-    .form-field {
-      margin-bottom: 20px;
-      animation: fadeSlideIn 0.4s ease;
-    }
+    .form-field { margin-bottom: 20px; animation: fadeSlideIn 0.4s ease; }
     .form-field-label {
       display: block; margin-bottom: 8px;
       font-size: 13px; font-weight: 600; color: #e2e8f0;
@@ -198,10 +352,7 @@
       animation: fadeSlideIn 0.5s ease;
     }
     .spinner-outer { position: relative; width: 64px; height: 64px; }
-    .spinner-ring {
-      position: absolute; inset: 0; border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.06);
-    }
+    .spinner-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,0.06); }
     .spinner-ring-1 {
       position: absolute; inset: 0; border-radius: 50%;
       border: 2px solid transparent; border-top-color: #8b5cf6;
@@ -219,10 +370,7 @@
       margin-bottom: 24px;
     }
     .results-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
-    .results-title {
-      margin: 0; font-size: 22px; font-weight: 400;
-      font-family: 'DM Serif Display', serif;
-    }
+    .results-title { margin: 0; font-size: 22px; font-weight: 400; font-family: 'DM Serif Display', serif; }
 
     .meta-chip {
       padding: 8px 14px; border-radius: 10px;
@@ -234,7 +382,7 @@
       letter-spacing: 0.1em; text-transform: uppercase;
       margin-bottom: 4px; font-family: 'IBM Plex Mono', monospace;
     }
-    .meta-chip-value { font-size: 13px; color: #e2e8f0; font-family: 'IBM Plex Sans', sans-serif; }
+    .meta-chip-value { font-size: 13px; color: #e2e8f0; }
 
     .estrategia-card {
       background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
@@ -243,7 +391,6 @@
     }
     .estrategia-card:hover { background: rgba(255,255,255,0.05); }
     .estrategia-card.open { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
-
     .est-header { display: flex; align-items: center; gap: 16px; }
     .est-num {
       width: 40px; height: 40px; border-radius: 12px;
@@ -251,24 +398,15 @@
       font-size: 16px; font-weight: 700; font-family: 'DM Serif Display', serif;
       flex-shrink: 0;
     }
-    .est-title {
-      margin: 0; font-size: 17px; font-weight: 600; color: #e2e8f0;
-      font-family: 'DM Serif Display', serif; letter-spacing: 0.01em;
-    }
+    .est-title { margin: 0; font-size: 17px; font-weight: 600; color: #e2e8f0; font-family: 'DM Serif Display', serif; }
     .est-badge {
       font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
       padding: 3px 10px; border-radius: 20px;
       font-family: 'IBM Plex Mono', monospace; display: inline-block; margin-left: 8px;
     }
-    .est-tesis {
-      margin: 6px 0 0; font-size: 13.5px; color: #94a3b8;
-      line-height: 1.5; font-family: 'IBM Plex Sans', sans-serif;
-    }
-    .est-arrow {
-      font-size: 18px; color: #64748b; transition: transform 0.3s; margin-left: auto;
-    }
+    .est-tesis { margin: 6px 0 0; font-size: 13.5px; color: #94a3b8; line-height: 1.5; }
+    .est-arrow { font-size: 18px; color: #64748b; transition: transform 0.3s; margin-left: auto; }
     .estrategia-card.open .est-arrow { transform: rotate(180deg); }
-
     .est-body { display: none; margin-top: 24px; }
     .estrategia-card.open .est-body { display: block; animation: fadeSlideIn 0.35s ease; }
 
@@ -280,19 +418,10 @@
     .legal-item {
       padding: 10px 14px; border-radius: 10px;
       background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
-      font-size: 13px; color: #cbd5e1; line-height: 1.6;
-      font-family: 'IBM Plex Sans', sans-serif; margin-bottom: 8px;
+      font-size: 13px; color: #cbd5e1; line-height: 1.6; margin-bottom: 8px;
     }
-    .doctrina {
-      margin: 0; font-size: 13px; color: #94a3b8;
-      line-height: 1.7; font-style: italic;
-      font-family: 'IBM Plex Sans', sans-serif;
-    }
-    .pill-item {
-      padding: 8px 12px; border-radius: 10px;
-      font-size: 13px; color: #cbd5e1; line-height: 1.5;
-      font-family: 'IBM Plex Sans', sans-serif; margin-bottom: 8px;
-    }
+    .doctrina { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.7; font-style: italic; }
+    .pill-item { padding: 8px 12px; border-radius: 10px; font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 8px; }
     .paso-item {
       display: flex; align-items: flex-start; gap: 12px;
       padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.02);
@@ -304,18 +433,84 @@
       font-size: 11px; font-weight: 700; font-family: 'IBM Plex Mono', monospace;
       flex-shrink: 0; margin-top: 1px;
     }
-    .paso-text { font-size: 13px; color: #cbd5e1; line-height: 1.6; font-family: 'IBM Plex Sans', sans-serif; }
-
+    .paso-text { font-size: 13px; color: #cbd5e1; line-height: 1.6; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
     .section-block { margin-bottom: 16px; }
 
     .metadata-bar {
       background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.15);
       border-radius: 12px; padding: 12px 18px; margin-bottom: 24px;
-      display: flex; gap: 24px; flex-wrap: wrap; animation: fadeSlideIn 0.4s ease;
+      display: flex; gap: 24px; flex-wrap: wrap;
     }
     .meta-item { font-size: 12px; color: #a78bfa; font-family: 'IBM Plex Mono', monospace; }
     .meta-item strong { color: #c4b5fd; }
+
+    /* ================== TAB MI CONSUMO ================== */
+    .metric-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin-bottom: 32px;
+    }
+    .metric-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      animation: fadeSlideIn 0.4s ease backwards;
+    }
+    .metric-card:nth-child(2) { animation-delay: 0.05s; }
+    .metric-card:nth-child(3) { animation-delay: 0.10s; }
+    .metric-card:nth-child(4) { animation-delay: 0.15s; }
+    .metric-label {
+      font-size: 11px; color: #64748b;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      font-family: 'IBM Plex Mono', monospace;
+      margin-bottom: 10px;
+    }
+    .metric-value {
+      font-size: 28px; font-weight: 600; color: #f1f5f9;
+      font-family: 'DM Serif Display', serif;
+      line-height: 1.1;
+    }
+    .metric-sub {
+      margin-top: 6px; font-size: 12px; color: #94a3b8;
+    }
+
+    .table-wrap {
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; overflow: hidden;
+      animation: fadeSlideIn 0.5s ease;
+    }
+    .table-header {
+      padding: 18px 24px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .table-title {
+      font-size: 15px; font-weight: 600; color: #e2e8f0;
+      font-family: 'DM Serif Display', serif;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 12px 24px; text-align: left;
+      font-size: 11px; font-weight: 700; color: #64748b;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      font-family: 'IBM Plex Mono', monospace;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
+    tbody td {
+      padding: 14px 24px;
+      font-size: 13px; color: #cbd5e1;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tbody tr:last-child td { border-bottom: none; }
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+    .num { text-align: right; }
+    .empty-state {
+      padding: 60px 24px; text-align: center;
+      color: #64748b; font-size: 14px;
+    }
 
     footer {
       text-align: center; margin-top: 60px; padding-top: 24px;
@@ -328,10 +523,13 @@
 
     @media (max-width: 600px) {
       .grid-2 { grid-template-columns: 1fr; }
-      .container { padding: 20px 16px 60px; }
+      .container, .container-wide { padding: 20px 16px 60px; }
       .card { padding: 20px; }
       .estrategia-card { padding: 20px; }
       .results-panel { padding: 20px; }
+      .panel-header-inner { gap: 12px; }
+      .consumo-bar-wrap { order: 3; flex-basis: 100%; }
+      thead th, tbody td { padding: 10px 12px; }
     }
   </style>
 </head>
@@ -343,66 +541,114 @@
   <div class="bg-grid"></div>
 </div>
 
-<div class="container">
-  <!-- Header -->
-  <header style="text-align:center; margin-bottom:48px; animation:fadeSlideIn 0.6s ease">
-    <div class="badge-proto"><span>IA LEGAL · ANÁLISIS PENAL</span></div>
+<!-- ============== LOGIN ============== -->
+<div id="screenLogin" class="login-wrap" style="display:none">
+  <div class="login-header">
     <h1>Estrategia<span class="accent">Legal</span></h1>
-    <p class="subtitle">Analisis penal con inteligencia artificial.<br>Carga un caso y recibi estrategias fundamentadas en el codigo penal, procesal y doctrina</p>
+    <p>SELECCIONÁ TU PERFIL PARA CONTINUAR</p>
+  </div>
+  <div class="login-cards">
+    <div class="login-card" data-color="azul" data-user="Lautaro" onclick="login('Lautaro')">
+      <div class="avatar">L</div>
+      <div class="nombre">Lautaro</div>
+      <div class="role">ABOGADO</div>
+    </div>
+    <div class="login-card" data-color="verde" data-user="Gonzalo" onclick="login('Gonzalo')">
+      <div class="avatar">G</div>
+      <div class="nombre">Gonzalo</div>
+      <div class="role">ABOGADO</div>
+    </div>
+    <div class="login-card" data-color="purpura" data-user="Mateo" onclick="login('Mateo')">
+      <div class="avatar">M</div>
+      <div class="nombre">Mateo</div>
+      <div class="role">ABOGADO</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== PANEL ============== -->
+<div id="screenPanel" style="display:none">
+  <header class="panel-header">
+    <div class="panel-header-inner">
+      <div class="brand">Estrategia<span class="accent">Legal</span></div>
+      <div class="consumo-bar-wrap">
+        <div class="consumo-bar"><div id="consumoFill" class="consumo-bar-fill"></div></div>
+        <span id="consumoText" class="consumo-text"><strong>—</strong> / 1M tokens</span>
+      </div>
+      <div class="user-menu">
+        <button class="user-btn" onclick="toggleUserMenu(event)">
+          <div id="userAvatar" class="avatar-sm">?</div>
+          <span id="userName">—</span>
+          <span class="chev">▾</span>
+        </button>
+        <div id="userDropdown" class="user-dropdown">
+          <button onclick="cambiarUsuario()">Cambiar usuario</button>
+          <button onclick="cerrarSesion()">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <!-- PASO 1: Input del caso -->
-  <div class="card" id="cardCaso">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px">
-      <span class="label">Paso 1 · Descripción del caso</span>
-      <button class="btn-ejemplo" onclick="cargarEjemplo()">CARGAR EJEMPLO</button>
-    </div>
+  <nav class="tabs-bar">
+    <button class="tab-btn active" data-tab="analisis" onclick="setTab('analisis')">Nuevo análisis</button>
+    <button class="tab-btn" data-tab="consumo" onclick="setTab('consumo')">Mi consumo</button>
+  </nav>
 
-    <textarea id="caso" rows="8" placeholder="Describí los hechos del caso penal con el mayor detalle posible: quiénes son las partes, qué ocurrió, dónde, cuándo, y cualquier circunstancia relevante..."></textarea>
-
-    <button class="btn-analizar" id="btnContinuar" onclick="preAnalizar()">Continuar →</button>
-  </div>
-
-  <!-- PASO 2: Formulario dinámico -->
-  <div id="cardFormulario" style="display:none">
-    <div style="margin-bottom:16px">
-      <button class="btn-volver" onclick="volverACaso()">← Volver y editar caso</button>
-    </div>
-
-    <div id="resumenBox" class="resumen-box"></div>
-
-    <div class="card">
-      <div style="margin-bottom:24px">
-        <span class="label">Paso 2 · Completá el contexto</span>
-        <p style="margin-top:6px; font-size:13px; color:#64748b">La IA detectó algunos datos y generó preguntas para afinar el análisis</p>
+  <!-- TAB: NUEVO ANÁLISIS -->
+  <div id="tabAnalisis" class="container">
+    <div class="card" id="cardCaso">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px">
+        <span class="label">Paso 1 · Descripción del caso</span>
+        <button class="btn-ejemplo" onclick="cargarEjemplo()">CARGAR EJEMPLO</button>
       </div>
+      <textarea id="caso" rows="8" placeholder="Describí los hechos del caso penal con el mayor detalle posible..."></textarea>
+      <button class="btn-analizar" id="btnContinuar" onclick="preAnalizar()">Continuar →</button>
+    </div>
 
-      <form id="formContexto"></form>
+    <div id="cardFormulario" style="display:none">
+      <div style="margin-bottom:16px">
+        <button class="btn-volver" onclick="volverACaso()">← Volver y editar caso</button>
+      </div>
+      <div id="resumenBox" class="resumen-box"></div>
+      <div class="card">
+        <div style="margin-bottom:24px">
+          <span class="label">Paso 2 · Completá el contexto</span>
+          <p style="margin-top:6px; font-size:13px; color:#64748b">La IA detectó algunos datos y generó preguntas para afinar el análisis</p>
+        </div>
+        <form id="formContexto"></form>
+        <button class="btn-analizar" id="btnAnalizar" onclick="analizar()">⚖️  Analizar caso</button>
+      </div>
+    </div>
 
-      <button class="btn-analizar" id="btnAnalizar" onclick="analizar()">⚖️  Analizar caso</button>
+    <div id="errorBox" class="error-box" style="display:none"></div>
+
+    <div id="loading" class="spinner-wrap" style="display:none">
+      <div class="spinner-outer">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring-1"></div>
+        <div class="spinner-ring-2"></div>
+      </div>
+      <div style="text-align:center">
+        <p id="loadingTitle" style="font-size:15px; color:#e2e8f0; font-family:'DM Serif Display',serif">Generando estrategias</p>
+        <p id="loadingMsg" style="margin:10px 0 0; font-size:13px; color:#8b5cf6; font-family:'IBM Plex Mono',monospace"></p>
+      </div>
+    </div>
+
+    <div id="results" style="display:none"></div>
+  </div>
+
+  <!-- TAB: MI CONSUMO -->
+  <div id="tabConsumo" class="container-wide" style="display:none">
+    <div id="consumoMetrics" class="metric-grid"></div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">Historial de ejecuciones</span>
+        <button class="btn-ejemplo" onclick="cargarConsumo()">↻ ACTUALIZAR</button>
+      </div>
+      <div id="historialTable"></div>
     </div>
   </div>
 
-  <!-- Error -->
-  <div id="errorBox" class="error-box" style="display:none"></div>
-
-  <!-- Loading -->
-  <div id="loading" class="spinner-wrap" style="display:none">
-    <div class="spinner-outer">
-      <div class="spinner-ring"></div>
-      <div class="spinner-ring-1"></div>
-      <div class="spinner-ring-2"></div>
-    </div>
-    <div style="text-align:center">
-      <p id="loadingTitle" style="font-size:15px; color:#e2e8f0; font-family:'DM Serif Display',serif">Generando estrategias</p>
-      <p id="loadingMsg" style="margin:10px 0 0; font-size:13px; color:#8b5cf6; font-family:'IBM Plex Mono',monospace"></p>
-    </div>
-  </div>
-
-  <!-- Results -->
-  <div id="results" style="display:none"></div>
-
-  <!-- Footer -->
   <footer>
     <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
   </footer>
@@ -410,36 +656,198 @@
 
 <script>
 // ============================================================
-// CONFIGURACIÓN
+// CONFIG
 // ============================================================
 const N8N_BASE = "https://app-n8n.udmrwg.easypanel.host";
 const URL_PRE_ANALISIS = N8N_BASE + "/webhook/pre-analisis";
 const URL_ANALIZAR = N8N_BASE + "/webhook/analizar-caso";
+const URL_CONSUMO = N8N_BASE + "/webhook/consultar-consumo";
+
+const USER_COLORS = {
+  Lautaro: { color: 'azul', bg: 'linear-gradient(135deg, #3b82f6, #2563eb)', text: '#3b82f6' },
+  Gonzalo: { color: 'verde', bg: 'linear-gradient(135deg, #22c55e, #16a34a)', text: '#22c55e' },
+  Mateo:   { color: 'purpura', bg: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', text: '#8b5cf6' }
+};
 
 const EJEMPLO_CASO = `Jorge paseaba con su novia, de nombre Catalina -ambos miembros de la Policía Federal argentina, de 28 años Jorge y 26 Catalina- por una calle de la ciudad de Paraná, cuando en esa ocasión, Víctor, un vecino de la ciudad, que se cruzó con la pareja, le dijo a Catalina, que caminaba como una prostituta, que seguramente lo era, qué cuanto cobraba por sus servicios sexuales. Enojado, Jorge extrajo el arma reglamentaria y disparó en contra de Víctor, con la intención de matarlo, pero como Víctor salió corriendo, no pudo impactar ninguno de los proyectiles en la humanidad de Víctor, aunque uno de esos proyectiles impactó en el vientre de una mujer embarazada que pasaba por el lugar, muriendo el feto. Catalina, en tanto decidió querellar a Víctor, previo averiguar, a través de la fuerza policial que integraban, la identidad, domicilio etc. de Víctor, cuya imagen había quedado registrada en una cámara de seguridad de los comercios frente al lugar donde se habían desarrollado los hechos.`;
 
-let preAnalisisData = null;   // respuesta del /pre-analisis
+let usuarioActivo = null;
+let preAnalisisData = null;
 let cargando = false;
+
+// ============================================================
+// AUTH
+// ============================================================
+function init() {
+  const u = localStorage.getItem('usuario_activo');
+  if (u && USER_COLORS[u]) {
+    mostrarPanel(u);
+  } else {
+    mostrarLogin();
+  }
+}
+
+function login(nombre) {
+  localStorage.setItem('usuario_activo', nombre);
+  mostrarPanel(nombre);
+}
+
+function mostrarLogin() {
+  document.getElementById('screenLogin').style.display = 'flex';
+  document.getElementById('screenPanel').style.display = 'none';
+}
+
+function mostrarPanel(nombre) {
+  usuarioActivo = nombre;
+  document.getElementById('screenLogin').style.display = 'none';
+  document.getElementById('screenPanel').style.display = 'block';
+
+  const inicial = nombre.charAt(0).toUpperCase();
+  const av = document.getElementById('userAvatar');
+  av.textContent = inicial;
+  av.style.background = USER_COLORS[nombre].bg;
+  document.getElementById('userName').textContent = nombre;
+
+  setTab('analisis');
+  cargarConsumo();
+}
+
+function toggleUserMenu(ev) {
+  ev.stopPropagation();
+  document.getElementById('userDropdown').classList.toggle('open');
+}
+document.addEventListener('click', () => {
+  document.getElementById('userDropdown')?.classList.remove('open');
+});
+
+function cambiarUsuario() {
+  localStorage.removeItem('usuario_activo');
+  usuarioActivo = null;
+  mostrarLogin();
+}
+
+function cerrarSesion() {
+  cambiarUsuario();
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function setTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.getElementById('tabAnalisis').style.display = name === 'analisis' ? 'block' : 'none';
+  document.getElementById('tabConsumo').style.display = name === 'consumo' ? 'block' : 'none';
+  if (name === 'consumo') cargarConsumo();
+}
+
+// ============================================================
+// CONSUMO
+// ============================================================
+async function cargarConsumo() {
+  if (!usuarioActivo) return;
+  try {
+    const resp = await fetch(URL_CONSUMO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: usuarioActivo })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    renderConsumo(data);
+  } catch (err) {
+    console.error('Error cargando consumo:', err);
+  }
+}
+
+function renderConsumo(data) {
+  const c = data.consumo || {};
+  const limite = c.limite_tokens_mensual || 1000000;
+  const usados = c.tokens_usados_mes || 0;
+  const pct = Math.min(100, Math.round((usados / limite) * 100));
+
+  // Header bar
+  const fill = document.getElementById('consumoFill');
+  fill.style.width = pct + '%';
+  fill.classList.remove('warn', 'alert');
+  if (pct >= 85) fill.classList.add('alert');
+  else if (pct >= 60) fill.classList.add('warn');
+  document.getElementById('consumoText').innerHTML = '<strong>' + fmtNum(usados) + '</strong> / ' + fmtTokens(limite) + ' tokens';
+
+  // Metrics cards (only render if tab visible to avoid flicker)
+  const grid = document.getElementById('consumoMetrics');
+  if (grid) {
+    grid.innerHTML = `
+      <div class="metric-card">
+        <div class="metric-label">Tokens este mes</div>
+        <div class="metric-value">${fmtNum(usados)}</div>
+        <div class="metric-sub">${pct}% del límite</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Gasto USD</div>
+        <div class="metric-value">$${(c.gasto_usd_mes || 0).toFixed(4)}</div>
+        <div class="metric-sub">en ${c.ejecuciones_mes || 0} ejecución${(c.ejecuciones_mes || 0) === 1 ? '' : 'es'}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Ejecuciones</div>
+        <div class="metric-value">${c.ejecuciones_mes || 0}</div>
+        <div class="metric-sub">este mes</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Tokens restantes</div>
+        <div class="metric-value">${fmtNum(c.tokens_restantes || 0)}</div>
+        <div class="metric-sub">de ${fmtTokens(limite)}</div>
+      </div>
+    `;
+  }
+
+  // History table
+  const histDiv = document.getElementById('historialTable');
+  const hist = data.historial || [];
+  if (!hist.length) {
+    histDiv.innerHTML = '<div class="empty-state">Sin ejecuciones todavía. Hacé tu primer análisis para ver datos acá.</div>';
+    return;
+  }
+  let html = '<table><thead><tr><th>Fecha</th><th>ID</th><th>Modelo</th><th class="num">Tokens</th><th class="num">Costo USD</th></tr></thead><tbody>';
+  hist.forEach(h => {
+    html += '<tr>';
+    html += '<td class="mono">' + fmtFecha(h.ejecutado_en) + '</td>';
+    html += '<td class="mono" style="color:#64748b">' + (h.id || '').slice(0, 8) + '</td>';
+    html += '<td>' + (h.modelo || '').replace('claude-', '').replace('-20250929', '').replace('-20251001', '') + '</td>';
+    html += '<td class="num mono">' + fmtNum(h.total_tokens || (h.input_tokens + h.output_tokens)) + '</td>';
+    html += '<td class="num mono">$' + (h.costo_usd || 0).toFixed(6) + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  histDiv.innerHTML = html;
+}
+
+function fmtNum(n) { return Number(n).toLocaleString('es-AR'); }
+function fmtTokens(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(0) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'k';
+  return String(n);
+}
+function fmtFecha(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+}
 
 // ============================================================
 // LOADING ANIMATION
 // ============================================================
-const LOADING_PRE = [
-  "Leyendo el caso",
-  "Detectando jurisdicción",
-  "Identificando delitos posibles",
-  "Generando preguntas relevantes"
-];
+const LOADING_PRE = ["Leyendo el caso", "Detectando jurisdicción", "Identificando delitos posibles", "Generando preguntas relevantes"];
 const LOADING_ANALISIS = [
-  "Analizando los hechos del caso",
-  "Identificando tipos penales aplicables",
-  "Consultando artículos del Código Penal",
-  "Buscando doctrina relevante en los manuales",
-  "Evaluando jurisprudencia aplicable",
-  "Construyendo estrategias diferenciadas",
+  "Analizando los hechos del caso", "Identificando tipos penales aplicables",
+  "Consultando artículos del Código Penal", "Buscando doctrina relevante en los manuales",
+  "Evaluando jurisprudencia aplicable", "Construyendo estrategias diferenciadas",
   "Fundamentando cada línea argumentativa"
 ];
-
 let msgInterval, dotInterval;
 
 function startLoading(titulo, mensajes) {
@@ -447,47 +855,30 @@ function startLoading(titulo, mensajes) {
   let msgIdx = 0, dots = 0;
   const el = document.getElementById('loadingMsg');
   el.textContent = mensajes[0];
-  dotInterval = setInterval(() => {
-    dots = (dots + 1) % 4;
-    el.textContent = mensajes[msgIdx] + '.'.repeat(dots);
-  }, 400);
-  msgInterval = setInterval(() => {
-    msgIdx = (msgIdx + 1) % mensajes.length;
-  }, 3000);
+  dotInterval = setInterval(() => { dots = (dots + 1) % 4; el.textContent = mensajes[msgIdx] + '.'.repeat(dots); }, 400);
+  msgInterval = setInterval(() => { msgIdx = (msgIdx + 1) % mensajes.length; }, 3000);
   document.getElementById('loading').style.display = 'flex';
 }
-
 function stopLoading() {
-  clearInterval(msgInterval);
-  clearInterval(dotInterval);
+  clearInterval(msgInterval); clearInterval(dotInterval);
   document.getElementById('loading').style.display = 'none';
 }
-
 function mostrarError(msg) {
   const box = document.getElementById('errorBox');
-  box.textContent = msg;
-  box.style.display = 'block';
+  box.textContent = msg; box.style.display = 'block';
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
-
-function ocultarError() {
-  document.getElementById('errorBox').style.display = 'none';
-}
+function ocultarError() { document.getElementById('errorBox').style.display = 'none'; }
 
 // ============================================================
-// PASO 1: cargar ejemplo / pre-analizar
+// PASO 1: pre-analizar
 // ============================================================
-function cargarEjemplo() {
-  document.getElementById('caso').value = EJEMPLO_CASO;
-}
+function cargarEjemplo() { document.getElementById('caso').value = EJEMPLO_CASO; }
 
 async function preAnalizar() {
   const caso = document.getElementById('caso').value.trim();
   if (cargando) return;
-  if (caso.length < 20) {
-    mostrarError('El caso es demasiado corto. Describí los hechos con más detalle.');
-    return;
-  }
+  if (caso.length < 20) { mostrarError('El caso es demasiado corto. Describí los hechos con más detalle.'); return; }
 
   cargando = true;
   ocultarError();
@@ -502,14 +893,9 @@ async function preAnalizar() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ caso })
     });
-
     if (!resp.ok) throw new Error('Error del servidor: ' + resp.status);
     const data = await resp.json();
-
-    if (!data || !Array.isArray(data.preguntas) || data.preguntas.length === 0) {
-      throw new Error('Respuesta inválida del pre-análisis');
-    }
-
+    if (!data || !Array.isArray(data.preguntas) || !data.preguntas.length) throw new Error('Respuesta inválida del pre-análisis');
     preAnalisisData = data;
     renderFormulario(data);
   } catch (err) {
@@ -534,14 +920,12 @@ function volverACaso() {
 }
 
 // ============================================================
-// PASO 2: render del formulario dinámico
+// PASO 2: render formulario dinámico
 // ============================================================
 function renderFormulario(data) {
-  // Resumen
   const resumenBox = document.getElementById('resumenBox');
   let resumenHtml = '<span class="label">Resumen del caso (según la IA)</span>';
   resumenHtml += '<p>' + escapeHtml(data.resumen_preliminar || '') + '</p>';
-
   const det = data.datos_detectados || {};
   const chips = [];
   if (det.jurisdiccion_inferida) chips.push('<div class="det-chip"><strong>Jurisdicción:</strong>' + escapeHtml(det.jurisdiccion_inferida) + '</div>');
@@ -550,11 +934,10 @@ function renderFormulario(data) {
   if (chips.length) resumenHtml += '<div class="resumen-detectados">' + chips.join('') + '</div>';
   resumenBox.innerHTML = resumenHtml;
 
-  // Form
   const form = document.getElementById('formContexto');
   form.innerHTML = '';
 
-  data.preguntas.forEach((p, idx) => {
+  data.preguntas.forEach((p) => {
     const field = document.createElement('div');
     field.className = 'form-field';
     field.dataset.preguntaId = p.id;
@@ -570,13 +953,11 @@ function renderFormulario(data) {
       sel.className = 'form-input';
       sel.name = p.id;
       const placeholder = document.createElement('option');
-      placeholder.value = '';
-      placeholder.textContent = '— Seleccioná una opción —';
+      placeholder.value = ''; placeholder.textContent = '— Seleccioná una opción —';
       sel.appendChild(placeholder);
       (p.opciones || []).forEach(opt => {
         const o = document.createElement('option');
-        o.value = opt;
-        o.textContent = opt;
+        o.value = opt; o.textContent = opt;
         if (p.valor_sugerido && String(opt).toLowerCase() === String(p.valor_sugerido).toLowerCase()) o.selected = true;
         sel.appendChild(o);
       });
@@ -610,10 +991,8 @@ function renderFormulario(data) {
         inp.dataset.value = opt;
         if (p.valor_sugerido === true || (Array.isArray(p.valor_sugerido) && p.valor_sugerido.includes(opt))) inp.checked = true;
         const lab = document.createElement('label');
-        lab.htmlFor = inp.id;
-        lab.textContent = opt;
-        row.appendChild(inp);
-        row.appendChild(lab);
+        lab.htmlFor = inp.id; lab.textContent = opt;
+        row.appendChild(inp); row.appendChild(lab);
         field.appendChild(row);
       });
     } else {
@@ -665,9 +1044,9 @@ function recolectarContexto() {
     }
 
     if (id === 'rol' && valor) {
-      rolFromForm = String(valor).toLowerCase();
-      if (rolFromForm === 'querellante') rolFromForm = 'querellante';
-      else if (rolFromForm === 'defensor') rolFromForm = 'defensor';
+      const v = String(valor).toLowerCase();
+      if (v === 'querellante') rolFromForm = 'querellante';
+      else if (v === 'defensor') rolFromForm = 'defensor';
       else rolFromForm = 'ambos';
     } else if (valor !== '' && !(Array.isArray(valor) && valor.length === 0)) {
       contexto[id] = valor;
@@ -680,37 +1059,30 @@ function recolectarContexto() {
 function validarRequeridos() {
   const form = document.getElementById('formContexto');
   let primerFaltante = null;
-
   form.querySelectorAll('.form-field').forEach(field => {
     const id = field.dataset.preguntaId;
     const pregunta = preAnalisisData.preguntas.find(p => p.id === id);
     if (!pregunta || !pregunta.requerido) return;
-
     const tipo = field.dataset.tipo;
     let lleno = false;
     if (tipo === 'select') lleno = !!field.querySelector('select').value;
     else if (tipo === 'radio') lleno = !!field.querySelector('.radio-btn.active');
     else if (tipo === 'checkbox') lleno = field.querySelectorAll('input:checked').length > 0;
     else lleno = !!field.querySelector('input[type="text"]').value.trim();
-
     if (!lleno && !primerFaltante) primerFaltante = pregunta.label;
   });
-
   return primerFaltante;
 }
 
 // ============================================================
-// PASO 3: ANALIZAR (con contexto)
+// ANALIZAR
 // ============================================================
 async function analizar() {
   if (cargando) return;
   ocultarError();
 
   const faltante = validarRequeridos();
-  if (faltante) {
-    mostrarError('Falta completar: "' + faltante + '"');
-    return;
-  }
+  if (faltante) { mostrarError('Falta completar: "' + faltante + '"'); return; }
 
   const { contexto, rol } = recolectarContexto();
   const caso = document.getElementById('caso').value.trim();
@@ -725,17 +1097,13 @@ async function analizar() {
     const resp = await fetch(URL_ANALIZAR, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caso, rol: rol || 'ambos', contexto })
+      body: JSON.stringify({ caso, rol: rol || 'ambos', contexto, usuario: usuarioActivo })
     });
-
     if (!resp.ok) throw new Error('Error del servidor: ' + resp.status);
     const data = await resp.json();
-
-    if (!data || (!data.defensor && !data.querellante)) {
-      throw new Error('Respuesta vacía del servidor');
-    }
-
+    if (!data || (!data.defensor && !data.querellante)) throw new Error('Respuesta vacía del servidor');
     renderResults(data);
+    cargarConsumo(); // refresh tracking
   } catch (err) {
     console.error(err);
     mostrarError('Error al procesar el caso: ' + err.message);
@@ -748,7 +1116,7 @@ async function analizar() {
 }
 
 // ============================================================
-// RENDER RESULTADOS (igual que antes)
+// RENDER RESULTADOS
 // ============================================================
 function renderResults(data) {
   const container = document.getElementById('results');
@@ -756,15 +1124,9 @@ function renderResults(data) {
 
   if (data.metadata) {
     html += '<div class="metadata-bar">';
-    if (data.metadata.conceptos_extraidos) {
-      html += '<div class="meta-item"><strong>Conceptos:</strong> ' + escapeHtml(data.metadata.conceptos_extraidos.join(', ')) + '</div>';
-    }
-    if (data.metadata.chunks_codigo_usados) {
-      html += '<div class="meta-item"><strong>Arts. consultados:</strong> ' + data.metadata.chunks_codigo_usados + '</div>';
-    }
-    if (data.metadata.chunks_manual_usados) {
-      html += '<div class="meta-item"><strong>Secciones de manuales:</strong> ' + data.metadata.chunks_manual_usados + '</div>';
-    }
+    if (data.metadata.conceptos_extraidos) html += '<div class="meta-item"><strong>Conceptos:</strong> ' + escapeHtml(data.metadata.conceptos_extraidos.join(', ')) + '</div>';
+    if (data.metadata.chunks_codigo_usados) html += '<div class="meta-item"><strong>Arts. consultados:</strong> ' + data.metadata.chunks_codigo_usados + '</div>';
+    if (data.metadata.chunks_manual_usados) html += '<div class="meta-item"><strong>Secciones de manuales:</strong> ' + data.metadata.chunks_manual_usados + '</div>';
     html += '</div>';
   }
 
@@ -782,29 +1144,18 @@ function renderResults(data) {
 }
 
 function renderPanel(data, titulo, color, icon) {
-  const badges = [
-    { label: 'CONSERVADORA', color: '#3b82f6' },
-    { label: 'MODERADA', color: '#8b5cf6' },
-    { label: 'AGRESIVA', color: '#ef4444' }
-  ];
-
+  const badges = [{ label: 'CONSERVADORA', color: '#3b82f6' }, { label: 'MODERADA', color: '#8b5cf6' }, { label: 'AGRESIVA', color: '#ef4444' }];
   let html = '<div class="results-panel">';
   html += '<div class="results-header"><span style="font-size:28px">' + icon + '</span><h3 class="results-title" style="color:' + color + '">' + titulo + '</h3></div>';
-
   html += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.06)">';
-  if (data.imputados_identificados) {
-    html += '<div class="meta-chip"><div class="meta-chip-label">Imputados</div><div class="meta-chip-value">' + escapeHtml(data.imputados_identificados.join(', ')) + '</div></div>';
-  }
-  if (data.delitos_imputables) {
-    html += '<div class="meta-chip"><div class="meta-chip-label">Delitos</div><div class="meta-chip-value">' + escapeHtml(data.delitos_imputables.join(' · ')) + '</div></div>';
-  }
+  if (data.imputados_identificados) html += '<div class="meta-chip"><div class="meta-chip-label">Imputados</div><div class="meta-chip-value">' + escapeHtml(data.imputados_identificados.join(', ')) + '</div></div>';
+  if (data.delitos_imputables) html += '<div class="meta-chip"><div class="meta-chip-label">Delitos</div><div class="meta-chip-value">' + escapeHtml(data.delitos_imputables.join(' · ')) + '</div></div>';
   html += '</div>';
 
   if (data.estrategias) {
     data.estrategias.forEach((est, i) => {
       const badge = badges[i] || badges[0];
       const cardId = 'est-' + titulo.replace(/\s/g, '') + '-' + i;
-
       html += '<div class="estrategia-card" id="' + cardId + '" onclick="toggleEstrategia(\'' + cardId + '\')" style="border-left:3px solid ' + color + '">';
       html += '<div class="est-header">';
       html += '<div class="est-num" style="background:' + color + '22; color:' + color + '">' + (est.numero || (i + 1)) + '</div>';
@@ -813,49 +1164,40 @@ function renderPanel(data, titulo, color, icon) {
       html += '<span class="est-badge" style="background:' + badge.color + '22; color:' + badge.color + '">' + badge.label + '</span>';
       html += '</div><p class="est-tesis">' + escapeHtml(est.tesis_central || '') + '</p></div>';
       html += '<span class="est-arrow">▾</span></div>';
-
       html += '<div class="est-body">';
-
       html += '<div class="section-block"><div class="section-title" style="color:' + color + '">⚖️ Fundamento legal</div>';
       if (est.fundamento_legal) est.fundamento_legal.forEach(f => { html += '<div class="legal-item">' + escapeHtml(f) + '</div>'; });
       html += '</div>';
-
-      if (est.doctrina_aplicable) {
-        html += '<div class="section-block"><div class="section-title" style="color:' + color + '">📚 Doctrina aplicable</div>';
-        html += '<p class="doctrina">' + escapeHtml(est.doctrina_aplicable) + '</p></div>';
-      }
-
+      if (est.doctrina_aplicable) html += '<div class="section-block"><div class="section-title" style="color:' + color + '">📚 Doctrina aplicable</div><p class="doctrina">' + escapeHtml(est.doctrina_aplicable) + '</p></div>';
       html += '<div class="grid-2">';
       html += '<div><div class="section-title" style="color:#22c55e">✅ Fortalezas</div>';
       if (est.fortalezas) est.fortalezas.forEach(f => { html += '<div class="pill-item" style="background:#22c55e08; border-left:2px solid #22c55e44; border-radius:0">' + escapeHtml(f) + '</div>'; });
       html += '</div><div><div class="section-title" style="color:#f59e0b">⚠️ Riesgos</div>';
       if (est.riesgos) est.riesgos.forEach(r => { html += '<div class="pill-item" style="background:#f59e0b08; border-left:2px solid #f59e0b44; border-radius:0">' + escapeHtml(r) + '</div>'; });
       html += '</div></div>';
-
       if (est.pasos_procesales) {
         html += '<div class="section-block" style="margin-top:16px"><div class="section-title" style="color:' + color + '">📋 Pasos procesales</div>';
-        est.pasos_procesales.forEach((p, j) => {
-          html += '<div class="paso-item"><span class="paso-num" style="background:' + color + '22; color:' + color + '">' + (j + 1) + '</span><span class="paso-text">' + escapeHtml(p) + '</span></div>';
-        });
+        est.pasos_procesales.forEach((p, j) => { html += '<div class="paso-item"><span class="paso-num" style="background:' + color + '22; color:' + color + '">' + (j + 1) + '</span><span class="paso-text">' + escapeHtml(p) + '</span></div>'; });
         html += '</div>';
       }
-
       html += '</div></div>';
     });
   }
-
   html += '</div>';
   return html;
 }
 
-function toggleEstrategia(id) {
-  document.getElementById(id).classList.toggle('open');
-}
+function toggleEstrategia(id) { document.getElementById(id).classList.toggle('open'); }
 
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
+
+// ============================================================
+// BOOT
+// ============================================================
+init();
 </script>
 
 </body>

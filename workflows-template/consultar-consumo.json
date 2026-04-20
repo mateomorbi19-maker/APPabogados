@@ -1,0 +1,244 @@
+{
+  "name": "EstrategiaLegal - Consultar Consumo",
+  "nodes": [
+    {
+      "id": "wh-cc",
+      "name": "Webhook - Recibir",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "consultar-consumo",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "webhookId": "consultar-consumo-hook"
+    },
+    {
+      "id": "validate-cc",
+      "name": "Validar Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nif (!body.usuario) throw new Error('Falta el campo usuario');\nconst validos = ['Lautaro', 'Gonzalo', 'Mateo'];\nif (!validos.includes(body.usuario)) throw new Error('Usuario inválido: ' + body.usuario);\nreturn [{ json: { usuario: body.usuario } }];"
+      }
+    },
+    {
+      "id": "consumo-cc",
+      "name": "Consumo Mensual",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        660,
+        200
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "v_consumo_mensual",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "nombre",
+              "condition": "eq",
+              "keyValue": "={{ $('Validar Input').item.json.usuario }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "PoP1tDQ9z8LHTLs3",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "userid-cc",
+      "name": "Buscar Usuario ID",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        660,
+        400
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "usuarios",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "nombre",
+              "condition": "eq",
+              "keyValue": "={{ $json.usuario }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "PoP1tDQ9z8LHTLs3",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "historial-cc",
+      "name": "Historial Ejecuciones",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        880,
+        400
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "ejecuciones",
+        "returnAll": false,
+        "limit": 20,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "PoP1tDQ9z8LHTLs3",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "combine-cc",
+      "name": "Combinar Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const consumoArr = $('Consumo Mensual').all();\nconst historialArr = $('Historial Ejecuciones').all();\n\nconst consumo = consumoArr.length ? consumoArr[0].json : null;\nlet historial = historialArr.map(it => it.json);\n\nhistorial.sort((a, b) => new Date(b.ejecutado_en) - new Date(a.ejecutado_en));\nhistorial = historial.slice(0, 20);\n\nif (!consumo) {\n  return [{ json: {\n    consumo: {\n      nombre: $('Validar Input').first().json.usuario,\n      tokens_usados_mes: 0,\n      gasto_usd_mes: 0,\n      ejecuciones_mes: 0,\n      tokens_restantes: 1000000,\n      limite_tokens_mensual: 1000000\n    },\n    historial\n  }}];\n}\n\nreturn [{\n  json: {\n    consumo: {\n      nombre: consumo.nombre,\n      tokens_usados_mes: Number(consumo.tokens_usados_mes || 0),\n      gasto_usd_mes: Number(consumo.gasto_usd_mes || 0),\n      ejecuciones_mes: Number(consumo.ejecuciones_mes || 0),\n      tokens_restantes: Number(consumo.tokens_restantes || 0),\n      limite_tokens_mensual: Number(consumo.limite_tokens_mensual || 0)\n    },\n    historial\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-cc",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Recibir": {
+      "main": [
+        [
+          {
+            "node": "Validar Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Input": {
+      "main": [
+        [
+          {
+            "node": "Buscar Usuario ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Usuario ID": {
+      "main": [
+        [
+          {
+            "node": "Historial Ejecuciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Historial Ejecuciones": {
+      "main": [
+        [
+          {
+            "node": "Consumo Mensual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consumo Mensual": {
+      "main": [
+        [
+          {
+            "node": "Combinar Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combinar Resultado": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
