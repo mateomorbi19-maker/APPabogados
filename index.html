@@ -701,11 +701,29 @@
 
   <footer>
     <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
-    <p style="margin-top:8px; opacity:0.5">build · v3.3</p>
+    <p style="margin-top:8px; opacity:0.5">build · v3.4</p>
   </footer>
 </div>
 
 <script>
+// ============================================================
+// DEBUG: atrapa cualquier error y muestralo en pantalla
+// ============================================================
+window.addEventListener('error', (e) => {
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;background:#ef4444;color:#fff;padding:14px 20px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.5)';
+  box.textContent = '[JS ERROR] ' + e.message + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?');
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 30000);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;background:#f59e0b;color:#000;padding:14px 20px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999';
+  box.textContent = '[PROMISE ERROR] ' + (e.reason && e.reason.message || e.reason || 'unknown');
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 30000);
+});
+
 // ============================================================
 // CONFIG
 // ============================================================
@@ -829,9 +847,10 @@ async function cargarConsumo() {
 }
 
 function renderConsumo(data) {
-  const c = data.consumo || {};
-  const limite = c.limite_tokens_mensual || 1000000;
-  const usados = c.tokens_usados_mes || 0;
+  try {
+  const c = (data && data.consumo) || {};
+  const limite = Number(c.limite_tokens_mensual) || 1000000;
+  const usados = Number(c.tokens_usados_mes) || 0;
   const pct = Math.min(100, Math.round((usados / limite) * 100));
 
   // Hero bar (en tab Mi consumo)
@@ -858,7 +877,7 @@ function renderConsumo(data) {
       </div>
       <div class="metric-card">
         <div class="metric-label">Gasto USD</div>
-        <div class="metric-value">$${(c.gasto_usd_mes || 0).toFixed(4)}</div>
+        <div class="metric-value">$${Number(c.gasto_usd_mes || 0).toFixed(4)}</div>
         <div class="metric-sub">en ${c.ejecuciones_mes || 0} ejecución${(c.ejecuciones_mes || 0) === 1 ? '' : 'es'}</div>
       </div>
       <div class="metric-card">
@@ -887,12 +906,20 @@ function renderConsumo(data) {
     html += '<td class="mono">' + fmtFecha(h.ejecutado_en) + '</td>';
     html += '<td class="mono" style="color:#64748b">' + (h.id || '').slice(0, 8) + '</td>';
     html += '<td>' + (h.modelo || '').replace('claude-', '').replace('-20250929', '').replace('-20251001', '') + '</td>';
-    html += '<td class="num mono">' + fmtNum(h.total_tokens || (h.input_tokens + h.output_tokens)) + '</td>';
-    html += '<td class="num mono">$' + (h.costo_usd || 0).toFixed(6) + '</td>';
+    html += '<td class="num mono">' + fmtNum(h.total_tokens || (Number(h.input_tokens || 0) + Number(h.output_tokens || 0))) + '</td>';
+    html += '<td class="num mono">$' + Number(h.costo_usd || 0).toFixed(6) + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
   histDiv.innerHTML = html;
+  } catch (err) {
+    console.error('renderConsumo failed:', err);
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;top:80px;left:20px;right:20px;background:#ef4444;color:#fff;padding:14px 20px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999';
+    box.textContent = '[renderConsumo] ' + (err && err.message || err);
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 30000);
+  }
 }
 
 function fmtNum(n) { return Number(n).toLocaleString('es-AR'); }
