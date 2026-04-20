@@ -215,33 +215,32 @@
     }
     .user-dropdown button:hover { background: rgba(139,92,246,0.1); color: #c4b5fd; }
 
-    /* ================== TABS ================== */
+    /* ================== TABS (en header) ================== */
     .tabs-bar {
-      max-width: 1200px; margin: 28px auto 0;
-      padding: 0 24px;
-      display: flex; gap: 8px;
+      display: flex; gap: 6px;
+      margin-left: 16px;
     }
     .tab-btn {
-      padding: 12px 22px;
+      padding: 8px 16px;
       background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      color: #cbd5e1; font-size: 14px; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: #cbd5e1; font-size: 13px; font-weight: 600;
       font-family: 'IBM Plex Sans', sans-serif;
       cursor: pointer;
       transition: all 0.2s;
-      letter-spacing: 0.01em;
+      white-space: nowrap;
     }
     .tab-btn:hover {
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.08);
       color: #f1f5f9;
-      border-color: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.18);
     }
     .tab-btn.active {
-      background: linear-gradient(135deg, rgba(124,58,237,0.18), rgba(99,102,241,0.18));
-      border-color: rgba(139,92,246,0.5);
+      background: linear-gradient(135deg, #7c3aed, #6366f1);
+      border-color: transparent;
       color: #fff;
-      box-shadow: 0 2px 12px rgba(124,58,237,0.2);
+      box-shadow: 0 2px 12px rgba(124,58,237,0.4);
     }
 
     /* ================== CONTAINER ================== */
@@ -607,6 +606,10 @@
   <header class="panel-header">
     <div class="panel-header-inner">
       <div class="brand">Estrategia<span class="accent">Legal</span></div>
+      <nav class="tabs-bar">
+        <button class="tab-btn active" data-tab="analisis" onclick="setTab('analisis')">📝 Nuevo análisis</button>
+        <button class="tab-btn" data-tab="consumo" onclick="setTab('consumo')">📊 Consumo</button>
+      </nav>
       <div style="flex:1"></div>
       <div class="user-menu">
         <button class="user-btn" onclick="toggleUserMenu(event)">
@@ -621,11 +624,6 @@
       </div>
     </div>
   </header>
-
-  <nav class="tabs-bar">
-    <button class="tab-btn active" data-tab="analisis" onclick="setTab('analisis')">Nuevo análisis</button>
-    <button class="tab-btn" data-tab="consumo" onclick="setTab('consumo')">Consumo</button>
-  </nav>
 
   <!-- TAB: NUEVO ANÁLISIS -->
   <div id="tabAnalisis" class="container">
@@ -703,6 +701,7 @@
 
   <footer>
     <p>Las estrategias generadas son orientativas y no reemplazan el criterio profesional del abogado</p>
+    <p style="margin-top:8px; opacity:0.5">build · v3.2 · tabs en header</p>
   </footer>
 </div>
 
