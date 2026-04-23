@@ -13,7 +13,7 @@ App web para abogados penales argentinos. Tres usuarios entran sin contraseña, 
 
 ## Flujo de la app
 
-1. **Login**: 3 cards (Lautaro / Gonzalo / Mateo). Selección guardada en `localStorage.usuario_activo`. Sin contraseña.
+1. **Login**: 3 cards (Lautaro / Gonzalo / Mateo). Selección guardada en `localStorage.usuario_activo`. Sin contraseña. **No hay control de acceso real**: los webhooks n8n tienen CORS abierto y aceptan cualquier `usuario` válido del payload, así que cualquiera con la URL del webhook puede consumir el cupo de otro. Aceptable mientras sea uso interno; si se expone públicamente, mover la identidad del usuario a un JWT o header firmado.
 2. **Header siempre visible**: barra de consumo (verde 0-60%, amarillo 60-85%, rojo 85%+) + dropdown de usuario (cambiar / cerrar sesión).
 3. **Tab "Nuevo análisis"**:
    1. Usuario describe el caso → "Continuar".
@@ -111,7 +111,7 @@ Ver `supabase-schema.sql`. Tablas:
 
 1. **Variables de entorno**: copiar `.env.example` → `.env` y llenar. Nunca commitear `.env`.
 2. **Supabase**: pegar `supabase-schema.sql` en el SQL Editor del proyecto y correrlo (idempotente). Verificar con `npm run setup:supabase`.
-3. **n8n**: las credenciales `Anthropic account`, `OpenAI account` y `Supabase account` deben estar configuradas en n8n. Para reaplicar el workflow `consultar-consumo` desde el template: `npm run setup:n8n`. El workflow `analizar-caso` y `pre-analisis` ya están en producción y se modifican vía la API n8n (los scripts puntuales viven en mi máquina local en `C:\tmp\`).
+3. **n8n**: las credenciales `Anthropic account`, `OpenAI account` y `Supabase account` deben estar configuradas en n8n. Los templates versionados viven en [workflows-template/](workflows-template/) (por ahora solo `consultar-consumo.json`). Para reaplicarlo: `npm run setup:n8n`. El workflow `analizar-caso` y `pre-analisis` ya están en producción y se modifican vía la API n8n (los scripts puntuales viven en mi máquina local en `C:\tmp\`).
 4. **Frontend**: `npm install && npm start` corre en `:3000`.
 
 ## Desarrollo local
