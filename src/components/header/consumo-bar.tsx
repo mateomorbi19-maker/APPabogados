@@ -1,6 +1,7 @@
 "use client";
 import { Progress } from "@/components/ui/progress";
 import { useConsumo } from "@/lib/hooks/use-consumo";
+import { fmtNumber } from "@/lib/format";
 
 export function ConsumoBar() {
   const { state } = useConsumo();
@@ -29,13 +30,12 @@ export function ConsumoBar() {
     limite_tokens_mensual > 0
       ? Math.min(100, (tokens_usados_mes / limite_tokens_mensual) * 100)
       : 0;
-  const fmt = (n: number) => n.toLocaleString("es-AR");
 
   return (
     <div className="hidden md:flex items-center gap-3 min-w-0 w-64">
       <Progress value={pct} className="h-2 flex-1" />
       <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">
-        {fmt(tokens_usados_mes)}/{fmt(limite_tokens_mensual)}
+        {fmtNumber(tokens_usados_mes)}/{fmtNumber(limite_tokens_mensual)}
       </span>
     </div>
   );

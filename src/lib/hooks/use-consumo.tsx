@@ -48,17 +48,21 @@ const ConsumoCtx = createContext<ConsumoCtxValue | null>(null);
 
 export function ConsumoProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ConsumoState>({ status: "loading" });
-  // Refs persistentes para cubrir dos casos de borde:
-  //   (a) race entre fetch inicial y revalidate(): si revalidate dispara
-  //       mientras hay un fetch en vuelo, abortamos el anterior antes de
-  //       arrancar el nuevo, así los responses no se pisan en orden no
-  //       determinístico.
-  //   (b) unmount: el cleanup del useEffect aborta cualquier fetch vivo
-  //       para no setState sobre un componente desmontado.
+  // Dos refs distintas con motivos distintos:
+  //   (a) inFlightRef: in-flight guard. Si revalidate() entra mientras hay un
+  //       fetch vivo, retornamos en seco. Sin esto, 5 clicks rápidos en
+  //       "Actualizar" disparan 5 requests porque `disabled={isLoading}` no
+  //       alcanza: React 18 batchea renders, así que múltiples clicks pueden
+  //       procesarse antes de que el `disabled` se propague al DOM.
+  //   (b) controllerRef: AbortController para cancelar el fetch vivo en el
+  //       cleanup del useEffect cuando el provider se desmonta — así evitamos
+  //       setState sobre un componente desmontado.
+  const inFlightRef = useRef(false);
   const controllerRef = useRef<AbortController | null>(null);
 
   const revalidate = useCallback(async () => {
-    controllerRef.current?.abort();
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     const controller = new AbortController();
     controllerRef.current = controller;
 
@@ -89,6 +93,8 @@ export function ConsumoProvider({ children }: { children: ReactNode }) {
         status: "error",
         message: e instanceof Error ? e.message : "Error desconocido",
       });
+    } finally {
+      inFlightRef.current = false;
     }
   }, []);
 

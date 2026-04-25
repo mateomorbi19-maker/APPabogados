@@ -6,6 +6,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { SiteHeader } from "@/components/header/site-header";
+import { ConsumoPanel } from "@/components/consumo/consumo-panel";
 
 export function AppShell({ nombreUsuario }: { nombreUsuario: string }) {
   return (
@@ -24,9 +25,7 @@ export function AppShell({ nombreUsuario }: { nombreUsuario: string }) {
               </div>
             </TabsContent>
             <TabsContent value="consumo" className="mt-6">
-              <div className="text-muted-foreground">
-                TODO 4.3: Panel de consumo
-              </div>
+              <ConsumoPanel />
             </TabsContent>
           </Tabs>
         </div>
