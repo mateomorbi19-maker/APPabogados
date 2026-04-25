@@ -21,21 +21,27 @@ export type RunAgentUsage = {
   cache_read_input_tokens: number;
 };
 
+export type Busqueda = {
+  query: string;
+  chunks_devueltos: number;
+  similarity_top: number | null;
+};
+
 export type RunAgentResult = {
   rawText: string;
   usage: RunAgentUsage;
-  busquedas: string[];
+  busquedas: Busqueda[];
   iterations: number;
 };
 
 export class AgentError extends Error {
   partialUsage: RunAgentUsage;
-  partialBusquedas: string[];
+  partialBusquedas: Busqueda[];
   partialIterations: number;
   constructor(
     message: string,
     partialUsage: RunAgentUsage,
-    partialBusquedas: string[],
+    partialBusquedas: Busqueda[],
     partialIterations: number,
   ) {
     super(message);
@@ -60,16 +66,26 @@ function isTextBlock(
   return block.type === "text";
 }
 
-async function ejecutarToolBuscar(query: string): Promise<string> {
+async function ejecutarToolBuscar(query: string): Promise<{
+  contentJSON: string;
+  chunks_devueltos: number;
+  similarity_top: number | null;
+}> {
   const embedding = await embedQuery(query);
   const docs = await buscarDocumentos(embedding, 5);
-  return JSON.stringify(
+  const contentJSON = JSON.stringify(
     docs.map((d) => ({
       content: d.content,
       metadata: d.metadata,
       similarity: Number(d.similarity.toFixed(4)),
     })),
   );
+  const top = docs[0]?.similarity ?? null;
+  return {
+    contentJSON,
+    chunks_devueltos: docs.length,
+    similarity_top: top !== null ? Number(top.toFixed(4)) : null,
+  };
 }
 
 export async function runAgent(
@@ -89,7 +105,7 @@ export async function runAgent(
     cache_creation_input_tokens: 0,
     cache_read_input_tokens: 0,
   };
-  const busquedas: string[] = [];
+  const busquedas: Busqueda[] = [];
   let iterations = 0;
 
   // Primer call: si falla acá no hay tokens cobrados — dejamos bubblear como error de infra.
@@ -121,13 +137,21 @@ export async function runAgent(
             const inputObj = (tu.input ?? {}) as { query?: unknown };
             const query =
               typeof inputObj.query === "string" ? inputObj.query : "";
-            busquedas.push(query);
+            // Reservamos el slot síncronamente para preservar el orden
+            // en que el agente emitió las queries (no el orden en que terminan).
+            const idx = busquedas.length;
+            busquedas.push({ query, chunks_devueltos: 0, similarity_top: null });
             try {
-              const content = await ejecutarToolBuscar(query);
+              const r = await ejecutarToolBuscar(query);
+              busquedas[idx] = {
+                query,
+                chunks_devueltos: r.chunks_devueltos,
+                similarity_top: r.similarity_top,
+              };
               return {
                 type: "tool_result",
                 tool_use_id: tu.id,
-                content,
+                content: r.contentJSON,
               };
             } catch (e) {
               const msg = e instanceof Error ? e.message : String(e);
