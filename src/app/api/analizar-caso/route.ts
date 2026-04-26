@@ -193,5 +193,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       502,
     );
   }
-  return jsonResponse({ ok: true, ...parsed.resultado }, 200);
+  return jsonResponse(
+    { ok: true, ...parsed.resultado, busquedas: agentResult.busquedas },
+    200,
+  );
 }

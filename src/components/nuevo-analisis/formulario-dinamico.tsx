@@ -1,41 +1,73 @@
 "use client";
-import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { PreAnalisisOutput } from "@/lib/schemas";
 import { PreguntaField, type RespuestaValor } from "./pregunta-field";
+import { RolSelector, type Rol } from "./rol-selector";
 
 type Props = {
   data: PreAnalisisOutput;
+  respuestas: Record<string, RespuestaValor>;
+  onRespuestasChange: (r: Record<string, RespuestaValor>) => void;
+  rol: Rol | null;
+  onRolChange: (r: Rol) => void;
   onVolver: () => void;
+  onAnalizar: () => void;
+  loading: boolean;
 };
 
-function valorInicial(
+// Una pregunta requerida está completa si:
+//   - text/select/radio: string non-vacío
+//   - checkbox sin opciones (toggle Sí/No): siempre completa, el default
+//     `false` ya es respuesta válida ("el usuario respondió No")
+//   - checkbox con opciones (multi): al menos una opción seleccionada
+function preguntaRequeridaCompleta(
   p: PreAnalisisOutput["preguntas"][number],
-): RespuestaValor {
+  v: RespuestaValor | undefined,
+): boolean {
+  if (!p.requerido) return true;
   if (p.tipo === "checkbox") {
-    return p.opciones && p.opciones.length > 0 ? [] : false;
+    if (Array.isArray(v)) return v.length > 0;
+    return typeof v === "boolean";
   }
-  // valor_sugerido es opcional y puede ser null. Para select/radio/text
-  // arrancamos con string vacío si no hay sugerencia.
-  return p.valor_sugerido ?? "";
+  return typeof v === "string" && v.trim() !== "";
 }
 
-export function FormularioDinamico({ data, onVolver }: Props) {
-  const [respuestas, setRespuestas] = useState<Record<string, RespuestaValor>>(
-    () =>
-      Object.fromEntries(data.preguntas.map((p) => [p.id, valorInicial(p)])),
-  );
-
+export function FormularioDinamico({
+  data,
+  respuestas,
+  onRespuestasChange,
+  rol,
+  onRolChange,
+  onVolver,
+  onAnalizar,
+  loading,
+}: Props) {
   const dd = data.datos_detectados;
+
+  const requeridasCompletas = data.preguntas.every((p) =>
+    preguntaRequeridaCompleta(p, respuestas[p.id]),
+  );
+  const puedeAnalizar = requeridasCompletas && rol !== null && !loading;
+
+  const hint = !requeridasCompletas
+    ? "Completá las preguntas requeridas para continuar"
+    : rol === null
+      ? "Elegí un rol para continuar"
+      : null;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h2 className="font-serif text-3xl">Pre-análisis</h2>
-        <Button variant="outline" size="sm" onClick={onVolver}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onVolver}
+          disabled={loading}
+        >
           <ArrowLeft />
           Volver
         </Button>
@@ -89,16 +121,30 @@ export function FormularioDinamico({ data, onVolver }: Props) {
             key={p.id}
             pregunta={p}
             value={respuestas[p.id]}
-            onChange={(v) => setRespuestas((r) => ({ ...r, [p.id]: v }))}
+            onChange={(v) =>
+              onRespuestasChange({ ...respuestas, [p.id]: v })
+            }
           />
         ))}
       </div>
 
+      <Separator />
+
+      <div className="space-y-3">
+        <h3 className="font-medium text-xs uppercase tracking-wider text-muted-foreground">
+          Rol del análisis
+        </h3>
+        <RolSelector value={rol} onChange={onRolChange} disabled={loading} />
+      </div>
+
       <div className="flex flex-col items-end gap-1.5 pt-2">
-        <Button disabled>Analizar caso</Button>
-        <p className="text-sm text-muted-foreground">
-          Disponible en el próximo paso del flujo
-        </p>
+        <Button onClick={onAnalizar} disabled={!puedeAnalizar}>
+          {loading ? <Loader2 className="animate-spin" /> : null}
+          Analizar caso
+        </Button>
+        {hint && !loading ? (
+          <p className="text-sm text-muted-foreground">{hint}</p>
+        ) : null}
       </div>
     </div>
   );
