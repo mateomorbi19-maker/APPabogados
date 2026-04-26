@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/tabs";
 import { SiteHeader } from "@/components/header/site-header";
 import { ConsumoPanel } from "@/components/consumo/consumo-panel";
+import { NuevoAnalisisPanel } from "@/components/nuevo-analisis/nuevo-analisis-panel";
 
 export function AppShell({ nombreUsuario }: { nombreUsuario: string }) {
   return (
@@ -20,9 +21,7 @@ export function AppShell({ nombreUsuario }: { nombreUsuario: string }) {
               <TabsTrigger value="consumo">Mi consumo</TabsTrigger>
             </TabsList>
             <TabsContent value="nuevo" className="mt-6">
-              <div className="text-muted-foreground">
-                TODO 4.4: Nuevo análisis
-              </div>
+              <NuevoAnalisisPanel />
             </TabsContent>
             <TabsContent value="consumo" className="mt-6">
               <ConsumoPanel />
