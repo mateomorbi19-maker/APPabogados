@@ -1,15 +1,18 @@
 "use client";
+import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useConsumo } from "@/lib/hooks/use-consumo";
+import { useConsumo, type EjecucionRow } from "@/lib/hooks/use-consumo";
 import { MetricCards } from "./metric-cards";
 import { HistorialTable } from "./historial-table";
+import { HistorialDetalle } from "./historial-detalle";
 
 export function ConsumoPanel() {
   const { state, revalidate } = useConsumo();
   const isLoading = state.status === "loading";
+  const [seleccionada, setSeleccionada] = useState<EjecucionRow | null>(null);
 
   return (
     <div className="space-y-6">
@@ -69,9 +72,19 @@ export function ConsumoPanel() {
       {state.status === "ready" ? (
         <>
           <MetricCards data={state.data.consumo} />
-          <HistorialTable rows={state.data.historial} />
+          <HistorialTable
+            rows={state.data.historial}
+            onSeleccionar={setSeleccionada}
+          />
         </>
       ) : null}
+
+      <HistorialDetalle
+        ejecucion={seleccionada}
+        onOpenChange={(open) => {
+          if (!open) setSeleccionada(null);
+        }}
+      />
     </div>
   );
 }

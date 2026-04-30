@@ -27,6 +27,9 @@ export type EjecucionRow = {
   total_tokens: number;
   costo_usd: number;
   ejecutado_en: string;
+  // jsonb laxo del server. El componente que lo consume (modal de detalle
+  // 5.1) lo valida con `ejecucionMetadataSchema` antes de leerlo.
+  metadata: unknown;
 };
 
 export type ConsumoData = {

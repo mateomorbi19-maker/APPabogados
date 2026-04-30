@@ -14,8 +14,11 @@ import { BusquedasRag } from "./busquedas-rag";
 type Props = {
   data: AnalisisOutput;
   busquedas: Busqueda[];
-  onVolver: () => void;
-  onReiniciar: () => void;
+  // CTAs opcionales: cuando este componente se reusa en el modal del
+  // historial (5.1), no aplican "Volver al formulario" ni "Nuevo análisis"
+  // — son acciones del flujo en vivo, no del archivo histórico.
+  onVolver?: () => void;
+  onReiniciar?: () => void;
 };
 
 export function ResultadosAnalisis({
@@ -26,22 +29,29 @@ export function ResultadosAnalisis({
 }: Props) {
   const warning = data.metadata?.warning;
   const articulos = data.metadata?.articulos_consultados ?? [];
+  const tieneCtas = onVolver !== undefined || onReiniciar !== undefined;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="font-serif text-3xl">Estrategias</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onVolver}>
-            <ArrowLeft />
-            Volver al formulario
-          </Button>
-          <Button size="sm" onClick={onReiniciar}>
-            <RotateCcw />
-            Nuevo análisis
-          </Button>
+      {tieneCtas ? (
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h2 className="font-serif text-3xl">Estrategias</h2>
+          <div className="flex items-center gap-2">
+            {onVolver ? (
+              <Button variant="outline" size="sm" onClick={onVolver}>
+                <ArrowLeft />
+                Volver al formulario
+              </Button>
+            ) : null}
+            {onReiniciar ? (
+              <Button size="sm" onClick={onReiniciar}>
+                <RotateCcw />
+                Nuevo análisis
+              </Button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {warning ? (
         <Card className="p-4 border-amber-500/40 bg-amber-500/5">

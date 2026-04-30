@@ -11,6 +11,11 @@ type EjecucionRow = {
   total_tokens: number;
   costo_usd: number;
   ejecutado_en: string;
+  // jsonb laxo. El cliente lo valida con `ejecucionMetadataSchema` en el
+  // modal de detalle (sub-paso 5.1). Server-side lo dejamos `unknown` para
+  // no acoplar el shape DB ↔ shape de respuesta (lo guardan los endpoints
+  // analizar-caso y pre-analisis con shapes distintos).
+  metadata: unknown;
 };
 
 function startOfMonthUTC(): string {
@@ -40,7 +45,7 @@ export async function GET(): Promise<Response> {
     supabase
       .from("ejecuciones")
       .select(
-        "id, tipo, modelo, input_tokens, output_tokens, total_tokens, costo_usd, ejecutado_en",
+        "id, tipo, modelo, input_tokens, output_tokens, total_tokens, costo_usd, ejecutado_en, metadata",
       )
       .eq("usuario_id", wl.usuario_id)
       .gte("ejecutado_en", startIso)

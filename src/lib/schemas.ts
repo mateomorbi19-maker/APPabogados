@@ -103,3 +103,37 @@ export const analizarCasoResponseSchema = z.object({
   busquedas: z.array(busquedaSchema).default([]),
 });
 export type AnalizarCasoResponse = z.infer<typeof analizarCasoResponseSchema>;
+
+// === Fase 5.1 — shape del jsonb `metadata` de la tabla `ejecuciones` ===
+//
+// Schema laxo: TODOS los campos son opcionales y `passthrough()` para tolerar
+// filas viejas (pre-Fase 4) o futuras (post-5.1). El componente que consume
+// esto valida `metadata.resultado` por separado contra `analisisOutputSchema`
+// o `preAnalisisOutputSchema` según `ejecucion.tipo`.
+//
+// Ojo: `resultado` queda como `unknown` porque su forma depende del `tipo`
+// de la ejecución y se valida en runtime cuando el modal lo consume.
+export const ejecucionMetadataSchema = z
+  .object({
+    caso: z.string().optional(),
+    contexto: z
+      .record(
+        z.string(),
+        z.union([z.string(), z.number(), z.boolean(), z.null()]),
+      )
+      .optional(),
+    rol: rolSchema.optional(),
+    resultado: z.unknown().optional(),
+    busquedas: z.array(busquedaSchema).optional(),
+    parseo_intento: z
+      .union([z.literal(1), z.literal(2), z.literal(3)])
+      .nullable()
+      .optional(),
+    iterations: z.number().optional(),
+    cache_creation_input_tokens: z.number().optional(),
+    cache_read_input_tokens: z.number().optional(),
+    error: z.string().optional(),
+    parseo_error: z.string().optional(),
+  })
+  .passthrough();
+export type EjecucionMetadata = z.infer<typeof ejecucionMetadataSchema>;

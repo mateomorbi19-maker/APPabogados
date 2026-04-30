@@ -1,4 +1,5 @@
 "use client";
+import { ChevronRight } from "lucide-react";
 import type { EjecucionRow } from "@/lib/hooks/use-consumo";
 import {
   fmtCosto,
@@ -8,7 +9,12 @@ import {
   fmtTipo,
 } from "@/lib/format";
 
-export function HistorialTable({ rows }: { rows: EjecucionRow[] }) {
+type Props = {
+  rows: EjecucionRow[];
+  onSeleccionar: (e: EjecucionRow) => void;
+};
+
+export function HistorialTable({ rows, onSeleccionar }: Props) {
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-border p-12 text-center">
@@ -43,11 +49,19 @@ export function HistorialTable({ rows }: { rows: EjecucionRow[] }) {
               <th className="px-4 py-2 text-right font-medium text-xs uppercase text-muted-foreground tracking-wider">
                 Costo
               </th>
+              <th
+                className="w-8"
+                aria-hidden="true"
+              />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
-              <tr key={r.id}>
+              <tr
+                key={r.id}
+                onClick={() => onSeleccionar(r)}
+                className="cursor-pointer hover:bg-muted/40 transition-colors"
+              >
                 {/* Usamos `ejecutado_en` (columna real de Postgres) y NO
                     `metadata.timestamp` — ese último es un string libre que
                     el modelo emite (a veces con fecha errada como "2025-01-14"
@@ -66,6 +80,9 @@ export function HistorialTable({ rows }: { rows: EjecucionRow[] }) {
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-right font-mono">
                   {fmtCosto(r.costo_usd)}
+                </td>
+                <td className="px-2 py-2 text-right text-muted-foreground">
+                  <ChevronRight className="size-4 inline" />
                 </td>
               </tr>
             ))}
