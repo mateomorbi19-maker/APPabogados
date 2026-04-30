@@ -149,6 +149,12 @@ const RE_ARTICULO = /^ARTÍCULO\s+(\d+)/m;
 const MARKER_CUERPO_LINEA_1 = "ANEXO I";
 const MARKER_CUERPO_LINEA_2 = "CÓDIGO PROCESAL PENAL DE LA NACIÓN";
 
+// Marker de fin del cuerpo del CPPF. Después del Art 349 (último del CPPF)
+// viene "ANEXO II" en línea sola, que abre el "Programa de Capacitación"
+// con sus propios "aRtÍcuLO N" (en versales). Sin este marker el parser
+// continuaba acumulando texto del ANEXO II como contenido del Art 349.
+const MARKER_FIN_CUERPO = "ANEXO II";
+
 function isHeaderLine(line: string): boolean {
   return (
     RE_LIBRO.test(line) ||
@@ -279,6 +285,13 @@ function parseChunks(lines: string[], pageOf: number[]): Chunk[] {
         i++; // saltar también la línea "CÓDIGO PROCESAL PENAL DE LA NACIÓN"
       }
       continue;
+    }
+
+    // Fin del cuerpo del CPPF: viene el ANEXO II (programa de capacitación
+    // y creación de cargos). Cerramos el último artículo y dejamos de procesar.
+    if (line === MARKER_FIN_CUERPO) {
+      flushArticulo();
+      break;
     }
 
     let m: RegExpMatchArray | null;
