@@ -54,7 +54,7 @@
 /*
   Dark-only theme. `<html>` siempre lleva la clase `.dark` (ver src/app/layout.tsx),
   así que estos son los únicos valores que aplican. Los valores de `:root` son fallback.
-  Paleta: base #0a0e17 (del index.html legacy), acento violeta #8b5cf6.
+  Paleta: base #0a0e17 (del sistema legacy), acento violeta #8b5cf6.
 */
 :root,
 .dark {
