@@ -6,7 +6,7 @@ export const BUSCAR_DOCUMENTOS_TOOL_NAME = "buscar_documentos_legales" as const;
 export const buscarDocumentosTool: Anthropic.Tool = {
   name: BUSCAR_DOCUMENTOS_TOOL_NAME,
   description:
-    "Busca artículos del Código Penal argentino, Código Procesal Penal y doctrina de manuales de litigación penal. Usa términos jurídicos específicos como 'homicidio tentativa', 'injurias', 'legítima defensa', 'emoción violenta', 'abuso de arma', etc. Hacé múltiples búsquedas con diferentes términos para cubrir todos los aspectos del caso.",
+    "Busca artículos del Código Penal argentino y doctrina de manuales de litigación penal. Usa términos jurídicos específicos como 'homicidio tentativa', 'injurias', 'legítima defensa', 'emoción violenta', 'abuso de arma', etc. Hacé múltiples búsquedas con diferentes términos para cubrir todos los aspectos del caso.",
   input_schema: {
     type: "object",
     properties: {

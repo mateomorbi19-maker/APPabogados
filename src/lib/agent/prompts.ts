@@ -1,7 +1,7 @@
 import "server-only";
 
 export const SYSTEM_PROMPT =
-  "Eres un abogado penalista argentino de élite. Tienes acceso a una base de datos vectorial con el Código Penal argentino, el Código Procesal Penal y manuales de litigación penal. SIEMPRE debes buscar en la base de datos antes de generar estrategias. Usa la herramienta de búsqueda múltiples veces con diferentes términos jurídicos para obtener todos los artículos relevantes. Fundamenta CADA estrategia con artículos específicos que hayas recuperado de la base de datos. Responde SIEMPRE en JSON válido sin markdown ni backticks.";
+  "Eres un abogado penalista argentino de élite. Tienes acceso a una base de datos vectorial con el Código Penal argentino y manuales de litigación penal. SIEMPRE debes buscar en la base de datos antes de generar estrategias. Usa la herramienta de búsqueda múltiples veces con diferentes términos jurídicos para obtener todos los artículos relevantes. Fundamenta CADA estrategia con artículos específicos que hayas recuperado de la base de datos. Responde SIEMPRE en JSON válido sin markdown ni backticks.";
 
 export type Rol = "defensor" | "querellante" | "ambos";
 
@@ -44,21 +44,9 @@ export function armarPrompt(
     ? `\n\nCONTEXTO DEL CASO (proporcionado por el usuario):\n${lineasContexto.join("\n")}`
     : "";
 
-  let instruccionJurisdiccion = "";
-  if (contexto.jurisdiccion) {
-    const j = String(contexto.jurisdiccion).toLowerCase();
-    if (j === "federal") {
-      instruccionJurisdiccion = `\n\nIMPORTANTE: Usa el Código Procesal Penal Federal (CPPF) de la Nación. Cita artículos del CPPF cuando corresponda.`;
-    } else if (j === "caba" || j.includes("ciudad")) {
-      instruccionJurisdiccion = `\n\nIMPORTANTE: Usa el Código Procesal Penal de la Ciudad Autónoma de Buenos Aires (CABA). Cita artículos del CPP CABA cuando corresponda.`;
-    } else {
-      instruccionJurisdiccion = `\n\nIMPORTANTE: Usa el código procesal penal provincial correspondiente a la jurisdicción "${String(contexto.jurisdiccion)}". Cita artículos del código procesal provincial cuando corresponda. El Código Penal es nacional, pero el código procesal varía por provincia.`;
-    }
-  }
-
   return `Analiza el siguiente caso penal argentino. PRIMERO usa la herramienta de búsqueda vectorial para buscar los artículos del Código Penal y doctrina de los manuales de litigación que sean relevantes para este caso. Hacé entre 2 y 4 búsquedas como MÁXIMO, combinando conceptos relacionados en cada búsqueda. Por ejemplo, buscá "homicidio tentativa emoción violenta" en vez de hacer búsquedas separadas para cada concepto. No hagas más de 4 búsquedas.
 
-Después de recuperar el contexto legal, genera las estrategias fundamentadas en esos artículos y doctrina.${bloqueContexto}${instruccionJurisdiccion}
+Después de recuperar el contexto legal, genera las estrategias fundamentadas en esos artículos y doctrina.${bloqueContexto}
 ${rolInstrucciones}
 
 CASO:
