@@ -287,12 +287,15 @@ function parseChunks(lines: string[], pageOf: number[]): Chunk[] {
       const nombreInfo = consumirNombre(lines, i);
       // LIBRO siempre tiene nombre descriptivo en CPPF. El identificador
       // ("LIBRO PRIMERO") se preserva en uppercase como aparece en el PDF;
-      // el descriptor se normaliza por si vino en versales.
+      // el descriptor se normaliza por si vino en versales. Colapsamos
+      // espacios múltiples (algunos headers del PDF Infojus 2014 vienen
+      // con doble espacio entre "LIBRO" y el ordinal).
+      const idLib = line.toUpperCase().replace(/\s+/g, " ");
       if (nombreInfo) {
-        libroActual = `${line.toUpperCase()} - ${normalizarVersales(nombreInfo.text)}`;
+        libroActual = `${idLib} - ${normalizarVersales(nombreInfo.text)}`;
         i = nombreInfo.nuevoIdx;
       } else {
-        libroActual = line.toUpperCase();
+        libroActual = idLib;
       }
       tituloActual = null;
       capituloActual = null;
