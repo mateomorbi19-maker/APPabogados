@@ -1,12 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useConsumo } from "@/lib/hooks/use-consumo";
 import {
   type AnalisisOutput,
+  analisisOutputSchema,
   analizarCasoResponseSchema,
   type Busqueda,
+  busquedaSchema,
   type PreAnalisisOutput,
 } from "@/lib/schemas";
 import {
@@ -105,6 +108,78 @@ function extraerError(json: unknown): string | null {
   return null;
 }
 
+// === Recuperación post-502 ===
+// Easypanel/Traefik puede cortar al cliente con 502 si el análisis tarda más
+// que el timeout del proxy (~60-90s default), aunque el server haya
+// terminado y persistido el resultado en DB. Cuando vemos 502, hacemos
+// polling al endpoint /api/ejecuciones/buscar buscando una fila reciente
+// del usuario con el mismo `caso` + `rol` y `metadata.resultado` poblado.
+// Si la encontramos, la usamos como si el POST hubiera devuelto 200.
+const RECUPERAR_TIMEOUT_MS = 60_000;
+const RECUPERAR_INTERVALO_MS = 5_000;
+const RECUPERAR_DELAY_INICIAL_MS = 2_000;
+
+type RecuperadoOk = {
+  analisis: AnalisisOutput;
+  busquedas: Busqueda[];
+  ejecucionId: string;
+};
+
+async function intentarRecuperarAnalisis(
+  desdeIso: string,
+  caso: string,
+  rol: string,
+  signal: AbortSignal,
+): Promise<RecuperadoOk | null> {
+  const inicio = Date.now();
+  // Esperita inicial: el server puede tardar 1-2s extra en hacer el INSERT
+  // después del corte del proxy. Polling inmediato sería desperdicio.
+  await new Promise((r) => setTimeout(r, RECUPERAR_DELAY_INICIAL_MS));
+  if (signal.aborted) return null;
+
+  while (Date.now() - inicio < RECUPERAR_TIMEOUT_MS) {
+    if (signal.aborted) return null;
+    try {
+      const url = `/api/ejecuciones/buscar?tipo=analizar_caso&desde=${encodeURIComponent(desdeIso)}`;
+      const res = await fetch(url, { signal });
+      if (res.ok) {
+        const json = (await res.json().catch(() => null)) as {
+          ejecuciones?: Array<{
+            id: string;
+            metadata: unknown;
+          }>;
+        } | null;
+        const lista = json?.ejecuciones ?? [];
+        for (const ej of lista) {
+          if (!ej.metadata || typeof ej.metadata !== "object") continue;
+          const meta = ej.metadata as Record<string, unknown>;
+          if (meta.caso !== caso) continue;
+          if (meta.rol !== rol) continue;
+          if (!meta.resultado) continue;
+          // Validar shapes — si vinieron malformados saltar y seguir poll.
+          const parsedAnalisis = analisisOutputSchema.safeParse(meta.resultado);
+          const parsedBusquedas = z
+            .array(busquedaSchema)
+            .safeParse(meta.busquedas ?? []);
+          if (!parsedAnalisis.success || !parsedBusquedas.success) continue;
+          return {
+            analisis: parsedAnalisis.data,
+            busquedas: parsedBusquedas.data,
+            ejecucionId: ej.id,
+          };
+        }
+      }
+    } catch {
+      // Errores de red durante el polling: seguir intentando hasta el
+      // timeout total. El AbortSignal corta limpio si el usuario
+      // cancela o se desmonta el panel.
+    }
+    if (signal.aborted) return null;
+    await new Promise((r) => setTimeout(r, RECUPERAR_INTERVALO_MS));
+  }
+  return null;
+}
+
 export function NuevoAnalisisPanel() {
   const { revalidate } = useConsumo();
   const [fase, setFase] = useState<Fase>({ kind: "input", caso: "" });
@@ -187,6 +262,10 @@ export function NuevoAnalisisPanel() {
     const controller = new AbortController();
     analisisControllerRef.current = controller;
     const inicio = Date.now();
+    // Timestamp ISO usado para el endpoint de recuperación post-502: filtra
+    // ejecuciones que arrancaron desde antes de este POST. Restamos 5s para
+    // tolerar drift de reloj cliente↔server.
+    const desdeIso = new Date(inicio - 5_000).toISOString();
     setFase({ kind: "analizando", caso, ctx, inicio });
 
     const contexto = serializarRespuestas(ctx.respuestas, ctx.data.preguntas);
@@ -206,6 +285,8 @@ export function NuevoAnalisisPanel() {
         // Map de status → tipo de error + si consumió tokens.
         // 429: el rate limiter cortó ANTES del LLM → no consumió.
         // 502: el agente corrió y luego falló parse o iteraciones → SÍ consumió.
+        //      ANTES de mostrar error, intentamos recuperar (Easypanel/Traefik
+        //      puede haber cortado por timeout aunque el server terminó OK).
         // 500: típicamente errores de infra (env vars, DB, etc.) → no consumió.
         // Otros: incierto, no revalidamos para no pisar al header.
         let tipo: ErrorAnalisisTipo;
@@ -217,6 +298,27 @@ export function NuevoAnalisisPanel() {
             extraerError(json) ??
             "Cupo mensual de tokens agotado. Esperá al próximo período.";
         } else if (res.status === 502) {
+          // Intento de recuperación: si el server alcanzó a persistir el
+          // resultado, lo encontramos vía polling y mostramos como éxito.
+          const recuperado = await intentarRecuperarAnalisis(
+            desdeIso,
+            caso,
+            ctx.rol,
+            controller.signal,
+          );
+          if (controller.signal.aborted) return;
+          if (recuperado) {
+            void revalidate();
+            setFase({
+              kind: "resultado",
+              caso,
+              ctx,
+              analisis: recuperado.analisis,
+              busquedas: recuperado.busquedas,
+              ejecucionId: recuperado.ejecucionId,
+            });
+            return;
+          }
           tipo = "parse";
           consumioTokens = true;
           message =
