@@ -165,16 +165,18 @@ export async function POST(req: NextRequest): Promise<Response> {
       ...(parsed.ok ? {} : { parseo_error: parsed.error }),
     },
   };
-  const { error: insertError } = await supabase
+  const { data: insertResult, error: insertError } = await supabase
     .from("ejecuciones")
-    .insert(insertPayload);
-  if (insertError) {
+    .insert(insertPayload)
+    .select("id")
+    .single();
+  if (insertError || !insertResult) {
     console.error("[/api/analizar-caso] insert failed:", insertError);
     return jsonResponse(
       {
         ok: false,
         error: "Error persistiendo ejecución",
-        ...(isDev() ? { detail: insertError.message } : {}),
+        ...(isDev() && insertError ? { detail: insertError.message } : {}),
       },
       500,
     );
@@ -194,7 +196,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
   return jsonResponse(
-    { ok: true, ...parsed.resultado, busquedas: agentResult.busquedas },
+    {
+      ok: true,
+      ejecucion_id: insertResult.id,
+      ...parsed.resultado,
+      busquedas: agentResult.busquedas,
+    },
     200,
   );
 }

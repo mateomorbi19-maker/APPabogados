@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -8,8 +9,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import type { AnalisisOutput, Busqueda, SeccionAnalisis } from "@/lib/schemas";
+import type {
+  AnalisisOutput,
+  Busqueda,
+  Estrategia,
+  RolEstrategia,
+  SeccionAnalisis,
+} from "@/lib/schemas";
 import { BusquedasRag } from "./busquedas-rag";
+import { SeleccionarEstrategiaModal } from "./seleccionar-estrategia-modal";
 
 type Props = {
   data: AnalisisOutput;
@@ -19,6 +27,18 @@ type Props = {
   // — son acciones del flujo en vivo, no del archivo histórico.
   onVolver?: () => void;
   onReiniciar?: () => void;
+  // Cuando ambos están presentes, cada card de estrategia muestra el botón
+  // "Seleccionar como estrategia principal" que abre el modal de creación
+  // de caso. Si falta cualquiera, no se muestra (caso del modal del
+  // historial donde el flujo de selección desde acá no aplica todavía).
+  ejecucionId?: string;
+  caso?: string;
+};
+
+type Seleccion = {
+  rolEstrategia: RolEstrategia;
+  idx: number;
+  estrategia: Estrategia;
 };
 
 export function ResultadosAnalisis({
@@ -26,10 +46,15 @@ export function ResultadosAnalisis({
   busquedas,
   onVolver,
   onReiniciar,
+  ejecucionId,
+  caso,
 }: Props) {
   const warning = data.metadata?.warning;
   const articulos = data.metadata?.articulos_consultados ?? [];
   const tieneCtas = onVolver !== undefined || onReiniciar !== undefined;
+  const seleccionHabilitada =
+    ejecucionId !== undefined && caso !== undefined;
+  const [seleccion, setSeleccion] = useState<Seleccion | null>(null);
 
   return (
     <div className="space-y-6">
@@ -62,9 +87,21 @@ export function ResultadosAnalisis({
         </Card>
       ) : null}
 
-      {data.defensor ? <Seccion seccion={data.defensor} /> : null}
+      {data.defensor ? (
+        <Seccion
+          seccion={data.defensor}
+          rolEstrategia="defensor"
+          onSeleccionar={seleccionHabilitada ? setSeleccion : undefined}
+        />
+      ) : null}
       {data.defensor && data.querellante ? <Separator /> : null}
-      {data.querellante ? <Seccion seccion={data.querellante} /> : null}
+      {data.querellante ? (
+        <Seccion
+          seccion={data.querellante}
+          rolEstrategia="querellante"
+          onSeleccionar={seleccionHabilitada ? setSeleccion : undefined}
+        />
+      ) : null}
 
       {articulos.length > 0 ? (
         <Card className="p-4">
@@ -85,11 +122,31 @@ export function ResultadosAnalisis({
       ) : null}
 
       <BusquedasRag busquedas={busquedas} />
+
+      {seleccion && seleccionHabilitada ? (
+        <SeleccionarEstrategiaModal
+          open={true}
+          ejecucionId={ejecucionId!}
+          caso={caso!}
+          rolEstrategia={seleccion.rolEstrategia}
+          idxEstrategia={seleccion.idx}
+          estrategia={seleccion.estrategia}
+          onClose={() => setSeleccion(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function Seccion({ seccion }: { seccion: SeccionAnalisis }) {
+function Seccion({
+  seccion,
+  rolEstrategia,
+  onSeleccionar,
+}: {
+  seccion: SeccionAnalisis;
+  rolEstrategia: RolEstrategia;
+  onSeleccionar?: (s: Seleccion) => void;
+}) {
   return (
     <div className="space-y-4">
       <div>
@@ -118,7 +175,7 @@ function Seccion({ seccion }: { seccion: SeccionAnalisis }) {
       </div>
 
       <div className="space-y-4">
-        {seccion.estrategias.map((e) => (
+        {seccion.estrategias.map((e, idx) => (
           <Card key={e.numero} className="p-6 space-y-4">
             <div className="flex items-baseline gap-3">
               <span className="font-mono text-3xl text-muted-foreground tabular-nums">
@@ -196,6 +253,18 @@ function Seccion({ seccion }: { seccion: SeccionAnalisis }) {
                   ))}
                 </ol>
               </div>
+            ) : null}
+
+            {onSeleccionar ? (
+              <Button
+                variant="outline"
+                className="w-full border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+                onClick={() =>
+                  onSeleccionar({ rolEstrategia, idx, estrategia: e })
+                }
+              >
+                Seleccionar como estrategia principal
+              </Button>
             ) : null}
           </Card>
         ))}

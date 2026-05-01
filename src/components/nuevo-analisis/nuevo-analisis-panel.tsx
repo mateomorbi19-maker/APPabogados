@@ -54,6 +54,11 @@ type Fase =
       ctx: FormCtx;
       analisis: AnalisisOutput;
       busquedas: Busqueda[];
+      // Id de la ejecución que generó este resultado. Se usa para
+      // habilitar el botón "Seleccionar estrategia" → POST /api/casos.
+      // Puede ser undefined si el endpoint no lo devolvió (compat con
+      // respuestas previas a Fase "Mis casos").
+      ejecucionId: string | undefined;
     }
   | {
       kind: "error-analisis";
@@ -249,13 +254,15 @@ export function NuevoAnalisisPanel() {
       }
 
       void revalidate();
-      const { defensor, querellante, metadata, busquedas } = parsed.data;
+      const { defensor, querellante, metadata, busquedas, ejecucion_id } =
+        parsed.data;
       setFase({
         kind: "resultado",
         caso,
         ctx,
         analisis: { defensor, querellante, metadata },
         busquedas,
+        ejecucionId: ejecucion_id,
       });
     } catch (e) {
       // AbortError: el usuario canceló o el panel se desmontó. En ambos
@@ -338,6 +345,8 @@ export function NuevoAnalisisPanel() {
           setFase({ kind: "form", caso: fase.caso, ctx: fase.ctx })
         }
         onReiniciar={() => setFase({ kind: "input", caso: "" })}
+        ejecucionId={fase.ejecucionId}
+        caso={fase.caso}
       />
     );
   }

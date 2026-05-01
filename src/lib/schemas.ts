@@ -97,6 +97,10 @@ export type Busqueda = z.infer<typeof busquedaSchema>;
 
 export const analizarCasoResponseSchema = z.object({
   ok: z.literal(true),
+  // Opcional para tolerar respuestas previas a la incorporación del campo
+  // (ej: tests viejos cacheados). Si está presente y truthy, el frontend
+  // habilita el botón "Seleccionar como estrategia principal" en cada card.
+  ejecucion_id: z.string().uuid().optional(),
   defensor: seccionAnalisisSchema.optional(),
   querellante: seccionAnalisisSchema.optional(),
   metadata: analisisMetadataSchema.optional().default({}),
@@ -137,3 +141,32 @@ export const ejecucionMetadataSchema = z
   })
   .passthrough();
 export type EjecucionMetadata = z.infer<typeof ejecucionMetadataSchema>;
+
+// === Feature "Mis casos" ===
+
+export const rolEstrategiaSchema = z.enum(["defensor", "querellante"]);
+export type RolEstrategia = z.infer<typeof rolEstrategiaSchema>;
+
+export const crearCasoInputSchema = z.object({
+  titulo: z.string().min(1).max(500),
+  ejecucion_origen_id: z.string().uuid(),
+  rol_estrategia: rolEstrategiaSchema,
+  idx_estrategia: z.number().int().min(0).max(2),
+});
+export type CrearCasoInput = z.infer<typeof crearCasoInputSchema>;
+
+// Validación de fecha "razonable" del evento: parseable + año entre 2020 y 2050.
+// Frontend puede omitirla; el server la default-ea a now().
+export const crearEventoInputSchema = z.object({
+  descripcion: z.string().min(1).max(2000),
+  ocurrido_en: z
+    .string()
+    .datetime({ offset: true })
+    .refine((v) => {
+      const y = new Date(v).getUTCFullYear();
+      return y >= 2020 && y <= 2050;
+    }, "Fecha fuera de rango razonable (2020–2050)")
+    .optional(),
+  estado: z.enum(["sucedido", "pendiente"]).optional(),
+});
+export type CrearEventoInput = z.infer<typeof crearEventoInputSchema>;
