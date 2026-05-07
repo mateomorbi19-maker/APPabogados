@@ -1,8 +1,16 @@
 "use client";
 // Paginación numérica con anterior / siguiente. Mantiene los demás query
 // params al cambiar de página (no hardcodea filtros).
+//
+// Construye los hrefs internamente usando los searchParams actuales: NO
+// recibe función desde el server component padre. Las funciones no son
+// serializables a través del límite RSC y crashean el build de producción
+// con "Functions cannot be passed directly to Client Components". Antes el
+// padre pasaba `buildHref`; ahora le pasamos solo primitivos y este hook
+// reconstruye las URLs leyendo los params actuales del browser.
 
 import Link from "next/link";
+import { useSearchParams, usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,8 +18,6 @@ type Props = {
   page: number;
   pageSize: number;
   total: number;
-  // Construye el href para una página dada preservando los demás filtros.
-  buildHref: (page: number) => string;
 };
 
 // Genera la lista de páginas con elipsis estilo "1 ... 4 5 6 ... 10".
@@ -30,9 +36,24 @@ function paginas(current: number, totalPages: number): (number | "…")[] {
   return out;
 }
 
-export function Pagination({ page, pageSize, total, buildHref }: Props) {
+export function Pagination({ page, pageSize, total }: Props) {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (totalPages <= 1) return null;
+
+  // Clonamos los searchParams actuales para preservar todos los filtros
+  // (usuario, estado, desde, hasta, q) al cambiar de página. Para página 1
+  // omitimos `?page=1` por estética: la URL canónica de la primera página
+  // no lleva el param.
+  const buildHref = (newPage: number): string => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newPage <= 1) params.delete("page");
+    else params.set("page", String(newPage));
+    const qs = params.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
 
   const list = paginas(page, totalPages);
   const baseBtn =
