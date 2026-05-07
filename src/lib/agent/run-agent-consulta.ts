@@ -57,6 +57,12 @@ export type RunAgentConsultaInput = {
   adjuntos: AdjuntoModelo[];
   systemPrompt: string;
   maxIterations?: number;
+  // Historial previo de la conversación. Cada item es un MessageParam
+  // ya construido (user/assistant text). El último mensaje del usuario
+  // (la pregunta nueva) NO se incluye acá — se arma con buildPrimerUserContent
+  // adentro del loop con contexto + adjuntos nuevos como contenido nativo.
+  // Para llamadas que no son chat (one-shot del PR3), pasar [] o nada.
+  mensajesPrevios?: Anthropic.MessageParam[];
 };
 
 const HARD_CAP_BUSQUEDAS = 10;
@@ -179,7 +185,15 @@ export async function runAgentConsulta(
   const maxIterations = input.maxIterations ?? 12;
 
   const client = getAnthropic();
+  // Mensajes previos del chat (si los hay) + el nuevo mensaje del
+  // usuario con contexto markdown + adjuntos nuevos como contenido
+  // nativo. El último mensaje del array siempre tiene que ser
+  // role='user' para que la API acepte la request — los chequeos
+  // del flujo del endpoint garantizan que mensajesPrevios termina en
+  // assistant (porque el último insertado es la respuesta agente
+  // anterior) o está vacío.
   const messages: Anthropic.MessageParam[] = [
+    ...(input.mensajesPrevios ?? []),
     { role: "user", content: buildPrimerUserContent(input) },
   ];
 

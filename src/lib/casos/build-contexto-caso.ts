@@ -87,33 +87,6 @@ function bullets(arr: unknown[] | undefined, prefijo = "  - "): string {
     .join("\n");
 }
 
-// Resume una respuesta del agente (de una consulta previa) como tesis
-// + acciones, sin las consideraciones largas ni el fundamento completo.
-function resumirRespuestaAgente(meta: unknown): string {
-  if (!meta || typeof meta !== "object") return "(respuesta no parseable)";
-  const m = meta as Record<string, unknown>;
-  const analisis = m.analisis as Record<string, unknown> | undefined;
-  const recomendaciones = m.recomendaciones as
-    | Array<Record<string, unknown>>
-    | undefined;
-  const tesis =
-    analisis && typeof analisis.tesis_central === "string"
-      ? analisis.tesis_central
-      : "(sin tesis registrada)";
-  const acciones =
-    recomendaciones && recomendaciones.length > 0
-      ? recomendaciones
-          .map((r) => {
-            const accion = typeof r.accion === "string" ? r.accion : "?";
-            const prioridad =
-              typeof r.prioridad === "string" ? r.prioridad : "?";
-            return `  - [${prioridad}] ${accion}`;
-          })
-          .join("\n")
-      : "  - (sin recomendaciones registradas)";
-  return `Tesis: ${tesis}\nRecomendaciones principales:\n${acciones}`;
-}
-
 export async function buildContextoCaso(
   casoId: string,
 ): Promise<ContextoCasoResult> {
@@ -148,8 +121,10 @@ export async function buildContextoCaso(
     ejecucionOrigen = ejecRaw as EjecucionLite;
   }
 
-  // Eventos cronológicos. NO incluimos consulta_agente sin pareja con
-  // respuesta_agente (su descripción es la pregunta cruda, suficiente).
+  // Eventos cronológicos del timeline (manuales + sistema). El chat
+  // con el agente vive en tablas dedicadas (PR4 sub-PR2) — NO se
+  // incluyen sus mensajes en este contexto markdown porque viajan
+  // como `messages[]` históricos al SDK por separado.
   const { data: eventosRaw, error: evErr } = await supabase
     .from("eventos_caso")
     .select("id, tipo, categoria, descripcion, ocurrido_en, estado, adjuntos")
@@ -264,24 +239,6 @@ export async function buildContextoCaso(
           : "Sin categoría";
       const estadoSuffix =
         ev.estado === "pendiente" ? " (pendiente)" : "";
-
-      // Caso especial: respuesta del agente — la mostramos resumida.
-      if (ev.tipo === "agente" && ev.categoria === "respuesta_agente") {
-        lineas.push(`### ${fecha} — Respuesta del agente`);
-        let parsed: unknown = null;
-        try {
-          parsed = JSON.parse(ev.descripcion);
-        } catch {
-          // Descripción no parseable: la mostramos como string opaco.
-        }
-        lineas.push(
-          parsed
-            ? resumirRespuestaAgente(parsed)
-            : "(respuesta no parseable)",
-        );
-        lineas.push("");
-        continue;
-      }
 
       lineas.push(`### ${fecha} — ${cat}${estadoSuffix}`);
       lineas.push(ev.descripcion);

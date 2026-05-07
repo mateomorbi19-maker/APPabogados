@@ -1,10 +1,13 @@
 "use client";
-// Render del contenido de un evento `respuesta_agente`. La descripción
-// del evento es el JSON serializado de la respuesta enriquecida con
-// metadata de la ejecución (degraded_response, busquedas, ejecucion_id).
-// La parseamos con zod (defensa en profundidad) y mostramos: tesis,
-// fundamento legal, consideraciones, recomendaciones priorizadas y
-// un colapsable con las búsquedas que hizo el agente.
+// Render del mensaje del agente en el chat. Reutiliza la lógica visual
+// del antiguo respuesta-agente-evento.tsx (PR3, ya eliminado): parsea
+// el JSON, valida con zod, y muestra tesis + fundamento + consideraciones
+// + recomendaciones priorizadas + búsquedas colapsables.
+//
+// Diferencia con el componente del PR3: trabaja sobre `MensajeConversacion`
+// y prefiere `respuesta_estructurada` (jsonb persistido) sobre el
+// contenido string. El JSON-string en `contenido` queda como fallback
+// si la columna nueva está null por alguna razón.
 
 import { useState } from "react";
 import { ChevronDown, Sparkles, AlertTriangle } from "lucide-react";
@@ -21,21 +24,31 @@ import {
   type Recomendacion,
   type RespuestaConsulta,
 } from "@/lib/schemas";
-import type { EventoCaso } from "@/lib/types";
+import type { MensajeConversacion } from "@/lib/types";
 
 type Props = {
-  evento: EventoCaso;
+  mensaje: MensajeConversacion;
 };
 
-function parsearRespuesta(descripcion: string): RespuestaConsulta | null {
-  try {
-    const obj = JSON.parse(descripcion);
-    const parsed = respuestaConsultaSchema.safeParse(obj);
-    if (!parsed.success) return null;
-    return parsed.data;
-  } catch {
-    return null;
+function parsearRespuesta(
+  mensaje: MensajeConversacion,
+): RespuestaConsulta | null {
+  // Primero intentamos la columna estructurada nueva.
+  if (mensaje.respuesta_estructurada) {
+    const parsed = respuestaConsultaSchema.safeParse(
+      mensaje.respuesta_estructurada,
+    );
+    if (parsed.success) return parsed.data;
   }
+  // Fallback: el `contenido` es el JSON serializado en el endpoint.
+  try {
+    const obj = JSON.parse(mensaje.contenido);
+    const parsed = respuestaConsultaSchema.safeParse(obj);
+    if (parsed.success) return parsed.data;
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 const PRIORIDAD_VARIANT: Record<
@@ -56,12 +69,12 @@ const PRIORIDAD_VARIANT: Record<
   },
 };
 
-export function RespuestaAgenteEvento({ evento }: Props) {
-  const respuesta = parsearRespuesta(evento.descripcion);
+export function MensajeAgente({ mensaje }: Props) {
+  const respuesta = parsearRespuesta(mensaje);
 
   if (!respuesta) {
     return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
+      <article className="ml-auto max-w-[90%] rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
         <p className="text-destructive font-medium mb-1">
           Respuesta del agente no parseable
         </p>
@@ -69,19 +82,19 @@ export function RespuestaAgenteEvento({ evento }: Props) {
           La respuesta se persistió pero el cliente no logró interpretarla.
           Podés ver la metadata cruda en el panel admin.
         </p>
-      </div>
+      </article>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <article className="ml-auto max-w-[90%] rounded-md border border-primary/40 bg-primary/5 px-3 py-3 space-y-3">
       <header className="flex flex-wrap items-center gap-2">
         <Sparkles className="size-3.5 text-primary" />
         <span className="text-[10px] uppercase tracking-wider text-primary font-medium">
           Análisis del agente
         </span>
         <span className="text-[10px] text-muted-foreground">
-          · {fmtFecha(evento.ocurrido_en)}
+          · {fmtFecha(mensaje.creado_en)}
         </span>
         {respuesta.degraded_response ? (
           <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 text-[10px]">
@@ -91,7 +104,7 @@ export function RespuestaAgenteEvento({ evento }: Props) {
         ) : null}
       </header>
 
-      <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+      <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
           Tesis central
         </p>
@@ -176,7 +189,7 @@ export function RespuestaAgenteEvento({ evento }: Props) {
           </CollapsibleContent>
         </Collapsible>
       ) : null}
-    </div>
+    </article>
   );
 }
 

@@ -1,27 +1,23 @@
 // Categoría procesal de un evento del caso. Mapea al CHECK constraint
-// de eventos_caso.categoria (migración 20260507120000).
-//
-// Mantenido como tupla de literales para que zod pueda construir un enum
-// directo sin importar este array como mutable. Si agregás un valor acá,
-// también va al CHECK en SQL — son la misma fuente de verdad lógica
-// expresada en dos lenguajes.
+// de eventos_caso.categoria. Los valores `consulta_agente` y
+// `respuesta_agente` existieron en el PR3 y se removieron en el PR4
+// sub-PR2 cuando el chat con el agente pasó a tablas dedicadas
+// (conversaciones_caso + mensajes_conversacion).
 
 export const CATEGORIAS_EVENTO = [
   "audiencia",
   "escrito_presentado",
   "resolucion_recibida",
   "prueba_incorporada",
-  "consulta_agente",
-  "respuesta_agente",
   "otro",
 ] as const;
 
 export type CategoriaEvento = (typeof CATEGORIAS_EVENTO)[number];
 
-// Labels en español para UI. Solo las que el abogado puede elegir
-// explícitamente desde el form. `consulta_agente` y `respuesta_agente`
-// los crea el server desde el endpoint de consulta (PR3); el form de
-// agregar evento manual las omite.
+// Las únicas categorías que el abogado puede elegir desde el form.
+// Hoy son todas (no hay categorías reservadas para el server después
+// del PR4 sub-PR2). Mantengo la indirección por si en el futuro
+// reaparecen categorías auto-generadas por el sistema.
 export const CATEGORIAS_MANUALES: ReadonlyArray<{
   value: CategoriaEvento;
   label: string;
@@ -38,7 +34,5 @@ export const CATEGORIA_LABEL: Record<CategoriaEvento, string> = {
   escrito_presentado: "Escrito presentado",
   resolucion_recibida: "Resolución recibida",
   prueba_incorporada: "Prueba incorporada",
-  consulta_agente: "Consulta al agente",
-  respuesta_agente: "Análisis del agente",
   otro: "Otro",
 };
