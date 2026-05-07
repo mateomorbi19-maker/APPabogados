@@ -219,18 +219,46 @@ export const recomendacionSchema = z.object({
 });
 export type Recomendacion = z.infer<typeof recomendacionSchema>;
 
-export const respuestaConsultaSchema = z.object({
-  analisis: z.object({
-    tesis_central: z.string(),
-    fundamento_legal: z.array(z.string()).default([]),
-    consideraciones: z.string().default(""),
-  }),
-  recomendaciones: z.array(recomendacionSchema).default([]),
-  // Campos enriquecidos por el server al persistir.
+// Discriminated union por `modo`: 'conversacional' (prosa libre) vs
+// 'analisis' (estructura completa con tesis/fundamento/recomendaciones).
+// El modelo decide qué modo usar según la pregunta del abogado — el
+// system prompt lo guía. Cliente y server validan con este schema.
+//
+// Campos enriquecidos al persistir (degraded_response, ejecucion_id,
+// busquedas) son ortogonales al modo; van como `.optional()` en cada
+// branch del union.
+const respuestaConversacionalSchema = z.object({
+  modo: z.literal("conversacional"),
+  respuesta: z.string().min(1),
+  analisis: z.null(),
+  recomendaciones: z.null(),
   degraded_response: z.boolean().optional(),
   ejecucion_id: z.string().uuid().optional(),
   busquedas: z.array(busquedaSchema).optional(),
+  // Si el parser falló y el server cayó al fallback con texto crudo,
+  // este flag aparece true en el panel admin para investigación.
+  parser_fallback: z.boolean().optional(),
 });
+
+const respuestaAnalisisSchema = z.object({
+  modo: z.literal("analisis"),
+  respuesta: z.null(),
+  analisis: z.object({
+    tesis_central: z.string().min(1),
+    fundamento_legal: z.array(z.string()).min(1),
+    consideraciones: z.string().min(1),
+  }),
+  recomendaciones: z.array(recomendacionSchema).min(1),
+  degraded_response: z.boolean().optional(),
+  ejecucion_id: z.string().uuid().optional(),
+  busquedas: z.array(busquedaSchema).optional(),
+  parser_fallback: z.boolean().optional(),
+});
+
+export const respuestaConsultaSchema = z.discriminatedUnion("modo", [
+  respuestaConversacionalSchema,
+  respuestaAnalisisSchema,
+]);
 export type RespuestaConsulta = z.infer<typeof respuestaConsultaSchema>;
 
 // === Chat persistente (PR4 sub-PR2) ===

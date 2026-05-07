@@ -1,13 +1,22 @@
 "use client";
-// Render del mensaje del agente en el chat. Reutiliza la lógica visual
-// del antiguo respuesta-agente-evento.tsx (PR3, ya eliminado): parsea
-// el JSON, valida con zod, y muestra tesis + fundamento + consideraciones
-// + recomendaciones priorizadas + búsquedas colapsables.
+// Render del mensaje del agente en el chat. Dos modos según el campo
+// `modo` del JSON estructurado:
 //
-// Diferencia con el componente del PR3: trabaja sobre `MensajeConversacion`
-// y prefiere `respuesta_estructurada` (jsonb persistido) sobre el
-// contenido string. El JSON-string en `contenido` queda como fallback
-// si la columna nueva está null por alguna razón.
+//   - 'conversacional': prosa libre. Mostramos solo `respuesta` con
+//     párrafos respetados. Header dice "Respuesta del agente" porque
+//     "Análisis del agente" es semánticamente raro para un mensaje
+//     conversacional corto (saludo, follow-up, etc).
+//   - 'analisis': estructura completa — tesis card, fundamento legal,
+//     consideraciones, recomendaciones priorizadas. Header dice
+//     "Análisis del agente".
+//
+// En AMBOS modos se mantiene: degraded_response badge si aplica,
+// flag parser_fallback si aplica (caso raro: el parser no logró
+// estructura y el server cayó al fallback con texto crudo del modelo),
+// búsquedas colapsables al pie.
+//
+// Trabaja sobre `MensajeConversacion`. Prefiere `respuesta_estructurada`
+// (jsonb persistido) sobre el `contenido` string (JSON-string fallback).
 
 import { useState } from "react";
 import { ChevronDown, Sparkles, AlertTriangle } from "lucide-react";
@@ -88,22 +97,85 @@ export function MensajeAgente({ mensaje }: Props) {
 
   return (
     <article className="ml-auto max-w-[90%] rounded-md border border-primary/40 bg-primary/5 px-3 py-3 space-y-3">
-      <header className="flex flex-wrap items-center gap-2">
-        <Sparkles className="size-3.5 text-primary" />
-        <span className="text-[10px] uppercase tracking-wider text-primary font-medium">
-          Análisis del agente
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          · {fmtFecha(mensaje.creado_en)}
-        </span>
-        {respuesta.degraded_response ? (
-          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 text-[10px]">
-            <AlertTriangle className="size-3" />
-            Análisis parcial
-          </span>
-        ) : null}
-      </header>
+      <Header respuesta={respuesta} fecha={mensaje.creado_en} />
 
+      {respuesta.modo === "conversacional" ? (
+        <Conversacional respuesta={respuesta.respuesta} />
+      ) : (
+        <Analisis respuesta={respuesta} />
+      )}
+
+      <BusquedasColapsable busquedas={respuesta.busquedas ?? []} />
+    </article>
+  );
+}
+
+function Header({
+  respuesta,
+  fecha,
+}: {
+  respuesta: RespuestaConsulta;
+  fecha: string;
+}) {
+  // Label del header varía según modo: análisis estructurado vs
+  // respuesta corta. Decisión chica reversible — minimiza la fricción
+  // visual cuando el agente responde algo corto.
+  const labelHeader =
+    respuesta.modo === "analisis"
+      ? "Análisis del agente"
+      : "Respuesta del agente";
+  return (
+    <header className="flex flex-wrap items-center gap-2">
+      <Sparkles className="size-3.5 text-primary" />
+      <span className="text-[10px] uppercase tracking-wider text-primary font-medium">
+        {labelHeader}
+      </span>
+      <span className="text-[10px] text-muted-foreground">· {fmtFecha(fecha)}</span>
+      {respuesta.degraded_response ? (
+        <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 text-[10px]">
+          <AlertTriangle className="size-3" />
+          Análisis parcial
+        </span>
+      ) : null}
+      {respuesta.parser_fallback ? (
+        <span
+          className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 text-[10px]"
+          title="El modelo respondió en formato libre y el server lo guardó como prosa. Caso reportado al admin."
+        >
+          <AlertTriangle className="size-3" />
+          Formato libre
+        </span>
+      ) : null}
+    </header>
+  );
+}
+
+function Conversacional({ respuesta }: { respuesta: string }) {
+  // Splitemos por dobles \n para respetar párrafos del modelo.
+  // Líneas sueltas dentro de un párrafo se preservan con whitespace-pre-wrap.
+  const parrafos = respuesta.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  return (
+    <div className="text-sm leading-relaxed space-y-2.5">
+      {parrafos.length === 0 ? (
+        <p className="whitespace-pre-wrap">{respuesta}</p>
+      ) : (
+        parrafos.map((p, i) => (
+          <p key={i} className="whitespace-pre-wrap">
+            {p}
+          </p>
+        ))
+      )}
+    </div>
+  );
+}
+
+function Analisis({
+  respuesta,
+}: {
+  respuesta: Extract<RespuestaConsulta, { modo: "analisis" }>;
+}) {
+  return (
+    <>
       <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
           Tesis central
@@ -149,47 +221,54 @@ export function MensajeAgente({ mensaje }: Props) {
           </ul>
         </div>
       ) : null}
+    </>
+  );
+}
 
-      {respuesta.busquedas && respuesta.busquedas.length > 0 ? (
-        <Collapsible className="rounded-md border border-border bg-muted/10">
-          <CollapsibleTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="group w-full justify-between rounded-md px-3 py-1.5 h-auto"
-              />
-            }
-          >
-            <span className="text-[11px] text-muted-foreground">
-              Ver búsquedas que hizo el agente ({respuesta.busquedas.length})
-            </span>
-            <ChevronDown className="size-3.5 transition-transform group-data-open:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <ul className="border-t border-border divide-y divide-border/50">
-              {respuesta.busquedas.map((b, i) => (
-                <li
-                  key={i}
-                  className="px-3 py-1.5 text-[11px] flex items-center justify-between gap-3"
-                >
-                  <span className="font-mono truncate flex-1 min-w-0">
-                    {i + 1}. {b.query}
-                  </span>
-                  <span className="text-muted-foreground shrink-0">
-                    sim:{" "}
-                    {b.similarity_top !== null
-                      ? b.similarity_top.toFixed(3)
-                      : "—"}{" "}
-                    · chunks: {fmtNumber(b.chunks_devueltos)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
-    </article>
+function BusquedasColapsable({
+  busquedas,
+}: {
+  busquedas: NonNullable<RespuestaConsulta["busquedas"]>;
+}) {
+  if (busquedas.length === 0) return null;
+  return (
+    <Collapsible className="rounded-md border border-border bg-muted/10">
+      <CollapsibleTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="group w-full justify-between rounded-md px-3 py-1.5 h-auto"
+          />
+        }
+      >
+        <span className="text-[11px] text-muted-foreground">
+          Ver búsquedas que hizo el agente ({busquedas.length})
+        </span>
+        <ChevronDown className="size-3.5 transition-transform group-data-open:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ul className="border-t border-border divide-y divide-border/50">
+          {busquedas.map((b, i) => (
+            <li
+              key={i}
+              className="px-3 py-1.5 text-[11px] flex items-center justify-between gap-3"
+            >
+              <span className="font-mono truncate flex-1 min-w-0">
+                {i + 1}. {b.query}
+              </span>
+              <span className="text-muted-foreground shrink-0">
+                sim:{" "}
+                {b.similarity_top !== null
+                  ? b.similarity_top.toFixed(3)
+                  : "—"}{" "}
+                · chunks: {fmtNumber(b.chunks_devueltos)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

@@ -38,7 +38,9 @@ function mensajeUserParaError(code: string): string {
     case "API_ERROR":
       return "Hubo un error de comunicación con el modelo. Reintentá en unos segundos.";
     default:
-      return "Tu mensaje quedó registrado pero el análisis falló. Probá de nuevo.";
+      // Default user-friendly: el caso default cubre errores no
+      // categorizados. Mensaje accionable sin códigos técnicos.
+      return "El agente no pudo responder esta vez. Probá reformular tu pregunta o esperá un momento y reintentá. Si el problema persiste, contactá al administrador.";
   }
 }
 
@@ -368,6 +370,15 @@ export async function POST(
   // 5b. Parse de la respuesta.
   const parseado = parseWithRecovery(agentResult.rawText);
 
+  // FALLBACK: si el parser falló después de 3 intentos, no rompemos
+  // al usuario. Construimos una "respuesta conversacional fallback"
+  // con el texto crudo del modelo y persistimos la ejecución con
+  // `parser_fallback: true` para que el panel admin la marque como
+  // caso a investigar. Mejor entregar prosa que dejar al usuario sin
+  // respuesta (decisión PR4 fix-respuesta-adaptable).
+  const parserFallback = !parseado.ok;
+  const rawTrimmed = agentResult.rawText.trim();
+
   // 6. INSERT ejecución (siempre, tokens reales).
   const usage = agentResult.usage;
   const insertEjecPayload = {
@@ -393,6 +404,7 @@ export async function POST(
       cache_read_input_tokens: usage.cache_read_input_tokens,
       degraded_response: agentResult.degraded_response,
       ...(parseado.ok ? {} : { parseo_error: parseado.error }),
+      ...(parserFallback ? { parser_fallback: true } : {}),
     },
   };
   const { data: ejecInsertada, error: ejecErr } = await supabase
@@ -413,33 +425,31 @@ export async function POST(
     );
   }
 
-  // 7. Si parseo falló: NO creamos mensaje del agente. La ejecución
-  // queda con parseo_error en metadata para auditoría.
-  if (!parseado.ok) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: "El modelo devolvió una respuesta que no se pudo procesar.",
-        mensaje_usuario: msgUsuario,
+  // 7. Construir respuesta enriquecida (modo conversacional fallback
+  // si el parser falló). Mantiene el shape del schema discriminado
+  // para que el cliente la pueda renderizar uniformemente.
+  const respuestaEnriquecida = parserFallback
+    ? {
+        modo: "conversacional" as const,
+        respuesta:
+          rawTrimmed.length > 0
+            ? rawTrimmed
+            : "(El agente respondió pero no se pudo interpretar la respuesta. El equipo fue notificado.)",
+        analisis: null,
+        recomendaciones: null,
+        parser_fallback: true as const,
+        degraded_response: agentResult.degraded_response,
         ejecucion_id: ejecInsertada.id,
-        ...(isDev()
-          ? {
-              raw_response: parseado.raw_response,
-              parse_error: parseado.error,
-            }
-          : {}),
-      },
-      502,
-    );
-  }
+        busquedas: agentResult.busquedas,
+      }
+    : {
+        ...parseado.resultado,
+        degraded_response: agentResult.degraded_response,
+        ejecucion_id: ejecInsertada.id,
+        busquedas: agentResult.busquedas,
+      };
 
-  // 8. Construir respuesta enriquecida y crear mensaje del agente.
-  const respuestaEnriquecida = {
-    ...parseado.resultado,
-    degraded_response: agentResult.degraded_response,
-    ejecucion_id: ejecInsertada.id,
-    busquedas: agentResult.busquedas,
-  };
+  // 8. Crear mensaje del agente (siempre, incluso en fallback).
   const { data: msgAgente, error: msgAgenteErr } = await supabase
     .from("mensajes_conversacion")
     .insert({
