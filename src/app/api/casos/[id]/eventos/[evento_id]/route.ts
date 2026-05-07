@@ -7,8 +7,17 @@ import { jsonResponse, isDev } from "@/lib/http";
 const uuidSchema = z.string().uuid();
 
 // === DELETE /api/casos/[id]/eventos/[evento_id] ===
-// Borra un evento del timeline. Verifica que el caso es del usuario
-// y que el evento pertenece a ese caso.
+//
+// Borra un evento del timeline. Restricciones:
+//   1. El caso pertenece al usuario.
+//   2. El evento pertenece al caso.
+//   3. El evento es de origen 'manual'. Eventos 'sistema' (creación del
+//      caso) y 'agente' (respuestas del agente — PR3) NO se pueden
+//      borrar: preservan el histórico del caso.
+//
+// (Decisión del director: borrado solo para manuales. Spec original
+// del feature scope-out decía "no permitir borrar"; relajamos para
+// manuales porque ya estaba implementado y los abogados lo usan.)
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; evento_id: string }> },
@@ -28,7 +37,7 @@ export async function DELETE(
 
   const supabase = createServerClient();
 
-  // Validamos que el caso es del usuario.
+  // Caso es del usuario.
   const { data: caso, error: casoErr } = await supabase
     .from("casos")
     .select("id")
@@ -51,13 +60,44 @@ export async function DELETE(
     return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
   }
 
-  // Borramos con doble filtro: id del evento + caso_id (verifica que el
-  // evento pertenece al caso del usuario). Si count=0 → 404.
-  const { error, count } = await supabase
+  // Evento existe + pertenece al caso + es manual. Hacemos un SELECT
+  // previo en vez de un DELETE-with-filter porque queremos distinguir
+  // 404 (no existe) de 403 (existe pero no es manual). Con DELETE
+  // filtrado nos quedaríamos con count=0 sin saber por qué.
+  const { data: evento, error: evErr } = await supabase
     .from("eventos_caso")
-    .delete({ count: "exact" })
+    .select("id, tipo")
     .eq("id", eventoId)
-    .eq("caso_id", casoId);
+    .eq("caso_id", casoId)
+    .maybeSingle();
+  if (evErr) {
+    console.error("[DELETE evento] error cargando evento:", evErr);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error consultando evento",
+        ...(isDev() ? { detail: evErr.message } : {}),
+      },
+      500,
+    );
+  }
+  if (!evento) {
+    return jsonResponse({ ok: false, error: "Evento no encontrado" }, 404);
+  }
+  if (evento.tipo !== "manual") {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Solo se pueden borrar eventos manuales",
+      },
+      403,
+    );
+  }
+
+  const { error } = await supabase
+    .from("eventos_caso")
+    .delete()
+    .eq("id", eventoId);
 
   if (error) {
     console.error("[DELETE evento] error:", error);
@@ -69,9 +109,6 @@ export async function DELETE(
       },
       500,
     );
-  }
-  if (count === 0) {
-    return jsonResponse({ ok: false, error: "Evento no encontrado" }, 404);
   }
 
   return jsonResponse({ ok: true }, 200);

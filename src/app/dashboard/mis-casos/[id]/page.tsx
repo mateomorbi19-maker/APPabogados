@@ -36,7 +36,9 @@ export default async function CasoDetallePage({
       .maybeSingle(),
     supabase
       .from("eventos_caso")
-      .select("id, tipo, descripcion, ocurrido_en, estado, creado_en")
+      .select(
+        "id, tipo, categoria, descripcion, ocurrido_en, estado, creado_en, adjuntos",
+      )
       .eq("caso_id", id)
       .order("ocurrido_en", { ascending: true }),
   ]);

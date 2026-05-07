@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { CATEGORIAS_EVENTO } from "@/lib/casos/categorias";
+import { MIME_TYPES_PERMITIDOS } from "@/lib/casos/adjuntos";
 
 export const rolSchema = z.enum(["defensor", "querellante", "ambos"]);
 export type RolInput = z.infer<typeof rolSchema>;
@@ -155,10 +157,39 @@ export const crearCasoInputSchema = z.object({
 });
 export type CrearCasoInput = z.infer<typeof crearCasoInputSchema>;
 
+// Cada adjunto en el body apunta a un objeto ya subido al bucket
+// `eventos-caso-adjuntos` vía signed URL. El cliente sube primero (PUT
+// directo al storage) y luego pega el storage_path en el evento.
+//
+// El server NO baja el archivo para verificar mime/size aquí — confía en
+// los metadatos que vienen y en la validación previa del endpoint
+// upload-url. Sí valida que el storage_path empiece con
+// {usuario_id}/{caso_id}/ para que un usuario no pueda referenciar
+// adjuntos de otro caso suyo en el evento equivocado.
+export const adjuntoInputSchema = z.object({
+  filename: z.string().min(1).max(255),
+  storage_path: z.string().min(1).max(500),
+  mime_type: z.enum(MIME_TYPES_PERMITIDOS),
+  size_bytes: z.number().int().positive(),
+  descripcion: z.string().max(500).default(""),
+});
+export type AdjuntoInput = z.infer<typeof adjuntoInputSchema>;
+
+// Categoría procesal manual: las dos categorías del agente
+// (consulta_agente, respuesta_agente) las setea el server desde su
+// propio endpoint en PR3, no las acepta este form.
+const CATEGORIAS_MANUALES_TUPLE = [
+  "audiencia",
+  "escrito_presentado",
+  "resolucion_recibida",
+  "prueba_incorporada",
+  "otro",
+] as const satisfies ReadonlyArray<(typeof CATEGORIAS_EVENTO)[number]>;
+
 // Validación de fecha "razonable" del evento: parseable + año entre 2020 y 2050.
 // Frontend puede omitirla; el server la default-ea a now().
 export const crearEventoInputSchema = z.object({
-  descripcion: z.string().min(1).max(2000),
+  descripcion: z.string().min(20).max(2000),
   ocurrido_en: z
     .string()
     .datetime({ offset: true })
@@ -168,5 +199,17 @@ export const crearEventoInputSchema = z.object({
     }, "Fecha fuera de rango razonable (2020–2050)")
     .optional(),
   estado: z.enum(["sucedido", "pendiente"]).optional(),
+  categoria: z.enum(CATEGORIAS_MANUALES_TUPLE),
+  adjuntos: z.array(adjuntoInputSchema).max(20).default([]),
 });
 export type CrearEventoInput = z.infer<typeof crearEventoInputSchema>;
+
+// Body del endpoint que pide signed URL para upload directo al bucket.
+// El server valida + genera el storage path canónico; el cliente
+// recibe la URL firmada y sube el archivo con PUT.
+export const adjuntoUploadUrlInputSchema = z.object({
+  filename: z.string().min(1).max(255),
+  mime_type: z.enum(MIME_TYPES_PERMITIDOS),
+  size_bytes: z.number().int().positive(),
+});
+export type AdjuntoUploadUrlInput = z.infer<typeof adjuntoUploadUrlInputSchema>;

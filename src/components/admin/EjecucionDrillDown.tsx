@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Copy, Check, X as CloseIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/admin/Badge";
-import { Sheet } from "@/components/admin/Sheet";
+import { Sheet } from "@/components/ui/sheet";
 import { fmtCosto, fmtFecha, fmtModelo, fmtNumber } from "@/lib/format";
 import type { EjecucionAdmin } from "@/lib/admin/types";
 

@@ -8,8 +8,16 @@ import { jsonResponse, isDev } from "@/lib/http";
 const uuidSchema = z.string().uuid();
 
 // === POST /api/casos/[id]/eventos ===
+//
 // Inserta un evento manual al timeline de un caso del usuario.
-// `ocurrido_en` opcional (default = now()).
+// `ocurrido_en` opcional (default = now()). Acepta `categoria` (proc) y
+// `adjuntos[]` (jsonb) — los adjuntos vienen ya subidos al bucket vía
+// signed URL del endpoint /upload-url.
+//
+// Validación clave: cada `storage_path` de los adjuntos debe empezar con
+// `{usuario_id}/{caso_id}/`. Defensa contra que un abogado asocie
+// adjuntos de otro caso suyo (subió correctamente bajo su propio path
+// pero apunta al evento equivocado).
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -32,11 +40,28 @@ export async function POST(
       400,
     );
   }
-  const { descripcion, ocurrido_en, estado } = parsedBody.data;
+  const { descripcion, ocurrido_en, estado, categoria, adjuntos } =
+    parsedBody.data;
 
   const wl = await requireUsuarioOr403();
   if (!wl.ok) {
     return jsonResponse({ ok: false, error: wl.message }, wl.status);
+  }
+
+  // Cada adjunto debe pertenecer a este caso del usuario. Sin esto, un
+  // body malicioso podría apuntar a `{otro_caso}/foo.pdf` y "asociarlo"
+  // a este evento. Es defensa-en-profundidad además del auth por endpoint.
+  const expectedPrefix = `${wl.usuario_id}/${casoId}/`;
+  for (const a of adjuntos) {
+    if (!a.storage_path.startsWith(expectedPrefix)) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Algún adjunto no pertenece a este caso",
+        },
+        400,
+      );
+    }
   }
 
   const supabase = createServerClient();
@@ -72,11 +97,15 @@ export async function POST(
     .insert({
       caso_id: casoId,
       tipo: "manual",
+      categoria,
       descripcion,
       ocurrido_en: ocurridoEnIso,
       estado: estadoFinal,
+      adjuntos,
     })
-    .select("id, tipo, descripcion, ocurrido_en, estado, creado_en")
+    .select(
+      "id, tipo, categoria, descripcion, ocurrido_en, estado, creado_en, adjuntos",
+    )
     .single();
 
   if (evErr || !evento) {
