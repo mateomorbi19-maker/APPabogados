@@ -1,0 +1,578 @@
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import {
+  crearMensajeInputSchema,
+  type AdjuntoInput,
+} from "@/lib/schemas";
+import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
+import { enforceTokenLimit } from "@/lib/auth/enforce-rate";
+import { createServerClient } from "@/lib/supabase/server";
+import { jsonResponse, isDev } from "@/lib/http";
+import { MODEL_ID } from "@/lib/anthropic";
+import { SYSTEM_PROMPT_CONSULTA } from "@/lib/agent/prompts";
+import { parseWithRecovery } from "@/lib/agent/parse";
+import { calcularCosto } from "@/lib/agent/pricing";
+import {
+  runAgentConsulta,
+  type AdjuntoModelo,
+} from "@/lib/agent/run-agent-consulta";
+import { AgentError } from "@/lib/agent/run-agent";
+import {
+  descargarAdjuntoBytes,
+  extraerTextoDocx,
+} from "@/lib/casos/descargar-adjunto";
+import { buildContextoConversacion } from "@/lib/casos/build-contexto-conversacion";
+
+// Latencia esperada similar al análisis original. 120s da headroom
+// para el polling de recovery post-502 del cliente.
+export const maxDuration = 120;
+
+const uuidSchema = z.string().uuid();
+
+function mensajeUserParaError(code: string): string {
+  switch (code) {
+    case "CAP_EXCEEDED_NO_SYNTHESIS":
+      return "Tu mensaje requiere más investigación de la que el sistema permite por turno. Probá reformularlo más específico o partirlo en mensajes más chicos.";
+    case "MAX_ITERATIONS":
+      return "El análisis no logró converger. Reintentá en unos minutos.";
+    case "API_ERROR":
+      return "Hubo un error de comunicación con el modelo. Reintentá en unos segundos.";
+    default:
+      return "Tu mensaje quedó registrado pero el análisis falló. Probá de nuevo.";
+  }
+}
+
+async function prepararAdjuntoParaModelo(
+  a: AdjuntoInput,
+): Promise<AdjuntoModelo | null> {
+  const descripcion = a.descripcion?.trim() ? a.descripcion.trim() : null;
+  if (a.mime_type === "application/pdf") {
+    const { base64 } = await descargarAdjuntoBytes(a.storage_path);
+    return { kind: "pdf", filename: a.filename, descripcion, base64 };
+  }
+  if (a.mime_type === "image/jpeg" || a.mime_type === "image/png") {
+    const { base64 } = await descargarAdjuntoBytes(a.storage_path);
+    return {
+      kind: "image",
+      mediaType: a.mime_type,
+      filename: a.filename,
+      descripcion,
+      base64,
+    };
+  }
+  if (
+    a.mime_type ===
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    const { buffer } = await descargarAdjuntoBytes(a.storage_path);
+    const texto = await extraerTextoDocx(buffer);
+    return { kind: "docx", filename: a.filename, descripcion, texto };
+  }
+  return null;
+}
+
+type ConversacionLite = { estado: string; caso_id: string };
+
+async function validarConversacionActiva(
+  casoId: string,
+  convId: string,
+  usuarioId: string,
+): Promise<
+  | { ok: true }
+  | { ok: false; status: number; error: string; detail?: string }
+> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("conversaciones_caso")
+    .select("estado, caso_id, casos!inner(usuario_id)")
+    .eq("id", convId)
+    .eq("caso_id", casoId)
+    .maybeSingle();
+  if (error) {
+    return {
+      ok: false,
+      status: 500,
+      error: "Error consultando conversación",
+      detail: error.message,
+    };
+  }
+  if (!data) {
+    return { ok: false, status: 404, error: "Conversación no encontrada" };
+  }
+  const conv = data as unknown as ConversacionLite & {
+    casos: { usuario_id: string } | { usuario_id: string }[];
+  };
+  const usuarioCaso = Array.isArray(conv.casos)
+    ? conv.casos[0]?.usuario_id
+    : conv.casos?.usuario_id;
+  if (usuarioCaso !== usuarioId) {
+    return { ok: false, status: 404, error: "Conversación no encontrada" };
+  }
+  if (conv.estado !== "activa") {
+    return {
+      ok: false,
+      status: 409,
+      error:
+        "La conversación está archivada. Empezá una nueva o continuá en la conversación activa.",
+    };
+  }
+  return { ok: true };
+}
+
+// === POST /api/casos/[id]/conversaciones/[conv_id]/mensajes ===
+//
+// Agrega un mensaje del usuario a la conversación activa, llama al
+// agente con contexto + history, persiste la ejecución, e inserta
+// el mensaje del agente con la respuesta estructurada.
+//
+// Manejo de errores:
+//   - El mensaje del usuario se inserta ANTES de llamar al agente.
+//     Queda registro aunque el agente falle.
+//   - Si el agente tira AgentError, persistimos la ejecución con error
+//     y devolvemos 502. NO se inserta mensaje del agente.
+//   - Si el parseo del JSON falla, ídem.
+//   - El cliente al recibir 502 hace polling al GET /mensajes para
+//     ver si el server alcanzó a crear el mensaje del agente (caso
+//     edge: el server terminó OK pero el proxy cortó).
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; conv_id: string }> },
+): Promise<Response> {
+  const { id: casoId, conv_id: convId } = await params;
+  if (!uuidSchema.safeParse(casoId).success) {
+    return jsonResponse({ ok: false, error: "id de caso inválido" }, 400);
+  }
+  if (!uuidSchema.safeParse(convId).success) {
+    return jsonResponse(
+      { ok: false, error: "id de conversación inválido" },
+      400,
+    );
+  }
+
+  let bodyJson: unknown;
+  try {
+    bodyJson = await req.json();
+  } catch {
+    return jsonResponse({ ok: false, error: "Body no es JSON válido" }, 400);
+  }
+  const parsed = crearMensajeInputSchema.safeParse(bodyJson);
+  if (!parsed.success) {
+    return jsonResponse(
+      { ok: false, error: "Body inválido", issues: parsed.error.issues },
+      400,
+    );
+  }
+  const { contenido, adjuntos } = parsed.data;
+
+  const wl = await requireUsuarioOr403();
+  if (!wl.ok) {
+    return jsonResponse({ ok: false, error: wl.message }, wl.status);
+  }
+
+  // Conversación pertenece al caso del usuario y está activa.
+  const v = await validarConversacionActiva(casoId, convId, wl.usuario_id);
+  if (!v.ok) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: v.error,
+        ...(isDev() && v.detail ? { detail: v.detail } : {}),
+      },
+      v.status,
+    );
+  }
+
+  // Adjuntos válidos para este caso.
+  const expectedPrefix = `${wl.usuario_id}/${casoId}/`;
+  for (const a of adjuntos) {
+    if (!a.storage_path.startsWith(expectedPrefix)) {
+      return jsonResponse(
+        { ok: false, error: "Algún adjunto no pertenece a este caso" },
+        400,
+      );
+    }
+  }
+
+  // Rate limit.
+  const rl = await enforceTokenLimit(wl.usuario_id);
+  if (!rl.ok) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Cupo mensual de tokens agotado",
+        tokens_usados: rl.tokens_usados,
+        limite: rl.limite,
+      },
+      429,
+    );
+  }
+
+  const supabase = createServerClient();
+
+  // 1. INSERT mensaje del usuario PRIMERO. Queda en BD aunque el
+  // agente falle.
+  const { data: msgUsuario, error: msgUserErr } = await supabase
+    .from("mensajes_conversacion")
+    .insert({
+      conversacion_id: convId,
+      rol: "usuario",
+      contenido,
+      adjuntos,
+    })
+    .select(
+      "id, conversacion_id, rol, contenido, adjuntos, respuesta_estructurada, ejecucion_id, creado_en",
+    )
+    .single();
+  if (msgUserErr || !msgUsuario) {
+    console.error("[POST mensajes] error insertando msg usuario:", msgUserErr);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error registrando mensaje",
+        ...(isDev() && msgUserErr ? { detail: msgUserErr.message } : {}),
+      },
+      500,
+    );
+  }
+
+  // 2. Build contexto + mensajesPrevios. Excluimos el mensaje recién
+  // insertado porque ese va aparte como user content del último call.
+  let contextoMarkdown: string;
+  let mensajesPrevios: Awaited<
+    ReturnType<typeof buildContextoConversacion>
+  >["mensajesPrevios"];
+  try {
+    const built = await buildContextoConversacion(casoId, convId, {
+      excluirMensajeId: msgUsuario.id,
+    });
+    contextoMarkdown = built.contextoMarkdown;
+    mensajesPrevios = built.mensajesPrevios;
+  } catch (e) {
+    console.error("[POST mensajes] error armando contexto:", e);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error armando el contexto del caso",
+        ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
+        mensaje_usuario: msgUsuario,
+      },
+      500,
+    );
+  }
+
+  // 3. Bajar adjuntos del mensaje actual y prepararlos para el modelo.
+  let adjuntosModelo: AdjuntoModelo[];
+  try {
+    const promesas = adjuntos.map((a) => prepararAdjuntoParaModelo(a));
+    const resultados = await Promise.all(promesas);
+    adjuntosModelo = resultados.filter(
+      (r): r is AdjuntoModelo => r !== null,
+    );
+  } catch (e) {
+    console.error("[POST mensajes] error preparando adjuntos:", e);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error preparando los adjuntos para el modelo",
+        ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
+        mensaje_usuario: msgUsuario,
+      },
+      500,
+    );
+  }
+
+  // 4. Llamar al agente con history.
+  const t0 = Date.now();
+  let agentResult: Awaited<ReturnType<typeof runAgentConsulta>> | null = null;
+  let agentError: AgentError | null = null;
+  try {
+    agentResult = await runAgentConsulta({
+      pregunta: contenido,
+      contextoCaso: contextoMarkdown,
+      adjuntos: adjuntosModelo,
+      systemPrompt: SYSTEM_PROMPT_CONSULTA,
+      mensajesPrevios,
+    });
+  } catch (e) {
+    if (e instanceof AgentError) {
+      agentError = e;
+    } else {
+      console.error("[POST mensajes] runAgentConsulta failed pre-loop:", e);
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Error ejecutando agente",
+          ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
+          mensaje_usuario: msgUsuario,
+        },
+        500,
+      );
+    }
+  }
+  const latencia_ms = Date.now() - t0;
+
+  // 5a. Si AgentError: persistir ejecución parcial y devolver 502.
+  if (agentError) {
+    const usage = agentError.partialUsage;
+    await supabase.from("ejecuciones").insert({
+      usuario_id: wl.usuario_id,
+      tipo: "consulta_caso",
+      modelo: MODEL_ID,
+      input_tokens: usage.input_tokens,
+      output_tokens: usage.output_tokens,
+      costo_usd: calcularCosto(MODEL_ID, usage),
+      latencia_ms,
+      metadata: {
+        caso_id: casoId,
+        conversacion_id: convId,
+        mensaje_usuario_id: msgUsuario.id,
+        pregunta: contenido,
+        adjuntos,
+        contexto_usado: contextoMarkdown,
+        resultado: null,
+        busquedas: agentError.partialBusquedas,
+        iterations: agentError.partialIterations,
+        cache_creation_input_tokens: usage.cache_creation_input_tokens,
+        cache_read_input_tokens: usage.cache_read_input_tokens,
+        error: agentError.message,
+        error_code: agentError.code,
+      },
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: mensajeUserParaError(agentError.code),
+        mensaje_usuario: msgUsuario,
+        ...(isDev()
+          ? {
+              error_code: agentError.code,
+              error_detail: agentError.message,
+            }
+          : {}),
+      },
+      502,
+    );
+  }
+
+  if (!agentResult) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Estado interno inválido",
+        mensaje_usuario: msgUsuario,
+      },
+      500,
+    );
+  }
+
+  // 5b. Parse de la respuesta.
+  const parseado = parseWithRecovery(agentResult.rawText);
+
+  // 6. INSERT ejecución (siempre, tokens reales).
+  const usage = agentResult.usage;
+  const insertEjecPayload = {
+    usuario_id: wl.usuario_id,
+    tipo: "consulta_caso",
+    modelo: MODEL_ID,
+    input_tokens: usage.input_tokens,
+    output_tokens: usage.output_tokens,
+    costo_usd: calcularCosto(MODEL_ID, usage),
+    latencia_ms,
+    metadata: {
+      caso_id: casoId,
+      conversacion_id: convId,
+      mensaje_usuario_id: msgUsuario.id,
+      pregunta: contenido,
+      adjuntos,
+      contexto_usado: contextoMarkdown,
+      resultado: parseado.ok ? parseado.resultado : null,
+      busquedas: agentResult.busquedas,
+      parseo_intento: parseado.ok ? parseado.parseo_intento : null,
+      iterations: agentResult.iterations,
+      cache_creation_input_tokens: usage.cache_creation_input_tokens,
+      cache_read_input_tokens: usage.cache_read_input_tokens,
+      degraded_response: agentResult.degraded_response,
+      ...(parseado.ok ? {} : { parseo_error: parseado.error }),
+    },
+  };
+  const { data: ejecInsertada, error: ejecErr } = await supabase
+    .from("ejecuciones")
+    .insert(insertEjecPayload)
+    .select("id")
+    .single();
+  if (ejecErr || !ejecInsertada) {
+    console.error("[POST mensajes] insert ejecucion failed:", ejecErr);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error persistiendo ejecución",
+        ...(isDev() && ejecErr ? { detail: ejecErr.message } : {}),
+        mensaje_usuario: msgUsuario,
+      },
+      500,
+    );
+  }
+
+  // 7. Si parseo falló: NO creamos mensaje del agente. La ejecución
+  // queda con parseo_error en metadata para auditoría.
+  if (!parseado.ok) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "El modelo devolvió una respuesta que no se pudo procesar.",
+        mensaje_usuario: msgUsuario,
+        ejecucion_id: ejecInsertada.id,
+        ...(isDev()
+          ? {
+              raw_response: parseado.raw_response,
+              parse_error: parseado.error,
+            }
+          : {}),
+      },
+      502,
+    );
+  }
+
+  // 8. Construir respuesta enriquecida y crear mensaje del agente.
+  const respuestaEnriquecida = {
+    ...parseado.resultado,
+    degraded_response: agentResult.degraded_response,
+    ejecucion_id: ejecInsertada.id,
+    busquedas: agentResult.busquedas,
+  };
+  const { data: msgAgente, error: msgAgenteErr } = await supabase
+    .from("mensajes_conversacion")
+    .insert({
+      conversacion_id: convId,
+      rol: "agente",
+      contenido: JSON.stringify(respuestaEnriquecida),
+      adjuntos: [],
+      respuesta_estructurada: respuestaEnriquecida,
+      ejecucion_id: ejecInsertada.id,
+    })
+    .select(
+      "id, conversacion_id, rol, contenido, adjuntos, respuesta_estructurada, ejecucion_id, creado_en",
+    )
+    .single();
+  if (msgAgenteErr || !msgAgente) {
+    console.error("[POST mensajes] error insertando msg agente:", msgAgenteErr);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error registrando la respuesta del agente",
+        mensaje_usuario: msgUsuario,
+        ejecucion_id: ejecInsertada.id,
+        ...(isDev() && msgAgenteErr ? { detail: msgAgenteErr.message } : {}),
+      },
+      500,
+    );
+  }
+
+  return jsonResponse(
+    {
+      ok: true,
+      mensaje_usuario: msgUsuario,
+      mensaje_agente: msgAgente,
+      respuesta: respuestaEnriquecida,
+    },
+    200,
+  );
+}
+
+// === GET /api/casos/[id]/conversaciones/[conv_id]/mensajes?desde=<iso> ===
+//
+// Polling para recovery post-502: el cliente al recibir 502 al hacer
+// POST hace polling acá durante 60s buscando el mensaje del agente
+// que el server pudo haber alcanzado a insertar antes del corte.
+const queryGet = z.object({
+  desde: z.string().datetime({ offset: true }),
+});
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; conv_id: string }> },
+): Promise<Response> {
+  const { id: casoId, conv_id: convId } = await params;
+  if (!uuidSchema.safeParse(casoId).success) {
+    return jsonResponse({ ok: false, error: "id de caso inválido" }, 400);
+  }
+  if (!uuidSchema.safeParse(convId).success) {
+    return jsonResponse(
+      { ok: false, error: "id de conversación inválido" },
+      400,
+    );
+  }
+
+  const url = new URL(req.url);
+  const parsed = queryGet.safeParse({ desde: url.searchParams.get("desde") });
+  if (!parsed.success) {
+    return jsonResponse(
+      { ok: false, error: "Query inválida", issues: parsed.error.issues },
+      400,
+    );
+  }
+
+  const wl = await requireUsuarioOr403();
+  if (!wl.ok) {
+    return jsonResponse({ ok: false, error: wl.message }, wl.status);
+  }
+
+  const supabase = createServerClient();
+
+  // Caso del usuario + conversación del caso. Mismo patrón que el
+  // helper del [conv_id]/route.ts pero inline acá para no introducir
+  // un import circular.
+  const { data: conv, error: convErr } = await supabase
+    .from("conversaciones_caso")
+    .select("id, casos!inner(usuario_id)")
+    .eq("id", convId)
+    .eq("caso_id", casoId)
+    .maybeSingle();
+  if (convErr) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error consultando conversación",
+        ...(isDev() ? { detail: convErr.message } : {}),
+      },
+      500,
+    );
+  }
+  if (!conv) {
+    return jsonResponse(
+      { ok: false, error: "Conversación no encontrada" },
+      404,
+    );
+  }
+  const casos = (conv as unknown as { casos: { usuario_id: string } | { usuario_id: string }[] }).casos;
+  const usuarioCaso = Array.isArray(casos) ? casos[0]?.usuario_id : casos?.usuario_id;
+  if (usuarioCaso !== wl.usuario_id) {
+    return jsonResponse(
+      { ok: false, error: "Conversación no encontrada" },
+      404,
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("mensajes_conversacion")
+    .select(
+      "id, conversacion_id, rol, contenido, adjuntos, respuesta_estructurada, ejecucion_id, creado_en",
+    )
+    .eq("conversacion_id", convId)
+    .gte("creado_en", parsed.data.desde)
+    .order("creado_en", { ascending: true })
+    .limit(20);
+
+  if (error) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error consultando mensajes",
+        ...(isDev() ? { detail: error.message } : {}),
+      },
+      500,
+    );
+  }
+
+  return jsonResponse({ mensajes: data ?? [] }, 200);
+}

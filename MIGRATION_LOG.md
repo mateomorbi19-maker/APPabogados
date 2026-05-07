@@ -92,3 +92,49 @@ Este archivo se mantiene durante las Fases 2–5 para dejar registro humano de q
 
 - RLS policies del bucket `eventos-caso-adjuntos` (path: `{usuario_id}/{caso_id}/...`). Hoy el server usa service_role que bypassea cualquier policy, así que esto es defensivo para cuando se active RLS en pre-producción.
 - Endpoint de signed URLs para upload directo cliente → Storage.
+
+---
+
+## 2026-05-07 · 18:00:00 UTC — `20260507180000_chat_persistente_cleanup_pr3_y_refunded.sql`
+
+**Contexto:** PR4 sub-PR2 (`feature/pr4-chat-persistente`). Pivote estructural: el modelo de "consultas pareadas en el timeline" del PR3 se reemplaza por chat persistente en tablas dedicadas. La migración hace TODO en una transacción.
+
+**Cambios aplicados:**
+
+1. **Cleanup PR3:**
+   - `DELETE FROM eventos_caso WHERE categoria IN ('consulta_agente','respuesta_agente')` → 2 filas borradas (par del QA del director del 7-may 21:59).
+   - `DELETE FROM ejecuciones WHERE tipo='consulta_caso'` → 1 fila borrada ($0.0758, 15.522 tokens).
+
+2. **Tighten constraints `eventos_caso`:**
+   - `tipo` CHECK ahora `IN ('manual','sistema')` — sacamos `'agente'`.
+   - `categoria` CHECK saca `'consulta_agente'` y `'respuesta_agente'`.
+   - `COMMENT ON COLUMN` actualizado para reflejar el modelo nuevo.
+
+3. **Tablas nuevas:**
+   - `conversaciones_caso (id, caso_id FK, titulo, estado [activa|archivada], creada_en, actualizada_en, archivada_en)`. Partial unique index `(caso_id) WHERE estado='activa'` garantiza ≤1 activa por caso.
+   - `mensajes_conversacion (id, conversacion_id FK, rol [usuario|agente], contenido, adjuntos jsonb, respuesta_estructurada jsonb NULL, ejecucion_id FK NULL, creado_en)`.
+
+4. **Trigger `mensajes_bump_conv`:** AFTER INSERT/UPDATE/DELETE en `mensajes_conversacion` actualiza `conversaciones_caso.actualizada_en` del conversation padre.
+
+5. **Refunded:** 4 ejecuciones `analizar_caso` históricas marcadas con `metadata.refunded=true`, `refunded_at`, `refund_reason`:
+   - 3 del 2026-05-01 con `metadata.error='LIMITE_BUSQUEDAS_EXCEDIDO'`.
+   - 1 del 2026-05-07 con `metadata.error_code='CAP_EXCEEDED_NO_SYNTHESIS'`.
+
+6. **`v_consumo_mensual` modificada:** el JOIN ahora incluye `AND COALESCE((e.metadata->>'refunded')::boolean, false) = false`. Ejecuciones reembolsadas no cuentan para el consumo del mes ni para rate-limit.
+
+**Estado verificado post-migración:**
+
+| Verificación | Esperado | Real |
+|---|---|---|
+| `eventos_caso WHERE categoria IN ('consulta_agente','respuesta_agente')` | 0 | 0 ✅ |
+| `ejecuciones WHERE tipo='consulta_caso'` | 0 | 0 ✅ |
+| `ejecuciones WHERE metadata.refunded=true` | 4 | 4 ✅ |
+| `conversaciones_caso` y `mensajes_conversacion` existen | sí | sí ✅ |
+| Vista `v_consumo_mensual` excluye refunded del agregado | sí | sí (Mateo: 17 ejec / 379K tokens / $1.81 en mayo, sin las 1 refunded del 7-may) |
+
+**Efectos colaterales:** los archivos del bucket `eventos-caso-adjuntos` que apuntaban a los eventos consulta/respuesta borrados quedan huérfanos. **Pre-flight verificó que no hay archivos de ese flujo (0 adjuntos en los 2 eventos del par)** — sin huérfanos reales en el bucket.
+
+**Pendiente para iteraciones futuras:**
+
+- RLS policies de `conversaciones_caso` y `mensajes_conversacion`: por ahora sin policies (RLS habilitada por default → deny all anon). Server-side con service_role bypassea, igual que el resto del modelo de auth Clerk-only.
+- Prompt caching del agente: los SYSTEM_PROMPT crecieron con el modelo nuevo y el chat acumula history en cada mensaje. Activar caching es la próxima optimización de costo (D7 del plan PR4: diferida intencionalmente para PR independiente).

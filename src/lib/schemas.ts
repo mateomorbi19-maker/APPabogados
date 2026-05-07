@@ -175,17 +175,6 @@ export const adjuntoInputSchema = z.object({
 });
 export type AdjuntoInput = z.infer<typeof adjuntoInputSchema>;
 
-// Categoría procesal manual: las dos categorías del agente
-// (consulta_agente, respuesta_agente) las setea el server desde su
-// propio endpoint en PR3, no las acepta este form.
-const CATEGORIAS_MANUALES_TUPLE = [
-  "audiencia",
-  "escrito_presentado",
-  "resolucion_recibida",
-  "prueba_incorporada",
-  "otro",
-] as const satisfies ReadonlyArray<(typeof CATEGORIAS_EVENTO)[number]>;
-
 // Validación de fecha "razonable" del evento: parseable + año entre 2020 y 2050.
 // Frontend puede omitirla; el server la default-ea a now().
 export const crearEventoInputSchema = z.object({
@@ -199,7 +188,7 @@ export const crearEventoInputSchema = z.object({
     }, "Fecha fuera de rango razonable (2020–2050)")
     .optional(),
   estado: z.enum(["sucedido", "pendiente"]).optional(),
-  categoria: z.enum(CATEGORIAS_MANUALES_TUPLE),
+  categoria: z.enum(CATEGORIAS_EVENTO),
   adjuntos: z.array(adjuntoInputSchema).max(20).default([]),
 });
 export type CrearEventoInput = z.infer<typeof crearEventoInputSchema>;
@@ -243,3 +232,27 @@ export const respuestaConsultaSchema = z.object({
   busquedas: z.array(busquedaSchema).optional(),
 });
 export type RespuestaConsulta = z.infer<typeof respuestaConsultaSchema>;
+
+// === Chat persistente (PR4 sub-PR2) ===
+
+export const crearConversacionInputSchema = z.object({
+  // Título opcional: si no viene, el server genera "Conversación del DD/MM/YYYY"
+  // (con hora si ya hay una con el mismo título base ese día).
+  titulo: z.string().min(1).max(200).optional(),
+});
+export type CrearConversacionInput = z.infer<typeof crearConversacionInputSchema>;
+
+export const renombrarConversacionInputSchema = z.object({
+  titulo: z.string().min(1).max(200),
+});
+export type RenombrarConversacionInput = z.infer<
+  typeof renombrarConversacionInputSchema
+>;
+
+// Mensaje del usuario al agente. El server inserta el mensaje del
+// usuario, llama al agente, y crea el mensaje del agente.
+export const crearMensajeInputSchema = z.object({
+  contenido: z.string().min(1).max(5000),
+  adjuntos: z.array(adjuntoInputSchema).max(20).default([]),
+});
+export type CrearMensajeInput = z.infer<typeof crearMensajeInputSchema>;
