@@ -67,7 +67,13 @@ export class AgentError extends Error {
   }
 }
 
-const HARD_CAP_BUSQUEDAS = 6;
+// Tope total de búsquedas RAG por ejecución del agente. Subido de 6 a 10
+// en mayo 2026 tras detectar que casos multifacéticos reales (homicidio
+// con allanamiento ilegal + abuso previo + interrogatorio irregular a
+// menor) razonablemente requieren 7-8 ejes legales distintos. Si en el
+// futuro vemos que se sigue alcanzando seguido, evaluamos antes de
+// volver a subirlo: el problema podría ser de prompt o de corpus.
+const HARD_CAP_BUSQUEDAS = 10;
 
 function isToolUseBlock(
   block: Anthropic.ContentBlock,
@@ -107,7 +113,11 @@ export async function runAgent(
   input: RunAgentInput,
 ): Promise<RunAgentResult> {
   const { userPrompt, systemPrompt } = input;
-  const maxIterations = input.maxIterations ?? 10;
+  // Margen sobre HARD_CAP_BUSQUEDAS=10: si el modelo hace 1 búsqueda por
+  // iteración, con maxIterations=cap saldríamos del while justo cuando
+  // toca el cap, sin oportunidad de correr la "iteración final sin tools"
+  // que garantiza síntesis. Con +2 de margen siempre queda lugar.
+  const maxIterations = input.maxIterations ?? 12;
 
   const client = getAnthropic();
   const messages: Anthropic.MessageParam[] = [
@@ -122,10 +132,6 @@ export async function runAgent(
   };
   const busquedas: Busqueda[] = [];
   let iterations = 0;
-  // Una vez que el cap se toca, los tool_use posteriores devuelven un
-  // tool_result sintético que le pide al modelo sintetizar. Si en la
-  // siguiente iteración el modelo igual insiste con tool_use, cortamos.
-  let capReached = false;
 
   // Primer call: si falla acá no hay tokens cobrados — dejamos bubblear como error de infra.
   let response = await client.messages.create({
@@ -160,15 +166,12 @@ export async function runAgent(
             // Cap check ANTES de pushear/ejecutar. Si esta búsqueda excedería
             // el cap (incluyendo otros tool_use de la misma iteración que ya
             // pushearon), devolvemos un tool_result sintético: no se gasta
-            // embedding ni pgvector y no suma al contador. El modelo recibe
-            // el mensaje y debería sintetizar con la info ya recopilada en
-            // la próxima iteración.
+            // embedding ni pgvector y no suma al contador.
             //
-            // El `>=` es intencional: HARD_CAP_BUSQUEDAS=6 permite hasta 6
-            // búsquedas reales (índices 0..5). Cuando length llega a 6,
+            // El `>=` es intencional: HARD_CAP_BUSQUEDAS=10 permite hasta 10
+            // búsquedas reales (índices 0..9). Cuando length llega a 10,
             // cualquier búsqueda adicional cae en este branch.
             if (busquedas.length >= HARD_CAP_BUSQUEDAS) {
-              capReached = true;
               return {
                 type: "tool_result",
                 tool_use_id: tu.id,
@@ -214,17 +217,47 @@ export async function runAgent(
       ),
     );
 
+    // Cap agotado: garantiza síntesis quitando la herramienta del próximo
+    // call. Sin `tools` en los params, el modelo no puede técnicamente
+    // responder con tool_use; solo puede generar texto. Reemplaza el patrón
+    // viejo (mensaje sintético + esperar que el modelo obedezca) que fallaba
+    // cuando el modelo lo ignoraba (caso real: ejec 68dbc170... 2026-05-07).
+    //
+    // Además, agregamos un text block adicional al user message para que el
+    // modelo entienda explícitamente por qué desaparecen las herramientas.
+    // Mezclamos tool_results + text en el mismo content array (válido por
+    // contrato Anthropic: user messages aceptan text + tool_result).
+    const capAgotado = busquedas.length >= HARD_CAP_BUSQUEDAS;
+    const userContent: Anthropic.MessageParam["content"] = capAgotado
+      ? [
+          ...toolResults,
+          {
+            type: "text" as const,
+            text: `Has alcanzado el límite de búsquedas (${HARD_CAP_BUSQUEDAS}). Generá ahora la respuesta final completa basada en el material recolectado. No vas a poder hacer más búsquedas.`,
+          },
+        ]
+      : toolResults;
+
     messages.push({ role: "assistant", content: response.content });
-    messages.push({ role: "user", content: toolResults });
+    messages.push({ role: "user", content: userContent });
 
     try {
-      response = await client.messages.create({
-        model: MODEL_ID,
-        max_tokens: 8192,
-        system: systemPrompt,
-        tools: [buscarDocumentosTool],
-        messages,
-      });
+      response = await client.messages.create(
+        capAgotado
+          ? {
+              model: MODEL_ID,
+              max_tokens: 8192,
+              system: systemPrompt,
+              messages,
+            }
+          : {
+              model: MODEL_ID,
+              max_tokens: 8192,
+              system: systemPrompt,
+              tools: [buscarDocumentosTool],
+              messages,
+            },
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       throw new AgentError(
@@ -242,10 +275,10 @@ export async function runAgent(
     totalUsage.cache_read_input_tokens +=
       response.usage.cache_read_input_tokens ?? 0;
 
-    // Si el cap ya se tocó y el modelo igual responde con tool_use (ignoró
-    // el mensaje sintético y quiere seguir buscando), cortamos: el ciclo
-    // no va a converger y todas las búsquedas siguientes serían sintéticas.
-    if (capReached && response.stop_reason === "tool_use") {
+    // Defensivo: con `tools` removidas en el call anterior, el modelo no
+    // debería poder responder con tool_use. Si por algún cambio del SDK o
+    // un escenario inesperado lo hiciera, este branch corta limpio.
+    if (capAgotado && response.stop_reason === "tool_use") {
       throw new AgentError(
         "CAP_EXCEEDED_NO_SYNTHESIS",
         "CAP_EXCEEDED_NO_SYNTHESIS",
@@ -276,6 +309,10 @@ export async function runAgent(
     usage: totalUsage,
     busquedas,
     iterations,
-    degraded_response: capReached,
+    // Marcamos degraded cualquier ejecución que tocó el cap, sea por
+    // bloqueo de búsqueda extra (>cap) o por consumo exacto (==cap):
+    // en ambos casos forzamos síntesis sin tools, lo que limita la
+    // capacidad del modelo de re-evaluar. El panel admin lo expone.
+    degraded_response: busquedas.length >= HARD_CAP_BUSQUEDAS,
   };
 }
