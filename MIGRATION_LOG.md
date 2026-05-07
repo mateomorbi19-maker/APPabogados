@@ -62,3 +62,33 @@ Este archivo se mantiene durante las Fases 2–5 para dejar registro humano de q
 | Mateo    | mateomorbi19@gmail.com                | admin |
 
 **Efectos colaterales:** ninguno. La columna es opt-in y `requireUsuarioOr403()` no la lee.
+
+---
+
+## 2026-05-07 · 12:00:00 UTC — `20260507120000_eventos_caso_categoria_adjuntos_y_bucket.sql`
+
+**Contexto:** PR1 de `feature/simulacion-procesal-v1`. Habilita categoría procesal y adjuntos en eventos para que las próximas iteraciones (PR2 + PR3) puedan agregar archivos y consultar al agente con contexto.
+
+**Cambios aplicados:**
+
+- `eventos_caso.categoria TEXT NULL` con `CHECK` que admite `audiencia | escrito_presentado | resolucion_recibida | prueba_incorporada | consulta_agente | respuesta_agente | otro`. Eventos viejos quedan con `categoria = NULL` (compatible).
+- `eventos_caso.adjuntos JSONB NOT NULL DEFAULT '[]'`.
+- `COMMENT ON COLUMN` para `tipo`, `categoria`, `adjuntos` clarificando la semántica de cada uno.
+- Bucket de Storage `eventos-caso-adjuntos` (privado, 10 MB cap, mime types: PDF / JPEG / PNG / DOCX).
+
+**Mapeo con el spec del prompt** (decisiones del director registradas):
+
+| Spec del prompt | Schema real |
+|---|---|
+| `casos.analisis_original_id` | reusamos `casos.ejecucion_origen_id` (FK a ejecuciones existente) |
+| `casos.estrategia_elegida_numero` (1-3) | reusamos `casos.estrategia_seleccionada_idx` (0-2) |
+| `casos.estrategia_elegida_snapshot` | reusamos `casos.estrategia_snapshot` |
+| `eventos_caso.origen` (manual/agente) | reusamos `eventos_caso.tipo` (manual/sistema/agente) |
+| `eventos_caso.tipo` (procesal) | NUEVO `eventos_caso.categoria` |
+
+**Filas afectadas:** 0 (los 3 eventos existentes quedan con `categoria=NULL`, `adjuntos=[]`).
+
+**Pendiente para PR2:**
+
+- RLS policies del bucket `eventos-caso-adjuntos` (path: `{usuario_id}/{caso_id}/...`). Hoy el server usa service_role que bypassea cualquier policy, así que esto es defensivo para cuando se active RLS en pre-producción.
+- Endpoint de signed URLs para upload directo cliente → Storage.

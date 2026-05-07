@@ -104,10 +104,10 @@ export function SeleccionarEstrategiaModal({
         return;
       }
 
-      // TODO Fase 5: cuando exista /dashboard/mis-casos/[id], redirigir ahí
-      // con el caso_id. Por ahora redirect a la lista (404 temporal hasta
-      // que Fase 4 monte la página).
-      router.push("/dashboard/mis-casos");
+      // Redirect al detalle del caso recién creado. La página
+      // /dashboard/mis-casos/[id] existe desde fase 5b. PR1 de
+      // feature/simulacion-procesal-v1 hace este fix.
+      router.push(`/dashboard/mis-casos/${json.caso_id}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error de red";
       setError(msg);
