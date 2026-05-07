@@ -25,8 +25,11 @@ type Props = {
   onCreated: (evento: EventoCaso) => void;
 };
 
+// `text-foreground` explícito porque el <select> nativo no hereda
+// foreground en todos los browsers (Chromium en particular renderea
+// el valor seleccionado con contraste apagado si no se fuerza).
 const SELECT_CLS =
-  "h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
+  "h-9 rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
 
 const DESCRIPCION_MIN = 20;
 const DESCRIPCION_MAX = 2000;
