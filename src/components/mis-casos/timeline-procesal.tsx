@@ -4,9 +4,11 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fmtFecha } from "@/lib/format";
-import type { EventoCaso } from "@/lib/types";
-import { AgregarEventoModal } from "./agregar-evento-modal";
+import { CATEGORIA_LABEL } from "@/lib/casos/categorias";
+import type { EventoCaso, TipoEvento } from "@/lib/types";
+import { AgregarEventoSheet } from "./agregar-evento-sheet";
 import { EliminarEventoModal } from "./eliminar-evento-modal";
+import { AdjuntosRender } from "./adjuntos-render";
 
 type Props = {
   casoId: string;
@@ -14,14 +16,18 @@ type Props = {
   setEventos: Dispatch<SetStateAction<EventoCaso[]>>;
 };
 
-// Timeline procesal: línea vertical con bullets coloreados según estado.
-// Verde (#10b981 / emerald-500) para 'sucedido', amarillo (#fbbf24 / amber-400)
-// para 'pendiente'. Borde de 2px del bg para que el bullet "pise" la línea.
+// Timeline procesal con distinción visual por origen del evento (`tipo`):
+//   - manual: borde lateral neutro, bullet emerald/amber según estado.
+//   - sistema: bullet gris (eventos creados por el server, ej:
+//     "Caso creado y estrategia elegida").
+//   - agente: borde izquierdo violeta, label "Análisis del agente".
+//     El contenido renderable de la respuesta del agente llegará en PR3
+//     cuando exista el endpoint /api/casos/[id]/consultar; por ahora
+//     solo proveemos el chrome visual para que cuando aparezcan
+//     se vean diferenciados.
 //
-// Solo los eventos de tipo 'manual' tienen el botón de eliminar al hover.
-// Los de tipo 'sistema' (ej: "Caso creado y estrategia elegida") y futuros
-// 'agente' no se pueden borrar desde la UI. (El server también lo permite,
-// pero nosotros no lo exponemos.)
+// Borrar solo está disponible para tipo === 'manual'. El server también
+// rechaza el delete para sistema/agente (ver DELETE eventos route).
 export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
   const [agregarOpen, setAgregarOpen] = useState(false);
   const [eliminarId, setEliminarId] = useState<string | null>(null);
@@ -62,6 +68,7 @@ export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
           {eventos.map((e) => (
             <EventoItem
               key={e.id}
+              casoId={casoId}
               evento={e}
               onEliminar={() => setEliminarId(e.id)}
             />
@@ -69,7 +76,7 @@ export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
         </ol>
       )}
 
-      <AgregarEventoModal
+      <AgregarEventoSheet
         open={agregarOpen}
         casoId={casoId}
         onClose={() => setAgregarOpen(false)}
@@ -92,23 +99,41 @@ export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
   );
 }
 
+// Color del bullet según `tipo` y `estado`. Manual usa los colores del
+// estado (verde sucedido / amarillo pendiente). Agente usa primary
+// (acento del producto). Sistema usa gris para no distraer visualmente.
+function bulletClassesPorEvento(evento: EventoCaso): string {
+  if (evento.tipo === "agente") return "bg-primary";
+  if (evento.tipo === "sistema") return "bg-muted-foreground/40";
+  return evento.estado === "sucedido" ? "bg-emerald-500" : "bg-amber-400";
+}
+
+function bordeIzqClassesPorTipo(tipo: TipoEvento): string {
+  if (tipo === "agente") return "border-l-2 border-primary/60";
+  if (tipo === "sistema") return "border-l-2 border-muted";
+  return "border-l-2 border-border";
+}
+
 function EventoItem({
+  casoId,
   evento,
   onEliminar,
 }: {
+  casoId: string;
   evento: EventoCaso;
   onEliminar: () => void;
 }) {
   const esManual = evento.tipo === "manual";
-  const colorBullet =
-    evento.estado === "sucedido" ? "bg-emerald-500" : "bg-amber-400";
+  const esAgente = evento.tipo === "agente";
+  const colorBullet = bulletClassesPorEvento(evento);
+  const bordeCard = bordeIzqClassesPorTipo(evento.tipo);
+  const tieneAdjuntos = evento.adjuntos && evento.adjuntos.length > 0;
+  const labelCategoria =
+    evento.categoria !== null ? CATEGORIA_LABEL[evento.categoria] : null;
 
   return (
     <li className="relative group">
-      {/* Bullet: posición absoluta a la izquierda para "pisar" la línea
-          vertical (-left-[7px] = mitad del ancho del bullet, ajustado
-          para que esté centrado sobre la línea). El ring del bg-background
-          oculta la línea detrás del círculo. */}
+      {/* Bullet sobre la línea vertical */}
       <span
         className={cn(
           "absolute -left-[7px] top-1.5 size-3 rounded-full ring-4 ring-background",
@@ -116,27 +141,47 @@ function EventoItem({
         )}
         aria-hidden="true"
       />
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
-          <p className="text-sm leading-snug">{evento.descripcion}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {fmtFecha(evento.ocurrido_en)}
-            {evento.estado === "pendiente" ? (
-              <span className="ml-2 text-amber-500">· pendiente</span>
+      <div className={cn("rounded-md bg-card/30 px-3 py-2 pl-3.5", bordeCard)}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+              {esAgente ? (
+                <span className="text-[10px] uppercase tracking-wider text-primary font-medium">
+                  Análisis del agente
+                </span>
+              ) : labelCategoria ? (
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {labelCategoria}
+                </span>
+              ) : null}
+              {evento.estado === "pendiente" ? (
+                <span className="text-[10px] uppercase tracking-wider text-amber-500">
+                  · pendiente
+                </span>
+              ) : null}
+            </div>
+            <p className="text-sm leading-snug whitespace-pre-wrap">
+              {evento.descripcion}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {fmtFecha(evento.ocurrido_en)}
+            </p>
+            {tieneAdjuntos ? (
+              <AdjuntosRender casoId={casoId} adjuntos={evento.adjuntos} />
             ) : null}
-          </p>
+          </div>
+          {esManual ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+              onClick={onEliminar}
+              aria-label="Eliminar evento"
+            >
+              <X className="size-3.5" />
+            </Button>
+          ) : null}
         </div>
-        {esManual ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={onEliminar}
-            aria-label="Eliminar evento"
-          >
-            <X className="size-3.5" />
-          </Button>
-        ) : null}
       </div>
     </li>
   );
