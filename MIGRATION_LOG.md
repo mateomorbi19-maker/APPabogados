@@ -138,3 +138,19 @@ Este archivo se mantiene durante las Fases 2–5 para dejar registro humano de q
 
 - RLS policies de `conversaciones_caso` y `mensajes_conversacion`: por ahora sin policies (RLS habilitada por default → deny all anon). Server-side con service_role bypassea, igual que el resto del modelo de auth Clerk-only.
 - Prompt caching del agente: los SYSTEM_PROMPT crecieron con el modelo nuevo y el chat acumula history en cada mensaje. Activar caching es la próxima optimización de costo (D7 del plan PR4: diferida intencionalmente para PR independiente).
+
+---
+
+## 2026-05-08 · 00:00:00 UTC — `20260508000000_refund_consulta_caso_parseo_error_pre_adaptable.sql`
+
+**Contexto:** fix `fix/chat-respuesta-adaptable`. Bug post-deploy del PR4 sub-PR2: el system prompt forzaba JSON estructurado (tesis + fundamento + recomendaciones) para CUALQUIER pregunta. Cuando el director hizo una pregunta conversacional ("Hola, qué debo hacer ahora?"), el modelo respondió en prosa natural, el parser falló 3 veces, y la ejecución terminó como error sin entregar respuesta. El fix (en este branch) introduce dos modos adaptativos en el agente — `conversacional` para preguntas cortas y `analisis` estructurado para análisis legal profundo.
+
+**Cambios aplicados:**
+
+- `UPDATE ejecuciones SET metadata = metadata || jsonb_build_object('refunded', true, 'refunded_at', now()::text, 'refund_reason', 'CHAT_PARSEO_ERROR_PRE_FIX_ADAPTABLE')` para todas las filas `tipo='consulta_caso'` con `metadata.parseo_error` no nulo y aún no refunded.
+
+**Filas afectadas:** 1 (la ejecución del QA del director, $0.0489 USD reembolsados).
+
+**Vista `v_consumo_mensual`:** ya excluye `refunded=true` desde la migración 20260507180000. NO requiere modificación.
+
+**Efectos colaterales:** ninguno. Otras ejecuciones `consulta_caso` (las del QA pre-cleanup ya borradas o las nuevas exitosas) no entran en el filtro.
