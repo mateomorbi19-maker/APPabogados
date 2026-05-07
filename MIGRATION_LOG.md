@@ -39,3 +39,26 @@ Este archivo se mantiene durante las Fases 2–5 para dejar registro humano de q
 - `clerk_user_id` se rellena vía lazy-sync en `src/lib/auth/whitelist.ts` la primera vez que cada usuario autentica.
 - `email` de Lautaro queda NULL hasta que confirme cuál usar. Mientras tanto, `requireUsuarioOr403()` devuelve 403 para cualquier sesión que reclame ese slot.
 - No aplicar `ALTER COLUMN email SET NOT NULL` hasta que las 3 filas tengan valor.
+
+---
+
+## 2026-05-07 · 00:00:00 UTC — `20260507000000_add_role_to_usuarios.sql`
+
+**Contexto:** Feature `admin-panel-v1`. Habilita verificación server-side de admin sin tocar RLS (sigue desactivada por decisión del director).
+
+**Cambios aplicados:**
+
+- `usuarios.role TEXT NOT NULL DEFAULT 'user'` — nueva columna con `CHECK (role IN ('user', 'admin'))`.
+- `UPDATE` Mateo → `role = 'admin'` (single admin inicial).
+
+**Filas afectadas:** 1 update.
+
+**Estado verificado post-migración:**
+
+| nombre   | email                                 | role  |
+|----------|---------------------------------------|-------|
+| Gonzalo  | gonzalo.ezequiel.brandoni@gmail.com   | user  |
+| Lautaro  | NULL                                  | user  |
+| Mateo    | mateomorbi19@gmail.com                | admin |
+
+**Efectos colaterales:** ninguno. La columna es opt-in y `requireUsuarioOr403()` no la lee.
