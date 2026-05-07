@@ -32,20 +32,35 @@ export type RunAgentResult = {
   usage: RunAgentUsage;
   busquedas: Busqueda[];
   iterations: number;
+  // True cuando el agente alcanzó el HARD_CAP_BUSQUEDAS y aun así sintetizó
+  // una respuesta. La ejecución es ok pero potencialmente parcial. El INSERT
+  // a `ejecuciones` la marca con metadata.degraded_response = true.
+  degraded_response: boolean;
 };
 
+// Códigos estables para distinguir tipos de fallo del loop. El message es
+// libre (puede traer detalle de la API), el code se mapea a un mensaje
+// user-friendly en el route handler.
+export type AgentErrorCode =
+  | "API_ERROR"
+  | "CAP_EXCEEDED_NO_SYNTHESIS"
+  | "MAX_ITERATIONS";
+
 export class AgentError extends Error {
+  code: AgentErrorCode;
   partialUsage: RunAgentUsage;
   partialBusquedas: Busqueda[];
   partialIterations: number;
   constructor(
     message: string,
+    code: AgentErrorCode,
     partialUsage: RunAgentUsage,
     partialBusquedas: Busqueda[],
     partialIterations: number,
   ) {
     super(message);
     this.name = "AgentError";
+    this.code = code;
     this.partialUsage = partialUsage;
     this.partialBusquedas = partialBusquedas;
     this.partialIterations = partialIterations;
@@ -107,6 +122,10 @@ export async function runAgent(
   };
   const busquedas: Busqueda[] = [];
   let iterations = 0;
+  // Una vez que el cap se toca, los tool_use posteriores devuelven un
+  // tool_result sintético que le pide al modelo sintetizar. Si en la
+  // siguiente iteración el modelo igual insiste con tool_use, cortamos.
+  let capReached = false;
 
   // Primer call: si falla acá no hay tokens cobrados — dejamos bubblear como error de infra.
   let response = await client.messages.create({
@@ -137,8 +156,30 @@ export async function runAgent(
             const inputObj = (tu.input ?? {}) as { query?: unknown };
             const query =
               typeof inputObj.query === "string" ? inputObj.query : "";
+
+            // Cap check ANTES de pushear/ejecutar. Si esta búsqueda excedería
+            // el cap (incluyendo otros tool_use de la misma iteración que ya
+            // pushearon), devolvemos un tool_result sintético: no se gasta
+            // embedding ni pgvector y no suma al contador. El modelo recibe
+            // el mensaje y debería sintetizar con la info ya recopilada en
+            // la próxima iteración.
+            //
+            // El `>=` es intencional: HARD_CAP_BUSQUEDAS=6 permite hasta 6
+            // búsquedas reales (índices 0..5). Cuando length llega a 6,
+            // cualquier búsqueda adicional cae en este branch.
+            if (busquedas.length >= HARD_CAP_BUSQUEDAS) {
+              capReached = true;
+              return {
+                type: "tool_result",
+                tool_use_id: tu.id,
+                content: `Has alcanzado el límite de búsquedas permitidas (${HARD_CAP_BUSQUEDAS}). No se ejecutó esta búsqueda. Generá la mejor respuesta posible con la información ya recopilada.`,
+              };
+            }
+
             // Reservamos el slot síncronamente para preservar el orden
             // en que el agente emitió las queries (no el orden en que terminan).
+            // El push síncrono también es lo que hace que el cap-check de los
+            // siguientes elementos del map vea el contador actualizado sin race.
             const idx = busquedas.length;
             busquedas.push({ query, chunks_devueltos: 0, similarity_top: null });
             try {
@@ -173,15 +214,6 @@ export async function runAgent(
       ),
     );
 
-    if (busquedas.length > HARD_CAP_BUSQUEDAS) {
-      throw new AgentError(
-        "LIMITE_BUSQUEDAS_EXCEDIDO",
-        { ...totalUsage },
-        [...busquedas],
-        iterations,
-      );
-    }
-
     messages.push({ role: "assistant", content: response.content });
     messages.push({ role: "user", content: toolResults });
 
@@ -197,6 +229,7 @@ export async function runAgent(
       const msg = e instanceof Error ? e.message : String(e);
       throw new AgentError(
         msg,
+        "API_ERROR",
         { ...totalUsage },
         [...busquedas],
         iterations,
@@ -208,11 +241,25 @@ export async function runAgent(
       response.usage.cache_creation_input_tokens ?? 0;
     totalUsage.cache_read_input_tokens +=
       response.usage.cache_read_input_tokens ?? 0;
+
+    // Si el cap ya se tocó y el modelo igual responde con tool_use (ignoró
+    // el mensaje sintético y quiere seguir buscando), cortamos: el ciclo
+    // no va a converger y todas las búsquedas siguientes serían sintéticas.
+    if (capReached && response.stop_reason === "tool_use") {
+      throw new AgentError(
+        "CAP_EXCEEDED_NO_SYNTHESIS",
+        "CAP_EXCEEDED_NO_SYNTHESIS",
+        { ...totalUsage },
+        [...busquedas],
+        iterations,
+      );
+    }
   }
 
   if (response.stop_reason === "tool_use") {
     throw new AgentError(
       "MAX_ITERATIONS alcanzado",
+      "MAX_ITERATIONS",
       { ...totalUsage },
       [...busquedas],
       iterations,
@@ -229,5 +276,6 @@ export async function runAgent(
     usage: totalUsage,
     busquedas,
     iterations,
+    degraded_response: capReached,
   };
 }
