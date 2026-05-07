@@ -213,3 +213,33 @@ export const adjuntoUploadUrlInputSchema = z.object({
   size_bytes: z.number().int().positive(),
 });
 export type AdjuntoUploadUrlInput = z.infer<typeof adjuntoUploadUrlInputSchema>;
+
+// === Consulta continua al agente (PR3) ===
+//
+// Shape de la respuesta del agente. El server la persiste como JSON
+// dentro de `eventos_caso.descripcion` del evento `respuesta_agente`,
+// y el cliente la parsea + valida con este schema antes de renderizar.
+// Defensa en profundidad: si el modelo se aparta del formato, el
+// cliente cae a un fallback con mensaje y no rompe el árbol de render.
+
+export const recomendacionSchema = z.object({
+  prioridad: z.enum(["alta", "media", "baja"]),
+  accion: z.string().min(1),
+  plazo: z.string().default("Sin plazo definido"),
+  fundamento: z.string().default(""),
+});
+export type Recomendacion = z.infer<typeof recomendacionSchema>;
+
+export const respuestaConsultaSchema = z.object({
+  analisis: z.object({
+    tesis_central: z.string(),
+    fundamento_legal: z.array(z.string()).default([]),
+    consideraciones: z.string().default(""),
+  }),
+  recomendaciones: z.array(recomendacionSchema).default([]),
+  // Campos enriquecidos por el server al persistir.
+  degraded_response: z.boolean().optional(),
+  ejecucion_id: z.string().uuid().optional(),
+  busquedas: z.array(busquedaSchema).optional(),
+});
+export type RespuestaConsulta = z.infer<typeof respuestaConsultaSchema>;
