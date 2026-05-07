@@ -108,4 +108,12 @@
        PR2 al desplegar el select de categoría del evento. */
     color-scheme: dark;
   }
+  /* Items del popup del <select>. color-scheme: dark de arriba ya da
+     una paleta razonable, pero algunos browsers (Chromium en particular)
+     dejan los items no-hover con poco contraste. Forzamos bg/foreground
+     explícitos para que se lean bien siempre, no solo en hover —
+     corrección observada en producción tras PR3. */
+  option {
+    @apply bg-card text-foreground;
+  }
 }

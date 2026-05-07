@@ -1,11 +1,11 @@
 "use client";
 import { useState, type Dispatch, type SetStateAction } from "react";
-import { Plus, X, Sparkles } from "lucide-react";
+import { Plus, X, Sparkles, ChevronRight, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fmtFecha } from "@/lib/format";
 import { CATEGORIA_LABEL } from "@/lib/casos/categorias";
-import type { EventoCaso, TipoEvento } from "@/lib/types";
+import type { EventoCaso } from "@/lib/types";
 import { AgregarEventoSheet } from "./agregar-evento-sheet";
 import { EliminarEventoModal } from "./eliminar-evento-modal";
 import { AdjuntosRender } from "./adjuntos-render";
@@ -17,27 +17,53 @@ type Props = {
   setEventos: Dispatch<SetStateAction<EventoCaso[]>>;
 };
 
-// Timeline procesal con distinción visual por origen del evento (`tipo`):
-//   - manual: borde lateral neutro, bullet emerald/amber según estado.
-//     Si la categoría es 'consulta_agente' (la pregunta que el abogado
-//     le hizo al agente), se renderiza en formato chiquito identificado
-//     como "Consulta del abogado", para que el par consulta→respuesta
-//     se lea visualmente conectado.
-//   - sistema: bullet gris.
-//   - agente (categoria='respuesta_agente'): borde primary, render del
-//     componente RespuestaAgenteEvento que parsea el JSON de la
-//     descripción y muestra tesis + fundamento + recomendaciones +
-//     búsquedas.
+// Timeline procesal con eventos colapsables (PR4 corrección 3).
 //
-// Borrar solo está disponible para `tipo === 'manual'`. La consulta
-// del abogado (categoría=consulta_agente) también es manual técnicamente
-// pero NO la dejamos borrar desde la UI porque es parte del par con
-// la respuesta del agente — tendría que borrarse el par completo, lo
-// cual no estamos exponiendo. El server además bloquea DELETE de
-// eventos no-manuales (ver DELETE eventos route).
+// Comportamiento del estado expandido:
+//   - Si hay <= 2 eventos en el caso: todos arrancan expandidos (no
+//     hay scroll problem y dejarlos colapsados es fricción gratuita).
+//   - Si hay > 2: solo el último (más reciente) arranca expandido.
+//     El abogado vuelve al caso y ve "lo último que pasó" sin scroll;
+//     el resto colapsado para no saturar.
+//   - Cuando se agrega un evento nuevo, queda expandido por default.
+//   - Click en el header de cualquier evento toggle expandido.
+//
+// Botón "Agregar evento" (PR4 corrección 4): ahora vive al final del
+// timeline en vez del header, para que el cursor de acción esté donde
+// naturalmente termina la lista (metáfora "agregar al final del chat").
+//
+// Distinción visual por origen del evento — preservada del PR3:
+//   - manual: bullet emerald/amber según estado, borde neutro.
+//   - manual + categoria='consulta_agente': bullet primary tenue, borde
+//     primary tenue. (Sub-PR2 va a sacar este flujo del timeline; en
+//     este sub-PR sigue mostrándose.)
+//   - sistema: bullet gris.
+//   - agente + categoria='respuesta_agente': bullet primary, borde
+//     primary, render rico via RespuestaAgenteEvento al expandir.
+//
+// Borrar solo está disponible para eventos manuales sin categoría
+// 'consulta_agente'. El server además bloquea DELETE de no-manuales.
 export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
   const [agregarOpen, setAgregarOpen] = useState(false);
   const [eliminarId, setEliminarId] = useState<string | null>(null);
+  // Set de IDs expandidos. Init: todos si <=2, solo el último si >2.
+  // El estado vive en el padre del item para que "agregar nuevo lo
+  // expande automáticamente" sea trivial — solo agregamos al Set.
+  const [expandidos, setExpandidos] = useState<Set<string>>(() => {
+    if (eventos.length === 0) return new Set();
+    if (eventos.length <= 2) return new Set(eventos.map((e) => e.id));
+    const ultimo = eventos[eventos.length - 1];
+    return new Set([ultimo.id]);
+  });
+
+  const toggle = (id: string) => {
+    setExpandidos((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const insertarOrdenado = (lista: EventoCaso[], nuevo: EventoCaso) => {
     const i = lista.findIndex(
@@ -47,13 +73,59 @@ export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
     return [...lista.slice(0, i), nuevo, ...lista.slice(i)];
   };
 
+  const onEventoCreado = (nuevo: EventoCaso) => {
+    setEventos((prev) => insertarOrdenado(prev, nuevo));
+    // El evento recién agregado siempre expandido — el abogado
+    // espera ver lo que acaba de cargar.
+    setExpandidos((prev) => {
+      const next = new Set(prev);
+      next.add(nuevo.id);
+      return next;
+    });
+    setAgregarOpen(false);
+  };
+
+  const onEventoBorrado = (id: string) => {
+    setEventos((prev) => prev.filter((e) => e.id !== id));
+    setExpandidos((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setEliminarId(null);
+  };
+
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="font-medium text-sm">
-          Timeline procesal
-          <span className="text-muted-foreground"> · {eventos.length} {eventos.length === 1 ? "evento" : "eventos"}</span>
-        </h3>
+      <h3 className="font-medium text-sm">
+        Timeline procesal
+        <span className="text-muted-foreground">
+          {" · "}
+          {eventos.length} {eventos.length === 1 ? "evento" : "eventos"}
+        </span>
+      </h3>
+
+      {eventos.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4">
+          Todavía no hay eventos en el timeline.
+        </p>
+      ) : (
+        <ol className="relative pl-6 border-l-2 border-border space-y-3">
+          {eventos.map((e) => (
+            <EventoItem
+              key={e.id}
+              casoId={casoId}
+              evento={e}
+              expandido={expandidos.has(e.id)}
+              onToggle={() => toggle(e.id)}
+              onEliminar={() => setEliminarId(e.id)}
+            />
+          ))}
+        </ol>
+      )}
+
+      {/* Botón "Agregar evento" al final del timeline. */}
+      <div className="pl-6">
         <Button
           variant="outline"
           size="sm"
@@ -64,41 +136,18 @@ export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
         </Button>
       </div>
 
-      {eventos.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4">
-          Todavía no hay eventos en el timeline.
-        </p>
-      ) : (
-        <ol className="relative pl-6 border-l-2 border-border space-y-4">
-          {eventos.map((e) => (
-            <EventoItem
-              key={e.id}
-              casoId={casoId}
-              evento={e}
-              onEliminar={() => setEliminarId(e.id)}
-            />
-          ))}
-        </ol>
-      )}
-
       <AgregarEventoSheet
         open={agregarOpen}
         casoId={casoId}
         onClose={() => setAgregarOpen(false)}
-        onCreated={(nuevo) => {
-          setEventos((prev) => insertarOrdenado(prev, nuevo));
-          setAgregarOpen(false);
-        }}
+        onCreated={onEventoCreado}
       />
 
       <EliminarEventoModal
         eventoId={eliminarId}
         casoId={casoId}
         onClose={() => setEliminarId(null)}
-        onDeleted={(id) => {
-          setEventos((prev) => prev.filter((e) => e.id !== id));
-          setEliminarId(null);
-        }}
+        onDeleted={onEventoBorrado}
       />
     </section>
   );
@@ -119,13 +168,44 @@ function bordeIzqClassesPorEvento(evento: EventoCaso): string {
   return "border-l-2 border-border";
 }
 
+// Devuelve un snippet de una línea para mostrar en el header colapsado.
+// Para eventos del agente parsea el JSON; para el resto agarra la
+// primera línea de la descripción.
+function snippetParaColapsado(evento: EventoCaso): string {
+  const MAX = 110;
+  let texto = "";
+  if (
+    evento.tipo === "agente" &&
+    evento.categoria === "respuesta_agente"
+  ) {
+    try {
+      const parsed = JSON.parse(evento.descripcion) as {
+        analisis?: { tesis_central?: string };
+      };
+      texto = parsed.analisis?.tesis_central ?? "(respuesta del agente)";
+    } catch {
+      texto = "(respuesta del agente)";
+    }
+  } else {
+    // Primera línea de la descripción.
+    texto = evento.descripcion.split("\n")[0] ?? "";
+  }
+  texto = texto.trim();
+  if (texto.length > MAX) return texto.slice(0, MAX).trim() + "…";
+  return texto;
+}
+
 function EventoItem({
   casoId,
   evento,
+  expandido,
+  onToggle,
   onEliminar,
 }: {
   casoId: string;
   evento: EventoCaso;
+  expandido: boolean;
+  onToggle: () => void;
   onEliminar: () => void;
 }) {
   const esManualEditable =
@@ -137,35 +217,102 @@ function EventoItem({
   const colorBullet = bulletClassesPorEvento(evento);
   const bordeCard = bordeIzqClassesPorEvento(evento);
   const tieneAdjuntos = evento.adjuntos && evento.adjuntos.length > 0;
-  const labelCategoria =
-    evento.categoria !== null
-      ? CATEGORIA_LABEL[evento.categoria]
-      : null;
+  const numAdjuntos = evento.adjuntos?.length ?? 0;
+
+  // Label del header colapsado.
+  const labelCabecera = esRespuestaAgente
+    ? "Análisis del agente"
+    : esConsultaAgente
+      ? "Consulta del abogado"
+      : evento.categoria !== null
+        ? CATEGORIA_LABEL[evento.categoria]
+        : evento.tipo === "sistema"
+          ? "Sistema"
+          : "Evento";
 
   return (
     <li className="relative group">
       <span
         className={cn(
-          "absolute -left-[7px] top-1.5 size-3 rounded-full ring-4 ring-background",
+          "absolute -left-[7px] top-3 size-3 rounded-full ring-4 ring-background",
           colorBullet,
         )}
         aria-hidden="true"
       />
-      <div className={cn("rounded-md bg-card/30 px-3 py-2 pl-3.5", bordeCard)}>
-        {esRespuestaAgente ? (
-          <RespuestaAgenteEvento evento={evento} />
-        ) : esConsultaAgente ? (
-          <ConsultaAgenteCard evento={evento} casoId={casoId} />
-        ) : (
-          <EventoManualOSistemaContenido
-            evento={evento}
-            casoId={casoId}
-            esEditable={esManualEditable}
-            onEliminar={onEliminar}
-            tieneAdjuntos={tieneAdjuntos ?? false}
-            labelCategoria={labelCategoria}
+      <div className={cn("rounded-md bg-card/30 pl-3.5", bordeCard)}>
+        {/* Header clickeable: siempre visible, toggle el expandido. */}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-muted/20 rounded-md transition-colors"
+          aria-expanded={expandido}
+        >
+          <ChevronRight
+            className={cn(
+              "size-3.5 mt-0.5 shrink-0 text-muted-foreground transition-transform",
+              expandido && "rotate-90",
+            )}
+            aria-hidden="true"
           />
-        )}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {esRespuestaAgente || esConsultaAgente ? (
+                <Sparkles
+                  className="size-3 text-primary/80 shrink-0"
+                  aria-hidden="true"
+                />
+              ) : null}
+              <span
+                className={cn(
+                  "text-[10px] uppercase tracking-wider",
+                  esRespuestaAgente || esConsultaAgente
+                    ? "text-primary/80 font-medium"
+                    : "text-muted-foreground",
+                )}
+              >
+                {labelCabecera}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                · {fmtFecha(evento.ocurrido_en)}
+              </span>
+              {evento.estado === "pendiente" ? (
+                <span className="text-[10px] uppercase tracking-wider text-amber-500">
+                  · pendiente
+                </span>
+              ) : null}
+              {numAdjuntos > 0 ? (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                  <Paperclip className="size-3" />
+                  {numAdjuntos}
+                </span>
+              ) : null}
+            </div>
+            {!expandido ? (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {snippetParaColapsado(evento)}
+              </p>
+            ) : null}
+          </div>
+        </button>
+
+        {/* Body expandido: contenido completo. */}
+        {expandido ? (
+          <div className="px-3 pb-3 -mt-1">
+            {esRespuestaAgente ? (
+              <RespuestaAgenteEvento evento={evento} />
+            ) : esConsultaAgente ? (
+              <ConsultaAgenteContenido evento={evento} casoId={casoId} />
+            ) : (
+              <EventoManualOSistemaContenido
+                evento={evento}
+                casoId={casoId}
+                esEditable={esManualEditable}
+                onEliminar={onEliminar}
+                tieneAdjuntos={tieneAdjuntos ?? false}
+              />
+            )}
+          </div>
+        ) : null}
       </div>
     </li>
   );
@@ -177,35 +324,18 @@ function EventoManualOSistemaContenido({
   esEditable,
   onEliminar,
   tieneAdjuntos,
-  labelCategoria,
 }: {
   evento: EventoCaso;
   casoId: string;
   esEditable: boolean;
   onEliminar: () => void;
   tieneAdjuntos: boolean;
-  labelCategoria: string | null;
 }) {
   return (
     <div className="flex items-start justify-between gap-2">
       <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-          {labelCategoria ? (
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {labelCategoria}
-            </span>
-          ) : null}
-          {evento.estado === "pendiente" ? (
-            <span className="text-[10px] uppercase tracking-wider text-amber-500">
-              · pendiente
-            </span>
-          ) : null}
-        </div>
         <p className="text-sm leading-snug whitespace-pre-wrap">
           {evento.descripcion}
-        </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {fmtFecha(evento.ocurrido_en)}
         </p>
         {tieneAdjuntos ? (
           <AdjuntosRender casoId={casoId} adjuntos={evento.adjuntos} />
@@ -226,10 +356,9 @@ function EventoManualOSistemaContenido({
   );
 }
 
-// Card chiquita para la consulta del abogado (la pregunta que precede
-// a la respuesta del agente). Borde lateral primary tenue, label
-// "Consulta del abogado" + adjuntos si el abogado los envió.
-function ConsultaAgenteCard({
+// Body expandido para la consulta del abogado al agente. Muestra
+// pregunta + adjuntos. (Sub-PR2 va a sacar este flujo del timeline.)
+function ConsultaAgenteContenido({
   evento,
   casoId,
 }: {
@@ -239,15 +368,6 @@ function ConsultaAgenteCard({
   const tieneAdjuntos = evento.adjuntos && evento.adjuntos.length > 0;
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1">
-        <Sparkles className="size-3 text-primary/70" />
-        <span className="text-[10px] uppercase tracking-wider text-primary/80 font-medium">
-          Consulta del abogado
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          · {fmtFecha(evento.ocurrido_en)}
-        </span>
-      </div>
       <p className="text-sm leading-snug whitespace-pre-wrap text-muted-foreground italic">
         {evento.descripcion}
       </p>

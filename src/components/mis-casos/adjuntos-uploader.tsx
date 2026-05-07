@@ -21,7 +21,7 @@
 //   - status=done: borra el objeto del bucket vía DELETE /adjuntos.
 //   - status=error: solo lo saca del state local.
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   Loader2,
   Paperclip,
@@ -94,12 +94,26 @@ export function AdjuntosUploader({
   // cuando el usuario clickea "Quitar". Se borra la entry cuando el
   // upload termina (ok o error) o cuando se aborta.
   const abortersRef = useRef<Map<string, AbortController>>(new Map());
+  // Ref siempre apuntando al `value` más reciente. Lo necesitamos porque
+  // `subirArchivo` se llama desde un event handler y sus closures
+  // capturan el `value` viejo: si el usuario tipea la descripción
+  // mientras el upload está en curso, esa edición vive en `value` (el
+  // padre la propaga al state) pero `subirArchivo` no la ve. Sin esto,
+  // al pasar a "done" se reseteaba la descripción a "" — el director
+  // observó esto cuando subía PDFs chicos que terminaban en <1s.
+  const valueRef = useRef(value);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   const reemplazar = (tempId: string, next: AdjuntoUI | null) => {
+    // Leemos del valueRef en vez del `value` capturado para que dos
+    // uploads concurrentes no se pisen entre sí al terminar.
+    const actual = valueRef.current;
     onChange(
       next === null
-        ? value.filter((i) => i.tempId !== tempId)
-        : value.map((i) => (i.tempId === tempId ? next : i)),
+        ? actual.filter((i) => i.tempId !== tempId)
+        : actual.map((i) => (i.tempId === tempId ? next : i)),
     );
   };
 
@@ -108,7 +122,7 @@ export function AdjuntosUploader({
 
     if (!esMimePermitido(file.type)) {
       onChange([
-        ...value,
+        ...valueRef.current,
         {
           tempId,
           status: "error",
@@ -129,7 +143,7 @@ export function AdjuntosUploader({
     });
     if (!v.ok) {
       onChange([
-        ...value,
+        ...valueRef.current,
         {
           tempId,
           status: "error",
@@ -153,7 +167,7 @@ export function AdjuntosUploader({
       size_bytes: file.size,
       descripcion: "",
     };
-    onChange([...value, itemUploading]);
+    onChange([...valueRef.current, itemUploading]);
 
     const controller = new AbortController();
     abortersRef.current.set(tempId, controller);
@@ -214,9 +228,10 @@ export function AdjuntosUploader({
       }
 
       // Preservamos la descripción que el usuario haya tipeado mientras
-      // subía (puede haber empezado a escribirla antes de que termine
-      // el upload). Buscamos el item actual en `value`.
-      const actual = value.find((v) => v.tempId === tempId);
+      // subía. Leemos del valueRef (el state actual) en vez del `value`
+      // capturado por closure — ese último puede ser obsoleto si el
+      // usuario editó descripción durante el upload.
+      const actual = valueRef.current.find((v) => v.tempId === tempId);
       reemplazar(tempId, {
         tempId,
         status: "done",
@@ -291,7 +306,9 @@ export function AdjuntosUploader({
 
   const setDescripcion = (tempId: string, descripcion: string) => {
     onChange(
-      value.map((i) => (i.tempId === tempId ? { ...i, descripcion } : i)),
+      valueRef.current.map((i) =>
+        i.tempId === tempId ? { ...i, descripcion } : i,
+      ),
     );
   };
 
