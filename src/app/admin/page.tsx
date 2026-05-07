@@ -58,19 +58,9 @@ export default async function AdminHomePage({
     getUsuariosLite(),
   ]);
 
-  // buildHref preserva todos los filtros activos al cambiar de página.
-  const buildHref = (pageNum: number): string => {
-    const usp = new URLSearchParams();
-    if (filtros.usuario) usp.set("usuario", filtros.usuario);
-    if (filtros.estado) usp.set("estado", filtros.estado);
-    if (filtros.desde) usp.set("desde", filtros.desde);
-    if (filtros.hasta) usp.set("hasta", filtros.hasta);
-    if (filtros.q) usp.set("q", filtros.q);
-    if (pageNum > 1) usp.set("page", String(pageNum));
-    const qs = usp.toString();
-    return qs ? `/admin?${qs}` : "/admin";
-  };
-
+  // Pagination construye los hrefs internamente leyendo los searchParams
+  // actuales: pasarle una función desde acá crashea el build de prod
+  // ("Functions cannot be passed directly to Client Components").
   return (
     <div className="space-y-3">
       <MetricsCards data={metricas} />
@@ -80,7 +70,6 @@ export default async function AdminHomePage({
         page={ejecucionesPage.page}
         pageSize={PAGE_SIZE}
         total={ejecucionesPage.total}
-        buildHref={buildHref}
       />
     </div>
   );
