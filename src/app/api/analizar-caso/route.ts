@@ -2,7 +2,11 @@ import { NextRequest } from "next/server";
 import { analizarCasoInputSchema } from "@/lib/schemas";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { enforceTokenLimit } from "@/lib/auth/enforce-rate";
-import { runAgent, AgentError } from "@/lib/agent/run-agent";
+import {
+  runAgent,
+  AgentError,
+  type AgentErrorCode,
+} from "@/lib/agent/run-agent";
 import { armarPrompt, SYSTEM_PROMPT } from "@/lib/agent/prompts";
 import { parseWithRecovery } from "@/lib/agent/parse";
 import { calcularCosto } from "@/lib/agent/pricing";
@@ -12,6 +16,20 @@ import { jsonResponse, isDev } from "@/lib/http";
 
 // Latencia medida en sub-paso 3.2: ~87-90s end-to-end. 120s da ~30% headroom.
 export const maxDuration = 120;
+
+// Mapea códigos de AgentError a mensajes pensados para el abogado, no para
+// el desarrollador. El message técnico sigue persistiéndose en metadata.error
+// para auditoría; lo que llega al cliente es lo de acá.
+function mensajeUsuarioParaAgentError(code: AgentErrorCode): string {
+  switch (code) {
+    case "CAP_EXCEEDED_NO_SYNTHESIS":
+      return "Tu caso requiere más investigación de la que el sistema permite por ejecución. Probá dividirlo en consultas más específicas.";
+    case "MAX_ITERATIONS":
+      return "El análisis no logró converger. Probá con un caso más acotado o reintentá.";
+    case "API_ERROR":
+      return "Hubo un error de comunicación con el modelo. Reintentá en unos segundos.";
+  }
+}
 
 export async function POST(req: NextRequest): Promise<Response> {
   // 1. Body
@@ -105,6 +123,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         cache_creation_input_tokens: usage.cache_creation_input_tokens,
         cache_read_input_tokens: usage.cache_read_input_tokens,
         error: agentError.message,
+        error_code: agentError.code,
       },
     };
     const { error: insertError } = await supabase
@@ -119,9 +138,11 @@ export async function POST(req: NextRequest): Promise<Response> {
     return jsonResponse(
       {
         ok: false,
-        error: agentError.message,
+        error: mensajeUsuarioParaAgentError(agentError.code),
         ...(isDev()
           ? {
+              error_code: agentError.code,
+              error_detail: agentError.message,
               partial_busquedas: agentError.partialBusquedas,
               partial_iterations: agentError.partialIterations,
             }
@@ -162,6 +183,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       iterations: agentResult.iterations,
       cache_creation_input_tokens: usage.cache_creation_input_tokens,
       cache_read_input_tokens: usage.cache_read_input_tokens,
+      degraded_response: agentResult.degraded_response,
       ...(parsed.ok ? {} : { parseo_error: parsed.error }),
     },
   };
