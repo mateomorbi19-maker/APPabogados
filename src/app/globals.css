@@ -101,5 +101,11 @@
   }
   html {
     @apply font-sans;
+    /* Le dice al browser que use paleta dark para los popups y controles
+       nativos (opciones de <select>, calendario de <input type="date">,
+       scrollbars, color picker, etc). Sin esto los popups quedan ilegibles
+       (texto claro sobre fondo blanco) — bug detectado en producción tras
+       PR2 al desplegar el select de categoría del evento. */
+    color-scheme: dark;
   }
 }

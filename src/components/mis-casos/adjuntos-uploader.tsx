@@ -1,6 +1,6 @@
 "use client";
-// Sub-componente reusable para cargar archivos adjuntos a un evento (o
-// a una consulta del agente en PR3). Maneja el flujo completo:
+// Sub-componente reusable para cargar archivos adjuntos a un evento o
+// a una consulta del agente. Maneja el flujo completo:
 //
 //   1. File picker.
 //   2. Validación local (mime + tamaño).
@@ -11,9 +11,26 @@
 // Patrón controlled: el padre tiene `value: AdjuntoUI[]` y `onChange`.
 // El padre filtra por `.status === 'done'` para enviarlos en el body
 // del POST de evento. Items fallidos se pueden reintentar o remover.
+//
+// El campo de descripción aparece desde el primer momento (no solo
+// cuando termina el upload) — fix QA del director para que el abogado
+// sepa que va a poder describir cada archivo.
+//
+// El botón "Quitar":
+//   - status=uploading: aborta el upload en curso (AbortController).
+//   - status=done: borra el objeto del bucket vía DELETE /adjuntos.
+//   - status=error: solo lo saca del state local.
 
 import { useRef } from "react";
-import { Loader2, Paperclip, X, AlertCircle, FileText, Image, FileType } from "lucide-react";
+import {
+  Loader2,
+  Paperclip,
+  X,
+  AlertCircle,
+  FileText,
+  Image as ImageIcon,
+  FileType,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +41,8 @@ import {
   validarAdjunto,
   type MimeTypePermitido,
 } from "@/lib/casos/adjuntos";
+
+const DESCRIPCION_MAX = 200;
 
 // Items en distintos estados durante el flujo. `done` es el estado que
 // el padre va a enviar al backend al guardar el evento.
@@ -71,6 +90,10 @@ export function AdjuntosUploader({
   disabled = false,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // AbortControllers por tempId para poder cancelar el upload en curso
+  // cuando el usuario clickea "Quitar". Se borra la entry cuando el
+  // upload termina (ok o error) o cuando se aborta.
+  const abortersRef = useRef<Map<string, AbortController>>(new Map());
 
   const reemplazar = (tempId: string, next: AdjuntoUI | null) => {
     onChange(
@@ -132,6 +155,9 @@ export function AdjuntosUploader({
     };
     onChange([...value, itemUploading]);
 
+    const controller = new AbortController();
+    abortersRef.current.set(tempId, controller);
+
     try {
       const resUrl = await fetch(
         `/api/casos/${casoId}/eventos/upload-url`,
@@ -143,6 +169,7 @@ export function AdjuntosUploader({
             mime_type: file.type,
             size_bytes: file.size,
           }),
+          signal: controller.signal,
         },
       );
       const jsonUrl = (await resUrl.json().catch(() => null)) as
@@ -171,6 +198,7 @@ export function AdjuntosUploader({
         method: "PUT",
         headers: { "content-type": file.type },
         body: file,
+        signal: controller.signal,
       });
       if (!resPut.ok) {
         reemplazar(tempId, {
@@ -185,6 +213,10 @@ export function AdjuntosUploader({
         return;
       }
 
+      // Preservamos la descripción que el usuario haya tipeado mientras
+      // subía (puede haber empezado a escribirla antes de que termine
+      // el upload). Buscamos el item actual en `value`.
+      const actual = value.find((v) => v.tempId === tempId);
       reemplazar(tempId, {
         tempId,
         status: "done",
@@ -192,9 +224,14 @@ export function AdjuntosUploader({
         mime_type: mimeTyped,
         size_bytes: file.size,
         storage_path: jsonUrl.storage_path,
-        descripcion: "",
+        descripcion: actual?.descripcion ?? "",
       });
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        // El usuario abortó: ya se removió del state en `quitar`. Nada
+        // que hacer acá.
+        return;
+      }
       reemplazar(tempId, {
         tempId,
         status: "error",
@@ -204,7 +241,42 @@ export function AdjuntosUploader({
         descripcion: "",
         errorMsg: e instanceof Error ? e.message : "Error de red",
       });
+    } finally {
+      abortersRef.current.delete(tempId);
     }
+  };
+
+  const quitar = async (item: AdjuntoUI) => {
+    if (item.status === "uploading") {
+      // Cancelamos el fetch pendiente. El catch en subirArchivo detecta
+      // AbortError y no actualiza el state — sí lo actualizamos acá.
+      const ctrl = abortersRef.current.get(item.tempId);
+      ctrl?.abort();
+      abortersRef.current.delete(item.tempId);
+      reemplazar(item.tempId, null);
+      return;
+    }
+
+    if (item.status === "done") {
+      // Sacamos del state inmediatamente para feedback rápido. El
+      // DELETE al storage corre en background; si falla, el archivo
+      // queda huérfano (acepta — datos de prueba en beta).
+      reemplazar(item.tempId, null);
+      void fetch(`/api/casos/${casoId}/adjuntos`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ storage_path: item.storage_path }),
+      }).catch((e) => {
+        console.warn(
+          "[adjuntos-uploader] no se pudo borrar el adjunto del storage:",
+          e,
+        );
+      });
+      return;
+    }
+
+    // status === "error": solo limpiar del state local.
+    reemplazar(item.tempId, null);
   };
 
   const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
@@ -257,7 +329,7 @@ export function AdjuntosUploader({
               key={item.tempId}
               item={item}
               disabled={disabled}
-              onQuitar={() => reemplazar(item.tempId, null)}
+              onQuitar={() => void quitar(item)}
               onDescripcionChange={(d) => setDescripcion(item.tempId, d)}
             />
           ))}
@@ -270,7 +342,7 @@ export function AdjuntosUploader({
 function iconoMime(mime: string) {
   if (mime === "application/pdf") return <FileText className="size-4" />;
   if (mime === "image/jpeg" || mime === "image/png")
-    return <Image className="size-4" aria-label="imagen" />;
+    return <ImageIcon className="size-4" aria-label="imagen" />;
   if (
     mime ===
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -290,8 +362,15 @@ function AdjuntoCard({
   onQuitar: () => void;
   onDescripcionChange: (d: string) => void;
 }) {
-  const mimeLabel =
-    esMimePermitido(item.mime_type) ? MIME_LABEL[item.mime_type] : "?";
+  const mimeLabel = esMimePermitido(item.mime_type)
+    ? MIME_LABEL[item.mime_type]
+    : "?";
+
+  // El campo de descripción es opcional pero recomendado (ayuda al
+  // agente a entender de qué se trata cada adjunto). Lo mostramos
+  // siempre que el item no esté en error — incluso mientras sube.
+  const mostrarDescripcion = item.status !== "error";
+  const descripcionDisabled = disabled || item.status === "uploading";
 
   return (
     <li className="rounded-md border border-border bg-card/30 px-3 py-2 space-y-2">
@@ -323,6 +402,7 @@ function AdjuntoCard({
           onClick={onQuitar}
           disabled={disabled}
           aria-label="Quitar"
+          title="Quitar"
         >
           <X className="size-3.5" />
         </Button>
@@ -332,16 +412,23 @@ function AdjuntoCard({
         <p className="text-xs text-destructive">{item.errorMsg}</p>
       ) : null}
 
-      {item.status === "done" ? (
-        <Input
-          type="text"
-          placeholder="Descripción del archivo (ej: Resolución del juez rechazando la nulidad)"
-          value={item.descripcion}
-          onChange={(e) => onDescripcionChange(e.target.value)}
-          disabled={disabled}
-          maxLength={500}
-          className="h-8 text-xs"
-        />
+      {mostrarDescripcion ? (
+        <div className="space-y-1">
+          <Input
+            type="text"
+            placeholder="Descripción (opcional pero recomendada). Ej: Resolución del juez rechazando la nulidad"
+            value={item.descripcion}
+            onChange={(e) => onDescripcionChange(e.target.value)}
+            disabled={descripcionDisabled}
+            maxLength={DESCRIPCION_MAX}
+            className="h-8 text-xs"
+          />
+          {item.descripcion.length > 0 ? (
+            <p className="text-[10px] text-muted-foreground text-right">
+              {item.descripcion.length} / {DESCRIPCION_MAX}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </li>
   );
