@@ -11,6 +11,7 @@ export const contextoSchema = z
 
 export const preAnalisisInputSchema = z.object({
   caso: z.string().min(20, "El caso debe tener al menos 20 caracteres"),
+  rol: rolSchema,
 });
 export type PreAnalisisInput = z.infer<typeof preAnalisisInputSchema>;
 
