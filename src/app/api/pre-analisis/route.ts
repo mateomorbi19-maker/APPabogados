@@ -58,7 +58,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       400,
     );
   }
-  const { caso } = parsedBody.data;
+  const { caso, rol } = parsedBody.data;
 
   // 2. Auth + whitelist
   const wl = await requireUsuarioOr403();
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       max_tokens: 4096,
       system: PRE_ANALISIS_SYSTEM_PROMPT,
       messages: [
-        { role: "user", content: armarPromptPreAnalisis(caso) },
+        { role: "user", content: armarPromptPreAnalisis(caso, rol) },
       ],
     });
   } catch (e) {
@@ -139,6 +139,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     latencia_ms,
     metadata: {
       caso,
+      rol,
       resultado: outputOk && parsed.ok ? parsed.resultado : null,
       parseo_intento: outputOk && parsed.ok ? parsed.parseo_intento : null,
       cache_creation_input_tokens: usage.cache_creation_input_tokens,

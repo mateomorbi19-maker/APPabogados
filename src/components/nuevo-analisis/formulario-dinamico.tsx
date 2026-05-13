@@ -5,14 +5,24 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { PreAnalisisOutput } from "@/lib/schemas";
 import { PreguntaField, type RespuestaValor } from "./pregunta-field";
-import { RolSelector, type Rol } from "./rol-selector";
+import type { Rol } from "./rol-selector";
+
+const ROL_LABEL: Record<Rol, string> = {
+  defensor: "Defensor",
+  querellante: "Querellante / Fiscal",
+  ambos: "Ambos (defensor + querellante)",
+};
 
 type Props = {
   data: PreAnalisisOutput;
   respuestas: Record<string, RespuestaValor>;
   onRespuestasChange: (r: Record<string, RespuestaValor>) => void;
-  rol: Rol | null;
-  onRolChange: (r: Rol) => void;
+  // El rol viene fijo desde el paso de input (decisión 3 del plan: queda
+  // inmutable durante el form para no desincronizar las preguntas — que
+  // ya fueron generadas condicionadas a este rol — con la perspectiva de
+  // análisis). Para cambiarlo el usuario debe "Volver" al input y
+  // re-disparar el pre-análisis.
+  rol: Rol;
   onVolver: () => void;
   onAnalizar: () => void;
   loading: boolean;
@@ -40,7 +50,6 @@ export function FormularioDinamico({
   respuestas,
   onRespuestasChange,
   rol,
-  onRolChange,
   onVolver,
   onAnalizar,
   loading,
@@ -50,13 +59,11 @@ export function FormularioDinamico({
   const requeridasCompletas = data.preguntas.every((p) =>
     preguntaRequeridaCompleta(p, respuestas[p.id]),
   );
-  const puedeAnalizar = requeridasCompletas && rol !== null && !loading;
+  const puedeAnalizar = requeridasCompletas && !loading;
 
   const hint = !requeridasCompletas
     ? "Completá las preguntas requeridas para continuar"
-    : rol === null
-      ? "Elegí un rol para continuar"
-      : null;
+    : null;
 
   return (
     <div className="space-y-6">
@@ -99,6 +106,10 @@ export function FormularioDinamico({
             <dt className="text-muted-foreground">¿Hay detenidos?</dt>
             <dd>{dd.hay_detenidos ?? "—"}</dd>
           </div>
+          <div>
+            <dt className="text-muted-foreground">Rol del análisis</dt>
+            <dd>{ROL_LABEL[rol]}</dd>
+          </div>
           <div className="sm:col-span-2">
             <dt className="text-muted-foreground">Delitos posibles</dt>
             <dd>
@@ -126,15 +137,6 @@ export function FormularioDinamico({
             }
           />
         ))}
-      </div>
-
-      <Separator />
-
-      <div className="space-y-3">
-        <h3 className="font-medium text-xs uppercase tracking-wider text-muted-foreground">
-          Rol del análisis
-        </h3>
-        <RolSelector value={rol} onChange={onRolChange} disabled={loading} />
       </div>
 
       <div className="flex flex-col items-end gap-1.5 pt-2">

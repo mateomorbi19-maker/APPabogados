@@ -27,10 +27,14 @@ import type { Rol } from "./rol-selector";
 // (analizando, resultado, error-analisis). El usuario no debe perder lo
 // que llenó al volver desde un resultado o un error — mismo principio que
 // el ajuste R1 de Fase 4.4 con el caso.
+//
+// El rol llega no-null porque se gateó en el paso `input`. Queda
+// inmutable durante el form: cambiarlo implica re-disparar el pre-análisis
+// (las preguntas se generan condicionadas al rol).
 type FormCtx = {
   data: PreAnalisisOutput;
   respuestas: Record<string, RespuestaValor>;
-  rol: Rol | null;
+  rol: Rol;
 };
 
 type ErrorAnalisisTipo =
@@ -41,11 +45,12 @@ type ErrorAnalisisTipo =
   | "cancelado";
 
 type Fase =
-  | { kind: "input"; caso: string }
-  | { kind: "loading-pre"; caso: string }
+  | { kind: "input"; caso: string; rol: Rol | null }
+  | { kind: "loading-pre"; caso: string; rol: Rol }
   | {
       kind: "error-pre";
       caso: string;
+      rol: Rol;
       message: string;
       tipo: "rate-limit" | "general";
     }
@@ -182,7 +187,11 @@ async function intentarRecuperarAnalisis(
 
 export function NuevoAnalisisPanel() {
   const { revalidate } = useConsumo();
-  const [fase, setFase] = useState<Fase>({ kind: "input", caso: "" });
+  const [fase, setFase] = useState<Fase>({
+    kind: "input",
+    caso: "",
+    rol: null,
+  });
   // Dos in-flight guards independientes: uno para el pre-análisis y otro
   // para el análisis profundo. Mismo patrón que use-consumo.tsx — el
   // disabled del botón no alcanza con React 18 batching.
@@ -199,15 +208,15 @@ export function NuevoAnalisisPanel() {
     };
   }, []);
 
-  const submitCaso = async (caso: string) => {
+  const submitCaso = async (caso: string, rol: Rol) => {
     if (inFlightPreRef.current) return;
     inFlightPreRef.current = true;
-    setFase({ kind: "loading-pre", caso });
+    setFase({ kind: "loading-pre", caso, rol });
     try {
       const res = await fetch("/api/pre-analisis", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ caso }),
+        body: JSON.stringify({ caso, rol }),
       });
       const json = (await res
         .json()
@@ -222,7 +231,7 @@ export function NuevoAnalisisPanel() {
             : json && "error" in json
               ? json.error
               : `Error procesando solicitud (HTTP ${res.status})`;
-        setFase({ kind: "error-pre", caso, message, tipo });
+        setFase({ kind: "error-pre", caso, rol, message, tipo });
         return;
       }
 
@@ -239,13 +248,14 @@ export function NuevoAnalisisPanel() {
         ctx: {
           data,
           respuestas: inicializarRespuestas(data.preguntas),
-          rol: null,
+          rol,
         },
       });
     } catch (e) {
       setFase({
         kind: "error-pre",
         caso,
+        rol,
         message: e instanceof Error ? e.message : "Error de red",
         tipo: "general",
       });
@@ -256,7 +266,6 @@ export function NuevoAnalisisPanel() {
 
   const submitAnalisis = async (ctx: FormCtx, caso: string) => {
     if (inFlightAnalisisRef.current) return;
-    if (ctx.rol === null) return; // doble guard, ya gateado en UI
     inFlightAnalisisRef.current = true;
 
     const controller = new AbortController();
@@ -399,8 +408,10 @@ export function NuevoAnalisisPanel() {
   // === Render ===
 
   // Form vivo — durante "form" y "analizando" mostramos el formulario.
-  // En "analizando" el form va `loading={true}` (botón deshabilitado, rol
-  // y respuestas no editables vía el `disabled` que cada control respeta).
+  // En "analizando" el form va `loading={true}` (botón deshabilitado, y
+  // respuestas no editables vía el `disabled` que cada control respeta).
+  // Decisión 4: "Volver" conserva caso + rol en el input para que el
+  // usuario pueda editarlos antes de re-disparar el pre-análisis.
   if (fase.kind === "form" || fase.kind === "analizando") {
     const ctx = fase.ctx;
     const loading = fase.kind === "analizando";
@@ -417,14 +428,9 @@ export function NuevoAnalisisPanel() {
             )
           }
           rol={ctx.rol}
-          onRolChange={(rol) =>
-            setFase((prev) =>
-              prev.kind === "form"
-                ? { ...prev, ctx: { ...prev.ctx, rol } }
-                : prev,
-            )
+          onVolver={() =>
+            setFase({ kind: "input", caso: fase.caso, rol: ctx.rol })
           }
-          onVolver={() => setFase({ kind: "input", caso: fase.caso })}
           onAnalizar={() => void submitAnalisis(ctx, fase.caso)}
           loading={loading}
         />
@@ -446,7 +452,9 @@ export function NuevoAnalisisPanel() {
         onVolver={() =>
           setFase({ kind: "form", caso: fase.caso, ctx: fase.ctx })
         }
-        onReiniciar={() => setFase({ kind: "input", caso: "" })}
+        onReiniciar={() =>
+          setFase({ kind: "input", caso: "", rol: null })
+        }
         ejecucionId={fase.ejecucionId}
         caso={fase.caso}
       />
@@ -467,14 +475,9 @@ export function NuevoAnalisisPanel() {
             )
           }
           rol={fase.ctx.rol}
-          onRolChange={(rol) =>
-            setFase((prev) =>
-              prev.kind === "error-analisis"
-                ? { ...prev, ctx: { ...prev.ctx, rol } }
-                : prev,
-            )
+          onVolver={() =>
+            setFase({ kind: "input", caso: fase.caso, rol: fase.ctx.rol })
           }
-          onVolver={() => setFase({ kind: "input", caso: fase.caso })}
           onAnalizar={() => void submitAnalisis(fase.ctx, fase.caso)}
           loading={false}
         />
@@ -498,12 +501,26 @@ export function NuevoAnalisisPanel() {
   }
 
   // input | loading-pre | error-pre
+  const casoActual = fase.caso;
+  const rolActual = fase.rol;
   return (
     <div className="space-y-6">
       <CasoInput
-        caso={fase.caso}
-        onCasoChange={(c) => setFase({ kind: "input", caso: c })}
-        onSubmit={submitCaso}
+        caso={casoActual}
+        onCasoChange={(c) =>
+          setFase({ kind: "input", caso: c, rol: rolActual })
+        }
+        rol={rolActual}
+        onRolChange={(r) =>
+          setFase({ kind: "input", caso: casoActual, rol: r })
+        }
+        onSubmit={() => {
+          // Doble guard, ya gateado en UI. El narrowing local evita un
+          // non-null assertion sobre rolActual.
+          if (rolActual === null) return;
+          const rolNoNull: Rol = rolActual;
+          void submitCaso(casoActual, rolNoNull);
+        }}
         loading={fase.kind === "loading-pre"}
       />
       {fase.kind === "error-pre" ? (
@@ -518,7 +535,7 @@ export function NuevoAnalisisPanel() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void submitCaso(fase.caso)}
+              onClick={() => void submitCaso(fase.caso, fase.rol)}
             >
               Reintentar
             </Button>
