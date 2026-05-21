@@ -237,9 +237,13 @@ export function NuevoAnalisisPanel() {
 
       // Éxito: el pre-análisis insertó tokens en la DB, refrescamos el header.
       void revalidate();
+      // El server ya validó el shape con preAnalisisOutputSchema y aplicó
+      // defaults (flags_detectados=[] si el modelo lo omitió). Confiamos
+      // en los 4 campos del response.
       const data: PreAnalisisOutput = {
         resumen_preliminar: json.resumen_preliminar,
         datos_detectados: json.datos_detectados,
+        flags_detectados: json.flags_detectados,
         preguntas: json.preguntas,
       };
       setFase({

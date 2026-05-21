@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import type Anthropic from "@anthropic-ai/sdk";
-import { preAnalisisInputSchema } from "@/lib/schemas";
+import {
+  preAnalisisInputSchema,
+  preAnalisisOutputSchema,
+  type PreAnalisisOutput,
+} from "@/lib/schemas";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { enforceTokenLimit } from "@/lib/auth/enforce-rate";
 import {
@@ -15,26 +19,6 @@ import { jsonResponse, isDev } from "@/lib/http";
 
 // Sin tool-use, sin RAG. Latencia esperada 10-30s; 60s da 2x headroom.
 export const maxDuration = 60;
-
-function tieneShapeValido(resultado: Record<string, unknown>): boolean {
-  if (typeof resultado.resumen_preliminar !== "string") return false;
-  if (
-    typeof resultado.datos_detectados !== "object" ||
-    resultado.datos_detectados === null
-  ) {
-    return false;
-  }
-  if (!Array.isArray(resultado.preguntas)) return false;
-  if (resultado.preguntas.length === 0) return false;
-  for (const p of resultado.preguntas) {
-    if (typeof p !== "object" || p === null) return false;
-    const pr = p as Record<string, unknown>;
-    if (typeof pr.id !== "string") return false;
-    if (typeof pr.label !== "string") return false;
-    if (typeof pr.tipo !== "string") return false;
-  }
-  return true;
-}
 
 export async function POST(req: NextRequest): Promise<Response> {
   // 1. Body
@@ -112,13 +96,24 @@ export async function POST(req: NextRequest): Promise<Response> {
     .map((b) => b.text)
     .join("");
 
-  // 6. Parser + 7. validación estructural mínima
+  // 6. Parser + 7. validación con Zod del shape del output
   const parsed = parseWithRecovery(rawText);
   let outputOk = parsed.ok;
   let parseoError: string | null = parsed.ok ? null : parsed.error;
-  if (parsed.ok && !tieneShapeValido(parsed.resultado)) {
-    outputOk = false;
-    parseoError = "Output con shape inválido";
+  // resultadoValidado lleva el output ya con defaults aplicados (flags_detectados=[]
+  // si el modelo lo omitió) + .min(1).max(15) sobre preguntas. Si falla la
+  // validación, marcamos como output con shape inválido y devolvemos 502.
+  let resultadoValidado: PreAnalisisOutput | null = null;
+  if (parsed.ok) {
+    const v = preAnalisisOutputSchema.safeParse(parsed.resultado);
+    if (v.success) {
+      resultadoValidado = v.data;
+    } else {
+      outputOk = false;
+      parseoError = `Output con shape inválido: ${v.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; ")}`;
+    }
   }
 
   // 8. INSERT (siempre que haya usage del SDK)
@@ -140,7 +135,10 @@ export async function POST(req: NextRequest): Promise<Response> {
     metadata: {
       caso,
       rol,
-      resultado: outputOk && parsed.ok ? parsed.resultado : null,
+      // Persistimos el resultado YA VALIDADO por Zod (con defaults aplicados)
+      // en vez del raw del parser. Esto garantiza que las filas nuevas en
+      // /admin y en el historial tengan siempre el shape canónico.
+      resultado: outputOk && resultadoValidado ? resultadoValidado : null,
       parseo_intento: outputOk && parsed.ok ? parsed.parseo_intento : null,
       cache_creation_input_tokens: usage.cache_creation_input_tokens,
       cache_read_input_tokens: usage.cache_read_input_tokens,
@@ -163,7 +161,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   // 9. Response
-  if (!outputOk || !parsed.ok) {
+  if (!outputOk || !resultadoValidado) {
     return jsonResponse(
       {
         ok: false,
@@ -180,5 +178,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       502,
     );
   }
-  return jsonResponse({ ok: true, ...parsed.resultado }, 200);
+  // Devolvemos el shape ya validado: el cliente puede confiar en que el
+  // body trae los 4 campos (resumen_preliminar, datos_detectados,
+  // flags_detectados, preguntas) sin runtime checks adicionales.
+  return jsonResponse({ ok: true, ...resultadoValidado }, 200);
 }

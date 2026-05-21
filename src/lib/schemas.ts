@@ -32,6 +32,19 @@ export const preguntaSchema = z.object({
   motivo: z.string(),
 });
 
+// Códigos canónicos de los 5 flags estratégicos que el pre-análisis detecta.
+// El SYSTEM_PROMPT del análisis profundo re-detecta los mismos flags por su
+// cuenta (no recibe esta lista como input); este array se persiste en
+// metadata para observabilidad en /admin.
+export const flagEstrategicoSchema = z.enum([
+  "prescripcion_riesgo",
+  "competencia_cuestionable",
+  "nulidades",
+  "conexidad",
+  "menores",
+]);
+export type FlagEstrategico = z.infer<typeof flagEstrategicoSchema>;
+
 export const preAnalisisOutputSchema = z.object({
   resumen_preliminar: z.string(),
   datos_detectados: z.object({
@@ -40,7 +53,14 @@ export const preAnalisisOutputSchema = z.object({
     hay_detenidos: z.union([z.literal("Sí"), z.literal("No"), z.null()]),
     etapa_procesal: z.union([z.string(), z.null()]),
   }),
-  preguntas: z.array(preguntaSchema),
+  // Default a [] para tolerar respuestas previas al modelo de 4 categorías
+  // (filas viejas del historial no tienen este campo).
+  flags_detectados: z.array(flagEstrategicoSchema).default([]),
+  // Cap 4-12 por contrato del prompt; .max(15) deja 3 de margen defensivo
+  // contra respuestas degeneradas del modelo. .min(1) es el mínimo absoluto
+  // para considerar el output utilizable; el server rechaza con 502 cualquier
+  // respuesta que no cumpla este shape.
+  preguntas: z.array(preguntaSchema).min(1).max(15),
 });
 export type PreAnalisisOutput = z.infer<typeof preAnalisisOutputSchema>;
 
