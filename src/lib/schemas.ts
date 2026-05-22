@@ -75,9 +75,24 @@ export type PreAnalisisOutput = z.infer<typeof preAnalisisOutputSchema>;
 // caso del intento 3 del parser (truncado): el JSON puede llegar incompleto
 // pero parseable, y queremos renderizar lo que haya en vez de fallar.
 
-export const estrategiaSchema = z.object({
+// Tres perfiles fijos de estrategia. El prompt al modelo le exige una por
+// cada uno, en este orden (conservadora, moderada, agresiva). El UI les
+// asigna color y label visible al usuario.
+export const tipoEstrategiaSchema = z.enum([
+  "conservadora",
+  "moderada",
+  "agresiva",
+]);
+export type TipoEstrategia = z.infer<typeof tipoEstrategiaSchema>;
+
+const baseEstrategiaSchema = z.object({
   numero: z.union([z.number(), z.string()]).transform((v) => Number(v)),
   nombre: z.string(),
+  tipo: tipoEstrategiaSchema,
+  // Preview de 60-120 palabras pensado para mostrar en la card colapsada.
+  // El cap .max(800) deja margen sobre 120 palabras (≈600-720 chars en
+  // español) sin que respuestas pegadas al borde tiren 502.
+  resumen_ejecutivo: z.string().min(1).max(800),
   tesis_central: z.string(),
   fundamento_legal: z.array(z.string()).default([]),
   doctrina_aplicable: z.string().default(""),
@@ -85,6 +100,37 @@ export const estrategiaSchema = z.object({
   riesgos: z.array(z.string()).default([]),
   pasos_procesales: z.array(z.string()).default([]),
 });
+
+// Preprocess para compatibilidad con ejecuciones viejas (pre-rediseño)
+// que no tienen `tipo` ni `resumen_ejecutivo` en su `estrategia_snapshot`
+// ni en `metadata.resultado.{defensor,querellante}.estrategias`:
+//   - `tipo`: se deriva del `numero` (1 → conservadora, 2 → moderada,
+//     3 → agresiva). Cubre el caso de las 27+ ejecuciones históricas
+//     que tienen numero 1/2/3 sin tipo asociado.
+//   - `resumen_ejecutivo`: se deriva de la primera oración de
+//     `tesis_central`, truncada a 200 chars. Es un fallback razonable
+//     porque tesis_central está pensado como 2-3 oraciones y la primera
+//     suele resumir el planteo. Si tesis_central viniera vacío, queda
+//     "Sin resumen disponible" como último recurso (no debería pasar,
+//     porque tesis_central es required en el schema).
+export const estrategiaSchema = z.preprocess((raw) => {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const v: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+
+  if (typeof v.tipo !== "string") {
+    const n = Number(v.numero);
+    v.tipo = n === 1 ? "conservadora" : n === 2 ? "moderada" : "agresiva";
+  }
+
+  if (typeof v.resumen_ejecutivo !== "string" || v.resumen_ejecutivo.length === 0) {
+    const tesis = typeof v.tesis_central === "string" ? v.tesis_central : "";
+    const primera = tesis.split(/(?<=[.!?])\s/)[0] ?? tesis;
+    const truncada = primera.slice(0, 200).trim();
+    v.resumen_ejecutivo = truncada.length > 0 ? truncada : "Sin resumen disponible";
+  }
+
+  return v;
+}, baseEstrategiaSchema);
 export type Estrategia = z.infer<typeof estrategiaSchema>;
 
 export const seccionAnalisisSchema = z.object({

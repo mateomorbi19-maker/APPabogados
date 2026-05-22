@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
 import { DetalleCaso } from "@/components/mis-casos/detalle-caso";
+import { estrategiaSchema } from "@/lib/schemas";
 import type { Caso, EventoCaso } from "@/lib/types";
 
 const UUID_RE =
@@ -55,7 +56,19 @@ export default async function CasoDetallePage({
     // de tirar 404. Caso edge: tabla con permisos raros, etc.
   }
 
-  const caso = casoRes.data as Caso;
+  // Re-parseamos `estrategia_snapshot` con el schema Zod para que casos
+  // viejos (creados antes del rediseño de tarjetas) tengan los campos
+  // `tipo` y `resumen_ejecutivo` derivados automáticamente vía el
+  // preprocess de `estrategiaSchema`. Si por alguna razón el snapshot
+  // está corrompido (caso muy edge), caemos al raw casteado — el render
+  // de seccion-estrategia-elegida.tsx tolera campos faltantes con
+  // optional chaining sobre `e.tipo`.
+  const rawCaso = casoRes.data as Caso;
+  const snapshotParsed = estrategiaSchema.safeParse(rawCaso.estrategia_snapshot);
+  const caso: Caso = snapshotParsed.success
+    ? { ...rawCaso, estrategia_snapshot: snapshotParsed.data }
+    : rawCaso;
+
   const eventos = (eventosRes.data ?? []) as EventoCaso[];
 
   return <DetalleCaso caso={caso} eventosIniciales={eventos} />;
