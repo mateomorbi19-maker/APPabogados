@@ -210,7 +210,7 @@ export async function runAgentConsulta(
   // error de infra.
   let response = await client.messages.create({
     model: MODEL_ID,
-    max_tokens: 8192,
+    max_tokens: 16000,
     system: input.systemPrompt,
     tools: [buscarDocumentosTool],
     messages,
@@ -298,13 +298,13 @@ export async function runAgentConsulta(
         capAgotado
           ? {
               model: MODEL_ID,
-              max_tokens: 8192,
+              max_tokens: 16000,
               system: input.systemPrompt,
               messages,
             }
           : {
               model: MODEL_ID,
-              max_tokens: 8192,
+              max_tokens: 16000,
               system: input.systemPrompt,
               tools: [buscarDocumentosTool],
               messages,

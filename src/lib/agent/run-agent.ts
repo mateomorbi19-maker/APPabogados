@@ -136,7 +136,7 @@ export async function runAgent(
   // Primer call: si falla acá no hay tokens cobrados — dejamos bubblear como error de infra.
   let response = await client.messages.create({
     model: MODEL_ID,
-    max_tokens: 8192,
+    max_tokens: 16000,
     system: systemPrompt,
     tools: [buscarDocumentosTool],
     messages,
@@ -246,13 +246,13 @@ export async function runAgent(
         capAgotado
           ? {
               model: MODEL_ID,
-              max_tokens: 8192,
+              max_tokens: 16000,
               system: systemPrompt,
               messages,
             }
           : {
               model: MODEL_ID,
-              max_tokens: 8192,
+              max_tokens: 16000,
               system: systemPrompt,
               tools: [buscarDocumentosTool],
               messages,
