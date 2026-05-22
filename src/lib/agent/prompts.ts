@@ -9,6 +9,12 @@ export const SYSTEM_PROMPT =
   "(F4) CONEXIDAD DE CAUSAS — otras causas vinculadas al mismo imputado o hecho. Si aparecen señales, las estrategias deben considerar acumulación / antecedentes. " +
   "(F5) MENORES INVOLUCRADOS — víctima o imputado menor de edad. Cambia fuero competente y reglas aplicables; si aplica, todas las estrategias deben encuadrarse en el régimen de menores y citar normativa específica recuperada por RAG. " +
   "Estos flags son los mismos que evalúa el pre-análisis. Re-detectalos vos mismo leyendo el caso (no asumas que vienen pre-marcados en el contexto). Si no activás ninguno, no agregues secciones genéricas — generá las estrategias normalmente. " +
+  "TRES PERFILES DE ESTRATEGIA — generá SIEMPRE exactamente TRES estrategias por cada rol solicitado, una por cada perfil, en este orden estricto: " +
+  "(P1) CONSERVADORA (numero=1, tipo='conservadora') — prioriza minimizar riesgos procesales. Planteos consolidados en jurisprudencia mayoritaria, pasos procesales de bajo riesgo de rechazo, opciones que un tribunal estándar acepta sin debate. Es la estrategia 'defensible ante cualquier juez'. " +
+  "(P2) MODERADA (numero=2, tipo='moderada') — balance entre riesgo y oportunidad. Planteos sólidos con margen de innovación, combinando jurisprudencia firme con un argumento secundario más ambicioso. Es el camino 'razonablemente ambicioso'. " +
+  "(P3) AGRESIVA (numero=3, tipo='agresiva') — maximiza el upside aunque implique mayor riesgo procesal. Planteos creativos o de avanzada, jurisprudencia minoritaria, nuevos enfoques doctrinarios. Es la estrategia 'puede salir todo bien o ser rechazada'. " +
+  "REGLA DE LOS 3 PERFILES: si el caso no admite genuinamente una estrategia de algún perfil (por ejemplo el caso es defensivamente trivial y no hay forma realista de armar una estrategia agresiva), GENERALA IGUAL como devil's advocate, explicitando esa limitación dentro del campo 'riesgos' de esa estrategia. NUNCA omitas ningún perfil ni devuelvas menos de 3 estrategias por rol. Si el caso es muy claro para un lado, las 3 estrategias diferirán en táctica y exposición, no en si el caso 'es ganable'. " +
+  "RESUMEN EJECUTIVO — cada estrategia debe incluir el campo 'resumen_ejecutivo': un párrafo de 60 a 120 palabras pensado como PREVIEW para un abogado escaneando opciones. Debe responder a '¿qué propone esta estrategia y por qué la elegirías?' en lenguaje accesible (no es un fragmento copiado de tesis_central, es un texto autocontenido que justifica la elección del perfil frente a los otros dos). El usuario lo verá en una tarjeta colapsada antes de decidir si quiere abrir el detalle completo. " +
   "Responde SIEMPRE en JSON válido sin markdown ni backticks.";
 
 export type Rol = "defensor" | "querellante" | "ambos";
@@ -54,7 +60,7 @@ export function armarPrompt(
 
   return `Analiza el siguiente caso penal argentino. PRIMERO usa la herramienta de búsqueda vectorial para buscar los artículos del Código Penal y doctrina de los manuales de litigación que sean relevantes para este caso. Hacé entre 3 y 6 búsquedas como rango razonable según la complejidad del caso, con tope absoluto en 10 búsquedas TOTALES (no por iteración). Combiná conceptos relacionados en cada búsqueda — por ejemplo, "homicidio tentativa emoción violenta" en vez de hacer búsquedas separadas para cada concepto. Cubrí temas distintos por búsqueda: si ya buscaste un tema, no lo repitas con sinónimos.
 
-Después de recuperar el contexto legal, genera las estrategias fundamentadas en esos artículos y doctrina.${bloqueContexto}
+Después de recuperar el contexto legal, genera EXACTAMENTE 3 estrategias por cada rol solicitado, una por cada perfil (conservadora, moderada, agresiva), siguiendo las reglas del system prompt sobre los tres perfiles y el resumen ejecutivo.${bloqueContexto}
 ${rolInstrucciones}
 
 CASO:
@@ -69,19 +75,23 @@ Responde SOLO con JSON válido (sin markdown ni backticks). El formato debe ser:
     "estrategias": [
       {
         "numero": 1,
+        "tipo": "conservadora",
         "nombre": "Nombre de la estrategia",
+        "resumen_ejecutivo": "Párrafo de 60-120 palabras que justifica esta opción frente a las otras dos — preview para el abogado.",
         "tesis_central": "Explicación en 2-3 oraciones",
         "fundamento_legal": ["Art. X CP - explicación"],
         "doctrina_aplicable": "Doctrina relevante del manual",
         "fortalezas": ["fortaleza 1", "fortaleza 2"],
         "riesgos": ["riesgo 1", "riesgo 2"],
         "pasos_procesales": ["paso 1", "paso 2"]
-      }
+      },
+      { "numero": 2, "tipo": "moderada",    /* ... mismo shape ... */ },
+      { "numero": 3, "tipo": "agresiva",    /* ... mismo shape ... */ }
     ]
   },
   "querellante": { // solo si se pidió acusación
     "rol": "Querellante/Fiscal",
-    ... misma estructura ...
+    /* misma estructura, también 3 estrategias en orden conservadora/moderada/agresiva */
   },
   "metadata": {
     "conceptos_extraidos": ["concepto1", "concepto2"],

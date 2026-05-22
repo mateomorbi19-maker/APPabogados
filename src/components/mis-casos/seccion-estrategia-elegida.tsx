@@ -1,5 +1,6 @@
 "use client";
 import { AlertTriangle, CheckCircle, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -7,6 +8,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { COLORES_TIPO } from "@/components/nuevo-analisis/resultados-analisis";
+import { cn } from "@/lib/utils";
 import type { Caso } from "@/lib/types";
 
 type Props = {
@@ -24,6 +27,12 @@ export function SeccionEstrategiaElegida({ caso }: Props) {
   const rolLabel =
     caso.estrategia_seleccionada_rol === "defensor" ? "Defensor" : "Querellante";
 
+  // El snapshot fue re-parseado con estrategiaSchema en la page server-side,
+  // así que `tipo` siempre está poblado (derivado del numero para casos
+  // viejos). Si por algún edge case viniera undefined, usamos un fallback
+  // visual sin romper el render.
+  const colores = e.tipo ? COLORES_TIPO[e.tipo] : null;
+
   const tieneDetalle =
     e.fundamento_legal.length > 0 ||
     e.fortalezas.length > 0 ||
@@ -37,6 +46,11 @@ export function SeccionEstrategiaElegida({ caso }: Props) {
         <span className="text-xs px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
           Estrategia {numero}
         </span>
+        {colores ? (
+          <Badge variant="outline" className={cn("border", colores.badge)}>
+            {colores.label}
+          </Badge>
+        ) : null}
         <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
           {rolLabel}
         </span>
