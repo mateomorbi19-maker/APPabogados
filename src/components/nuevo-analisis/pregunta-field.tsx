@@ -64,7 +64,14 @@ function PreguntaControl({ pregunta, value, onChange }: Props) {
           <SelectTrigger id={pregunta.id} className="w-full sm:w-72">
             <SelectValue placeholder="Elegí una opción" />
           </SelectTrigger>
-          <SelectContent>
+          {/*
+            Override de ancho: el default de shadcn es `w-(--anchor-width)`
+            que limita el menú al ancho exacto del trigger (288px en desktop)
+            y trunca opciones largas. Acá liberamos el ancho para que crezca
+            con el contenido, manteniendo el mínimo del trigger como piso y
+            un tope responsivo para no salirnos del viewport en mobile.
+          */}
+          <SelectContent className="min-w-(--anchor-width) w-fit max-w-[min(90vw,600px)]">
             {opciones.map((o) => (
               <SelectItem key={o} value={o}>
                 {o}
