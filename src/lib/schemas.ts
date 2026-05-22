@@ -90,9 +90,13 @@ const baseEstrategiaSchema = z.object({
   nombre: z.string(),
   tipo: tipoEstrategiaSchema,
   // Preview de 60-120 palabras pensado para mostrar en la card colapsada.
-  // El cap .max(800) deja margen sobre 120 palabras (≈600-720 chars en
-  // español) sin que respuestas pegadas al borde tiren 502.
-  resumen_ejecutivo: z.string().min(1).max(800),
+  // 120 palabras en español ≈ 600-720 chars típicos, pero el modelo se
+  // pasa con cierta regularidad cuando la estrategia es compleja (caso
+  // real: 842 chars en una agresiva). El cap .max(1500) da margen amplio
+  // para que el cliente nunca rechace el output válido por verbosidad.
+  // La regla "60-120 palabras" sigue viviendo en el prompt — el cap es
+  // defensa de borde, no contrato.
+  resumen_ejecutivo: z.string().min(1).max(1500),
   tesis_central: z.string(),
   fundamento_legal: z.array(z.string()).default([]),
   doctrina_aplicable: z.string().default(""),
