@@ -7,9 +7,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Una sola familia (Inter) en toda la app. Los aliases --font-serif /
+     --font-heading se mantienen por compat con clases existentes
+     (`font-serif`, `font-heading`) — apuntan a la misma familia pero la
+     diferenciación visual la da el peso + tracking que se aplica abajo
+     en @layer base. */
   --font-sans: var(--font-inter);
-  --font-serif: var(--font-instrument-serif);
-  --font-heading: var(--font-instrument-serif);
+  --font-serif: var(--font-inter);
+  --font-heading: var(--font-inter);
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
@@ -98,6 +103,16 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Decisión de tipografía (mayo 2026): la app usa SOLO Inter. La clase
+     `font-serif` (que históricamente apuntaba a DM Serif → Instrument Serif)
+     ahora apunta a Inter también, pero con peso 800 y tracking tight para
+     que los headings tengan presencia visual sin necesitar otra familia.
+     Esto evita tocar todos los componentes que ya usan font-serif y
+     mantiene la jerarquía display vs body. Look tipo Linear / Vercel. */
+  .font-serif {
+    font-weight: 800;
+    letter-spacing: -0.025em;
   }
   html {
     @apply font-sans;
