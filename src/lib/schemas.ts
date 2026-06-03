@@ -168,6 +168,16 @@ export const busquedaSchema = z.object({
 });
 export type Busqueda = z.infer<typeof busquedaSchema>;
 
+// Preview liviano de cada chunk recuperado por el RAG (contenido truncado).
+// Se devuelve solo para debug/medición; no se renderiza en la UI del abogado.
+export const chunkRecuperadoSchema = z.object({
+  contenido: z.string(),
+  articulo: z.string().nullable(),
+  tipo_documento: z.string().nullable(),
+  similarity: z.number(),
+});
+export type ChunkRecuperado = z.infer<typeof chunkRecuperadoSchema>;
+
 export const analizarCasoResponseSchema = z.object({
   ok: z.literal(true),
   // Opcional para tolerar respuestas previas a la incorporación del campo
@@ -178,6 +188,11 @@ export const analizarCasoResponseSchema = z.object({
   querellante: seccionAnalisisSchema.optional(),
   metadata: analisisMetadataSchema.optional().default({}),
   busquedas: z.array(busquedaSchema).default([]),
+  // Grounding (PASO 0 + Intervención 1): sin_grounding = true si hubo
+  // búsquedas pero ninguna recuperó chunks. chunks_recuperados es para
+  // debug/medición. Ambos opcionales para tolerar respuestas viejas.
+  sin_grounding: z.boolean().optional(),
+  chunks_recuperados: z.array(chunkRecuperadoSchema).optional(),
 });
 export type AnalizarCasoResponse = z.infer<typeof analizarCasoResponseSchema>;
 

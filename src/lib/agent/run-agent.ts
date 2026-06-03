@@ -27,6 +27,17 @@ export type Busqueda = {
   similarity_top: number | null;
 };
 
+// Copia liviana de cada chunk que el RAG devolvió durante la ejecución,
+// acumulada aparte del tool_result que ve el modelo (ese NO cambia). Sirve
+// para medir qué recuperó el agente y habilitar futuras verificaciones.
+// `contenido` viene truncado (preview), no es el texto íntegro del chunk.
+export type ChunkRecuperado = {
+  contenido: string;
+  articulo: string | null;
+  tipo_documento: string | null;
+  similarity: number;
+};
+
 export type RunAgentResult = {
   rawText: string;
   usage: RunAgentUsage;
@@ -36,6 +47,12 @@ export type RunAgentResult = {
   // una respuesta. La ejecución es ok pero potencialmente parcial. El INSERT
   // a `ejecuciones` la marca con metadata.degraded_response = true.
   degraded_response: boolean;
+  // Chunks recuperados por el RAG (preview truncado), para medición/debug.
+  // Opcional: hoy solo lo produce runAgent (analizar-caso); runAgentConsulta no.
+  chunks_recuperados?: ChunkRecuperado[];
+  // True si hubo búsquedas pero NINGUNA recuperó chunks (cero grounding total).
+  // Opcional por el mismo motivo que chunks_recuperados.
+  sin_grounding?: boolean;
 };
 
 // Códigos estables para distinguir tipos de fallo del loop. El message es
@@ -75,6 +92,11 @@ export class AgentError extends Error {
 // volver a subirlo: el problema podría ser de prompt o de corpus.
 const HARD_CAP_BUSQUEDAS = 10;
 
+// Largo del preview de `contenido` que guardamos por chunk en
+// chunks_recuperados. El texto que ve el modelo en el tool_result NO se trunca;
+// esto es solo la copia liviana para medición/debug.
+const CHUNK_PREVIEW_CHARS = 500;
+
 function isToolUseBlock(
   block: Anthropic.ContentBlock,
 ): block is Anthropic.ToolUseBlock {
@@ -91,9 +113,11 @@ async function ejecutarToolBuscar(query: string): Promise<{
   contentJSON: string;
   chunks_devueltos: number;
   similarity_top: number | null;
+  chunks: ChunkRecuperado[];
 }> {
   const embedding = await embedQuery(query);
   const docs = await buscarDocumentos(embedding, 5);
+  // El JSON que ve el modelo conserva el contenido íntegro de cada chunk.
   const contentJSON = JSON.stringify(
     docs.map((d) => ({
       content: d.content,
@@ -101,11 +125,19 @@ async function ejecutarToolBuscar(query: string): Promise<{
       similarity: Number(d.similarity.toFixed(4)),
     })),
   );
+  // Copia liviana para medición/debug: contenido truncado + metadata clave.
+  const chunks: ChunkRecuperado[] = docs.map((d) => ({
+    contenido: d.content.slice(0, CHUNK_PREVIEW_CHARS),
+    articulo: d.metadata?.articulo ?? null,
+    tipo_documento: d.metadata?.tipo_documento ?? null,
+    similarity: Number(d.similarity.toFixed(4)),
+  }));
   const top = docs[0]?.similarity ?? null;
   return {
     contentJSON,
     chunks_devueltos: docs.length,
     similarity_top: top !== null ? Number(top.toFixed(4)) : null,
+    chunks,
   };
 }
 
@@ -131,14 +163,19 @@ export async function runAgent(
     cache_read_input_tokens: 0,
   };
   const busquedas: Busqueda[] = [];
+  const chunksRecuperados: ChunkRecuperado[] = [];
   let iterations = 0;
 
   // Primer call: si falla acá no hay tokens cobrados — dejamos bubblear como error de infra.
+  // tool_choice fuerza la búsqueda RAG en este primer turno para garantizar
+  // grounding antes de generar contenido. SOLO acá: los calls del loop usan el
+  // default `auto` (o van sin `tools` al agotar el cap) para poder sintetizar.
   let response = await client.messages.create({
     model: MODEL_ID,
     max_tokens: 16000,
     system: systemPrompt,
     tools: [buscarDocumentosTool],
+    tool_choice: { type: "tool", name: BUSCAR_DOCUMENTOS_TOOL_NAME },
     messages,
   });
   totalUsage.input_tokens += response.usage.input_tokens;
@@ -192,6 +229,9 @@ export async function runAgent(
                 chunks_devueltos: r.chunks_devueltos,
                 similarity_top: r.similarity_top,
               };
+              // Acumulamos los chunks (preview) para medición/debug. El orden
+              // es de finalización, no de emisión; suficiente para medir.
+              chunksRecuperados.push(...r.chunks);
               return {
                 type: "tool_result",
                 tool_use_id: tu.id,
@@ -308,11 +348,17 @@ export async function runAgent(
     rawText,
     usage: totalUsage,
     busquedas,
+    chunks_recuperados: chunksRecuperados,
     iterations,
     // Marcamos degraded cualquier ejecución que tocó el cap, sea por
     // bloqueo de búsqueda extra (>cap) o por consumo exacto (==cap):
     // en ambos casos forzamos síntesis sin tools, lo que limita la
     // capacidad del modelo de re-evaluar. El panel admin lo expone.
     degraded_response: busquedas.length >= HARD_CAP_BUSQUEDAS,
+    // True si hubo búsquedas pero ninguna recuperó chunks: la respuesta no
+    // pudo fundamentarse en el corpus (cero grounding total).
+    sin_grounding:
+      busquedas.length > 0 &&
+      busquedas.every((b) => b.chunks_devueltos === 0),
   };
 }
