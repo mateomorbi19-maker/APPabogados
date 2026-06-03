@@ -190,3 +190,37 @@ Smoke de retrieval (`match_documents`): "estafa art 172" → art 172 (0.642); "a
 **Pendiente (próxima palanca, NO incluida acá):** el threshold **0.55** hardcodeado en el RPC `match_documents` rechaza matches correctos top-ranked. Ej.: "femicidio homicidio agravado art 80" → el art 80 rankea #1 a **0.5466 < 0.55** → la RPC devuelve vacío. Bajar/adaptar el threshold es una migración separada al RPC que afecta a todo el corpus (CP + CPPF + manuales).
 
 **No se tocaron** los corpus `codigo_procesal` (CPPF, 370 chunks) ni `manual` (2974 chunks).
+
+---
+
+## 2026-06-03 · re-ingest del Código Procesal Penal Federal — `scripts/ingestar-cppf-html.ts`
+
+**Contexto:** el corpus `tipo_documento='codigo_procesal'` venía del PDF Infojus **2014** (ingestado por `scripts/ingestar-cppf.ts`, que se **conserva** como referencia histórica). Este re-ingest lo reemplaza desde el HTML oficial de Infoleg, **consolidado Decreto 118/2019** (reformas hasta 2019 — más actualizado que el PDF).
+
+**No es una migración SQL de schema** — operación de DATOS (delete + insert sobre `documentos`) vía el script versionado `scripts/ingestar-cppf-html.ts` con service_role (`tsx`, sin MCP).
+
+**Fuente:** `notas-migracion/CPPF.html` (Infoleg, charset windows-1252). Gitignored. Markup distinto al del CP: `<br>`-delimitado, `ARTÍCULO` con tilde sin `<b>`, jerarquía `PARTE > LIBRO > TÍTULO > Capítulo` (arábigo), sin Sección, sin sufijos bis/ter.
+
+**Operación (idempotente, embed-first):**
+
+1. Parse del HTML → **424 chunks / 397 artículos distintos** (rango 1-397, sin huecos). Saltea el preámbulo (decreto aprobatorio con su propio ARTÍCULO 1º-3º) arrancando en "PRIMERA PARTE". Dos inyecciones de `<br>` corrigieron headers glued: art 387 (pegado al 386) y el Título I del Libro Segundo (pegado al nombre del libro).
+2. Embedding de los 424 chunks (`text-embedding-3-small`, 1536 dims). ~72.530 tokens, **~USD 0.0015**.
+3. Backup del CPPF viejo → `notas-migracion/backup-codigo_procesal-2026-06-03.json` (370 filas, sin embeddings; gitignored).
+4. `DELETE FROM documentos WHERE tipo_documento='codigo_procesal'` → **370 filas borradas** (FK-safe; el CP `'codigo'` NO se tocó).
+5. INSERT de los 424 chunks nuevos (batches de 100).
+
+**Estado verificado post-carga:**
+
+| Verificación | Antes (PDF 2014) | Ahora (HTML 2019) |
+|---|---|---|
+| chunks `codigo_procesal` | 370 | 424 |
+| artículos distintos | — | 397 (rango 1-397, 0 huecos) ✅ |
+| art 135 ("Reglas sobre la prueba") | — | presente, recupera a 0.705 ✅ |
+| anti-dup (no-particionados con >1 chunk) | — | 0 ✅ |
+| longitudes min/max/avg | — | 118 / 1518 / 645 |
+
+**Campos por chunk:** `tipo_documento='codigo_procesal'` (reusado), `libro` con la PARTE plegada ("PRIMERA PARTE - … / LIBRO PRIMERO - …"), `titulo`/`capitulo` poblados, `seccion=NULL`, `articulo` (número simple, sin sufijos), `pagina=NULL`, `fuente_id=NULL`.
+
+**Pendiente (mismo que el CP):** el threshold 0.55 del RPC rechaza matches correctos top-ranked — reforzado por el CPPF: "control de la detención" → arts 215/216/245 (detención/aprehensión/arresto) rankean al tope a 0.52-0.55 → la RPC devuelve vacío.
+
+**No se tocaron** los corpus `codigo` (CP, 425 chunks) ni `manual` (2974 chunks).
