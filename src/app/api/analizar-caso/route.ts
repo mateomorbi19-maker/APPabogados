@@ -184,6 +184,14 @@ export async function POST(req: NextRequest): Promise<Response> {
       cache_creation_input_tokens: usage.cache_creation_input_tokens,
       cache_read_input_tokens: usage.cache_read_input_tokens,
       degraded_response: agentResult.degraded_response,
+      sin_grounding: agentResult.sin_grounding ?? false,
+      // Resumen de chunks recuperados (sin el `contenido`, que es mucho texto):
+      // solo articulo/tipo_documento/similarity, suficiente para medir.
+      chunks_recuperados: (agentResult.chunks_recuperados ?? []).map((c) => ({
+        articulo: c.articulo,
+        tipo_documento: c.tipo_documento,
+        similarity: c.similarity,
+      })),
       ...(parsed.ok ? {} : { parseo_error: parsed.error }),
     },
   };
@@ -223,6 +231,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       ejecucion_id: insertResult.id,
       ...parsed.resultado,
       busquedas: agentResult.busquedas,
+      sin_grounding: agentResult.sin_grounding ?? false,
+      // Para debug/medición (no para UI de usuario final).
+      chunks_recuperados: agentResult.chunks_recuperados ?? [],
     },
     200,
   );
