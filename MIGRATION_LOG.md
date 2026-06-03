@@ -154,3 +154,39 @@ Este archivo se mantiene durante las Fases 2–5 para dejar registro humano de q
 **Vista `v_consumo_mensual`:** ya excluye `refunded=true` desde la migración 20260507180000. NO requiere modificación.
 
 **Efectos colaterales:** ninguno. Otras ejecuciones `consulta_caso` (las del QA pre-cleanup ya borradas o las nuevas exitosas) no entran en el filtro.
+
+---
+
+## 2026-06-03 · re-ingest del Código Penal — `scripts/ingestar-cp.ts`
+
+**Contexto:** la auditoría del corpus RAG detectó que `tipo_documento='codigo'` (Código Penal) estaba roto: 590 chunks con solo ~52 artículos distintos y duplicación ~10×, faltando artículos centrales (172 estafa, 173 defraudación, 210 asociación ilícita, 292 falsificación, 149 bis). El agente buscaba esos artículos y no recuperaba nada. Causa raíz: el corpus original (cargado por un workflow n8n perdido, no reproducible desde el repo) salió de un parser que solo capturaba la forma exacta `<b>ARTICULO N.-</b>` y perdía todas las variantes. Este re-ingest lo reemplaza desde el HTML oficial de Infoleg.
+
+**No es una migración SQL de schema** — es una operación de DATOS (delete + insert sobre `documentos`) ejecutada por el script versionado `scripts/ingestar-cp.ts` con service_role (vía `tsx`, no MCP — que estaba desconectado). Se registra acá por su impacto sobre el corpus.
+
+**Fuente:** `notas-migracion/CP-infoleg.html` (Infoleg, charset windows-1252, Ley 11.179, reformas confirmadas hasta Ley 26.791/2012). Gitignored.
+
+**Operación (idempotente, embed-first):**
+
+1. Parse del HTML → **425 chunks / 396 artículos distintos** (art 1-316 + variantes bis/ter/quáter/quinquies).
+2. Embedding de los 425 chunks (OpenAI `text-embedding-3-small`, 1536 dims — idéntico al RAG). ~68.925 tokens, **~USD 0.0014**.
+3. Backup del corpus viejo → `notas-migracion/backup-codigo-2026-06-03.json` (590 filas, sin embeddings; gitignored).
+4. `DELETE FROM documentos WHERE tipo_documento='codigo'` → **590 filas borradas** (FK-safe: ninguna tabla referencia a `documentos`).
+5. INSERT de los 425 chunks nuevos (batches de 100).
+
+**Estado verificado post-carga:**
+
+| Verificación | Antes (roto) | Ahora |
+|---|---|---|
+| chunks `codigo` | 590 | 425 |
+| artículos distintos | 52 | 396 ✅ |
+| 172/173/210/292/149 bis | ausentes | presentes ✅ |
+| artículos no-particionados con >1 chunk (dup) | ~10× | 0 ✅ |
+| longitudes min/max/avg | caóticas | 23 / 1527 / 560 |
+
+Smoke de retrieval (`match_documents`): "estafa art 172" → art 172 (0.642); "art 173 inciso 7" → art 173 (0.643); "asociación ilícita art 210" → art 210/bis/ter. Antes los tres devolvían artículos no relacionados.
+
+**Campos por chunk:** `tipo_documento='codigo'` (reusado), `libro`/`titulo`/`capitulo` poblados, `seccion=NULL` (el CP no tiene nivel Sección), `articulo` normalizado ("172", "149 bis", "41 quinquies", "268 (2)"), `pagina=NULL` (HTML sin paginación), `fuente_id=NULL` (consistente con CPPF y manuales). Artículos largos partidos con `splitLargo` + overlap, con marca "(parte i/m)" en el `contenido`.
+
+**Pendiente (próxima palanca, NO incluida acá):** el threshold **0.55** hardcodeado en el RPC `match_documents` rechaza matches correctos top-ranked. Ej.: "femicidio homicidio agravado art 80" → el art 80 rankea #1 a **0.5466 < 0.55** → la RPC devuelve vacío. Bajar/adaptar el threshold es una migración separada al RPC que afecta a todo el corpus (CP + CPPF + manuales).
+
+**No se tocaron** los corpus `codigo_procesal` (CPPF, 370 chunks) ni `manual` (2974 chunks).
