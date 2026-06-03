@@ -10,9 +10,9 @@ App web para 3 abogados penales argentinos (Lautaro, Gonzalo, Mateo). Cada uno d
 
 - **Frontend / Backend:** Next.js 16.2.4 App Router con TypeScript strict.
 - **Auth:** Clerk v7 (solo Google OAuth, UI en español, dark theme).
-- **DB + vector store:** Supabase (Postgres + pgvector). Tabla `documentos` ya cargada con embeddings del Código Penal + manuales — **inmutable para esta app**.
+- **DB + vector store:** Supabase (Postgres 17.6 + pgvector v0.8.0). Tabla `documentos` cargada con embeddings del Código Penal, Código Procesal Penal Federal y manuales de litigación — **inmutable para esta app** (el corpus no es completamente reproducible desde el repo; ver sección RAG).
 - **LLM:** Anthropic SDK (`@anthropic-ai/sdk`), modelo `claude-sonnet-4-5-20250929` con tool-use loop y RAG.
-- **Embeddings:** OpenAI `text-embedding-3-small` (solo para embeddear queries de RAG).
+- **Embeddings:** OpenAI `text-embedding-3-small`, 1536 dimensiones. Se usa en runtime para embeddear queries de búsqueda RAG, y en los scripts offline de ingesta del corpus.
 - **UI:** shadcn/ui sobre Tailwind v4. Dark-only, clase `.dark` siempre en `<html>`.
 - **Validación:** Zod en el borde de cada API route.
 - **Deploy:** Easypanel manual (Dockerfile en raíz, **pendiente de Fase 5.4**). Dominio objetivo: `lexstrategy.teotec.org`. Sin CI, sin auto-deploy.
@@ -31,10 +31,18 @@ src/
       analizar-caso/route.ts      # POST: tool-use loop + RAG, maxDuration=120
       pre-analisis/route.ts       # POST: single-shot sin RAG, maxDuration=60
       consumo/route.ts            # GET: consumo del mes + historial drill-down
+      casos/
+        route.ts                  # GET/POST: lista y creación de casos
+        [id]/
+          conversaciones/
+            route.ts              # GET/POST: lista y crea conversaciones del caso
+            [conv_id]/
+              route.ts            # GET detalle, PATCH renombrar
+              mensajes/route.ts   # GET/POST: chat persistente (tool-use loop + RAG)
   components/
     app-shell.tsx, header/, consumo/, nuevo-analisis/, ui/
   lib/
-    agent/                        # run-agent, prompts, parse, pricing, tools
+    agent/                        # run-agent.ts, run-agent-consulta.ts, prompts, parse, pricing, tools
     auth/                         # whitelist, enforce-rate
     rag/                          # embed, match-documents
     supabase/server.ts            # cliente con service_role key (server-side)
@@ -43,13 +51,14 @@ src/
     hooks/use-consumo.tsx
 
 supabase/migrations/              # SQL aplicado vía SQL Editor (ver MIGRATION_LOG.md)
-scripts/                          # smoke tests de la app nueva
-  test-agent.ts                   #   correr agente RAG end-to-end
-  count-system-tokens.ts          #   medir tokens del system prompt + tool descriptions
+scripts/
+  ingestar-cppf.ts                # ingestor del CPPF (PDF local → documentos). Destructivo: delete-before-insert.
+  test-agent.ts                   # smoke test del agente RAG end-to-end
+  count-system-tokens.ts          # mide tokens del system prompt + tool descriptions
 
 legacy/                           # Sistema viejo (Express + index.html + n8n).
                                   # Apagado, queda por referencia histórica.
-notas-migracion/                  # Gitignored. Datos sensibles del sistema viejo.
+notas-migracion/                  # Gitignored. Datos sensibles + workflow n8n de ingesta original.
 ```
 
 ## Auth y whitelist
@@ -65,14 +74,14 @@ notas-migracion/                  # Gitignored. Datos sensibles del sistema viej
 Nunca pisa `nombre` ni `email`. El identificador lógico del sistema es `usuarios.nombre` (alimenta la vista de consumo y los colores del UI).
 
 **Whitelist actual:**
-- Mateo: `mateomorbi19@gmail.com`
-- Gonzalo: `gonzalo.ezequiel.brandoni@gmail.com`
-- Lautaro: `email` NULL → si intenta loguear da 403 hasta que se cargue manualmente.
+- Mateo: `mateomorbi19@gmail.com` (role: admin)
+- Gonzalo: `gonzalo.ezequiel.brandoni@gmail.com` (role: user)
+- Lautaro: `lautiicardoso@gmail.com` (role: user)
 
 ## API routes
 
 ### `POST /api/pre-analisis`
-Single-shot, sin RAG, sin tool-use. `maxDuration = 60`.
+Single-shot, **sin RAG, sin tool-use**. Puro conocimiento paramétrico del modelo. `maxDuration = 60`.
 
 Body: `{ caso: string >= 20 chars }`
 Response: `{ ok: true, resumen_preliminar, datos_detectados, preguntas[] }`
@@ -84,10 +93,26 @@ Body: `{ caso, rol: "defensor" | "querellante" | "ambos", contexto: {...} }`
 Response: `{ ok: true, defensor?, querellante?, metadata, busquedas[] }`
 
 El loop ([src/lib/agent/run-agent.ts](src/lib/agent/run-agent.ts)):
-- `maxIterations = 10` por defecto.
-- Tool `buscar_documentos` → embed (OpenAI) → `match_documents` (RPC pgvector, top 5).
-- Cap duro `HARD_CAP_BUSQUEDAS = 6` en código (el system prompt pide ≤4 al modelo).
-- Si la API de Anthropic falla mid-loop o se exceden los caps, lanza `AgentError` con tokens parciales que **sí** se persisten en `ejecuciones`.
+- `maxIterations = 12` por defecto (HARD_CAP + 2 de margen para garantizar iteración final sin tools).
+- Tool `buscar_documentos_legales` → embed (OpenAI, 1536 dims) → `match_documents` (RPC pgvector, top K=5 hardcodeado en el call site).
+- Cap duro `HARD_CAP_BUSQUEDAS = 10` en código. El system prompt pide "entre 3 y 6 búsquedas, con tope absoluto en 10".
+- **El RAG no está forzado:** no se usa `tool_choice`; el modelo puede decidir responder sin buscar.
+- Al agotar el cap, el loop hace un `messages.create` sin `tools` (quita la herramienta del parámetro) para forzar síntesis y marca `degraded_response = true`.
+- Si la API de Anthropic falla mid-loop o se exceden los caps, lanza `AgentError` (`API_ERROR`, `CAP_EXCEEDED_NO_SYNTHESIS`, `MAX_ITERATIONS`) con tokens parciales que **sí** se persisten en `ejecuciones`.
+
+### `POST /api/casos/:id/conversaciones/:conv_id/mensajes` — chat persistente
+Tool-use loop con RAG sobre el historial multi-turno del caso. `maxDuration = 120`.
+
+Body: `{ contenido: string, adjuntos?: [...] }`
+
+El agente de chat ([src/lib/agent/run-agent-consulta.ts](src/lib/agent/run-agent-consulta.ts)) usa el mismo loop que `analizar-caso` (`HARD_CAP_BUSQUEDAS = 10`, `maxIterations = 12`, tool `buscar_documentos_legales`). La única diferencia es el primer user message: incluye adjuntos como content blocks. El historial se reconstruye desde `mensajes_conversacion` antes de cada turno.
+
+**Deuda técnica:** el loop está duplicado casi verbatim entre `run-agent.ts` y `run-agent-consulta.ts`.
+
+Rutas relacionadas del chat:
+- `GET/POST /api/casos/[id]/conversaciones` — lista y crea conversaciones.
+- `GET/PATCH /api/casos/[id]/conversaciones/[conv_id]` — detalle y renombrar.
+- Máximo 1 conversación activa por caso (enforced por partial unique index en DB; la ruta archiva la activa previa antes de crear una nueva).
 
 ### `GET /api/consumo`
 Sin maxDuration custom. Devuelve consumo del mes en curso + historial (top 20 por `ejecutado_en DESC`).
@@ -104,17 +129,66 @@ Response:
 
 `metadata` es jsonb laxo; el cliente lo valida con Zod en el modal de detalle (drill-down 5.1).
 
-## Tracking en Supabase
+## Schema en Supabase
 
-Tablas:
-- `usuarios`: `id UUID, nombre UNIQUE, email, clerk_user_id, limite_tokens_mensual=1.000.000, created_at`.
-- `ejecuciones`: `usuario_id FK, tipo, modelo, input_tokens, output_tokens, total_tokens (GENERATED), costo_usd, latencia_ms, ejecutado_en, metadata jsonb`.
-- Vista `v_consumo_mensual`: agrega del mes en curso (UTC).
-- `documentos` (vector store): **inmutable, no tocar**.
+Proyecto: `xvdlnevcvcsgxbngwliv` (región us-west-2, Postgres 17.6). RLS habilitada en las 9 tablas; el server siempre accede con `service_role` key.
+
+**Tablas de tracking / usuario:**
+- `usuarios`: `id UUID, nombre UNIQUE, email, clerk_user_id, role (admin|user), limite_tokens_mensual=1.000.000, created_at`.
+- `ejecuciones`: `usuario_id FK, tipo (pre_analisis|analizar_caso|consulta_caso), modelo, input_tokens, output_tokens, total_tokens (GENERATED), costo_usd, latencia_ms, ejecutado_en, metadata jsonb`. Las ejecuciones con `metadata.refunded=true` se excluyen del consumo mensual.
+- `casos`: vincula un análisis a un usuario.
+- `eventos_caso`: eventos dentro de un caso (adjuntos, cambios de estado).
+- `conversaciones_caso`: conversaciones de chat por caso (máx. 1 activa por vez).
+- `mensajes_conversacion`: mensajes individuales de cada conversación (tipo `usuario` o `agente`).
+- `fuentes_legales`: catálogo de 3 fuentes (CP Ley 11.179, CPPF Ley 23.984, Manual de Litigación). Existe en el schema pero no está operativa: `documentos.fuente_id` es NULL en todos los chunks (FK huérfana).
+- `casos_analizados`: **deprecated, 0 filas.** Tabla del modelo viejo de análisis; no se usa en el código actual.
+
+**Vistas:**
+- `v_consumo_mensual`: agrega el mes en curso por usuario (timezone `America/Argentina/Buenos_Aires`), excluyendo ejecuciones con `metadata.refunded=true`.
+- `estadisticas_base`: agrega chunks por fuente (`fuentes_legales LEFT JOIN documentos`). Hoy reporta 0 en todo porque `documentos.fuente_id` está NULL.
+
+**Vector store (`documentos`):** ver sección RAG.
 
 Tokens guardados: **reales del SDK** (`response.usage.input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`). El costo se calcula en [src/lib/agent/pricing.ts](src/lib/agent/pricing.ts) con tier de long-context (>200K input → 2x precio en Sonnet 4.5).
 
-Bitácora de migraciones SQL: ver [MIGRATION_LOG.md](MIGRATION_LOG.md).
+Bitácora de migraciones SQL: ver [MIGRATION_LOG.md](MIGRATION_LOG.md). **Nota:** hay drift entre el repo y la DB — algunas migraciones se aplicaron vía SQL Editor sin registrar el version stamp en `supabase_migrations`; otras existen en la DB pero no como archivo en `supabase/migrations/` (en particular las de RLS de Fase 5.5).
+
+## RAG — Sistema de recuperación
+
+### Corpus
+
+La tabla `documentos` contiene **3.934 chunks** de derecho penal argentino, todos con embedding `vector(1536)`. Desglose por `tipo_documento`:
+- `manual` = 2.974 chunks (manuales de litigación penal)
+- `codigo` = 590 chunks (Código Penal)
+- `codigo_procesal` = 370 chunks (CPPF Infojus 2014)
+
+Columnas: `id bigint (PK)`, `contenido text`, `embedding vector(1536)`, `fuente_id uuid (FK nullable)`, `tipo_documento`, `libro/titulo/capitulo/articulo/seccion text`, `pagina int4`, `metadata jsonb DEFAULT '{}'`, `created_at`.
+
+Índice vectorial: **HNSW cosine** (`documentos_embedding_idx USING hnsw (embedding vector_cosine_ops)`).
+
+Limitación de metadata: solo el **~24% de los chunks** (950/3.934) tienen número de `articulo` en metadata. El system prompt exige citar el artículo exacto tal como aparece en el chunk, pero el ~76% del corpus no trae ese campo estructurado.
+
+Sin integraciones externas: no hay SAIJ, no hay scraping, no hay segunda API legal. Las únicas llamadas en runtime son a Anthropic (LLM), OpenAI (embeddings) y Supabase (DB + vector store).
+
+### Pipeline de ingestión
+
+**No está completamente versionado en el repo.** El corpus tiene dos orígenes:
+
+- **`codigo_procesal` (370 chunks):** generados por [scripts/ingestar-cppf.ts](scripts/ingestar-cppf.ts), el único ingestor en el repo. Lee `notas-migracion/cppf-2014.pdf` (PDF local, Infojus 2014), chunkea por artículo con cap de 1.500 caracteres (split por oración, sin overlap), embeddea con OpenAI `text-embedding-3-small` e inserta en `documentos`. Script manual (sin CI, sin pg_cron); es **destructivo** (delete-before-insert de los chunks previos del tipo).
+
+- **`manual` + `codigo` (3.564 chunks, ~90% del corpus):** cargados en 2026-03-25 por el workflow n8n `notas-migracion/workflow-n8n-ingesta.json` (gitignored). Descargó PDFs desde Google Drive (`Codigo_Penal.pdf`, `Manual_Litigacion_1/2/3.pdf`), embeddeó vía OpenAI y los insertó directamente. **No reproducible desde el código versionado.**
+
+El schema de `documentos` tampoco está en ninguna migración versionada (fue creado fuera del repo).
+
+### Pipeline de recuperación
+
+La RPC `match_documents(query_embedding vector, match_count int DEFAULT 5, filter jsonb DEFAULT '{}')` realiza la búsqueda vectorial en Postgres con:
+- Distancia coseno (operador `<=>`)
+- Umbral hardcodeado en la función SQL: `WHERE 1 - (embedding <=> query_embedding) > 0.55` (evolución: 0.5 → 0.6 → 0.55; con 0.6 el 50% de búsquedas daban 0 resultados)
+- `LIMIT match_count` — el call site siempre pasa `match_count=5`
+- El parámetro `filter jsonb` existe en la firma pero **no se usa en el cuerpo** — no hay filtrado por metadata.
+
+En la app ([src/lib/agent/run-agent.ts](src/lib/agent/run-agent.ts)): no hay re-ranking ni filtrado post-RPC. Los docs (ya ordenados y filtrados por Postgres) se serializan crudos como `tool_result` — JSON array de `{content, metadata, similarity}`. Si el RPC devuelve 0 resultados, se inyecta un array vacío y el modelo continúa sin fallback ni señal al usuario.
 
 ## Variables de entorno
 
@@ -132,7 +206,7 @@ Definidas en `.env.local` (gitignored). Ver [.env.example](.env.example) para el
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Cliente Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server (write a `ejecuciones`, lazy-sync a `usuarios`) |
 | `ANTHROPIC_API_KEY` | Claude |
-| `OPENAI_API_KEY` | Solo embeddings |
+| `OPENAI_API_KEY` | Embeddings (queries en runtime + ingesta offline) |
 
 ## Desarrollo local
 
@@ -153,9 +227,9 @@ npx tsx scripts/count-system-tokens.ts   # mide system+tool tokens (decisión de
 - **Nunca `--no-verify`** ni saltar hooks.
 - TS strict siempre. Sin hardcodear credenciales.
 - Validar todo input con Zod en el borde.
-- **Tabla `documentos` inmutable** (vector store ya cargado).
-- **`notas-migracion/` jamás se commitea** (gitignored, datos sensibles).
-- **Paleta:** `--background: #0a0e17`, `--card: #0f172a`, acento `#8b5cf6`. Fuentes: IBM Plex Sans (UI) + DM Serif Display (display).
+- **Tabla `documentos` inmutable** (vector store ya cargado; `ingestar-cppf.ts` es destructivo — no correrlo salvo que sea necesario recargar el corpus procesal explícitamente).
+- **`notas-migracion/` jamás se commitea** (gitignored, datos sensibles y workflows de n8n).
+- **Paleta:** `--background: #0a0e17`, `--card: #0f172a`, acento `#8b5cf6`. Fuente: Inter (UI y display, sin serif).
 - **Formato es-AR:** números con `toLocaleString('es-AR')`, fechas `DD/MM/YYYY HH:MM`.
 - **El prompt al modelo exige JSON puro** (sin markdown ni backticks). El parser limpia backticks defensivamente.
 
@@ -172,17 +246,16 @@ El servicio legacy en Easypanel se apagará al deployar la app nueva, sin coexis
 
 ## Estado de la migración
 
-Migración del sistema viejo a este stack en 5 fases. Fases 1-4 cerradas; **Fase 5 en progreso**:
+Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; **Fase 5.6 pendiente**:
 
 - 5.1 ✅ historial drill-down con modal de detalle.
 - 5.2 ✅ legacy movido a `/legacy/`.
-- 5.3 ← este documento.
+- 5.3 ✅ este documento + auditoría arquitectónica del RAG.
 - 5.4 ⏳ Dockerfile nuevo en raíz (Next 16 standalone, multi-stage).
-- 5.5 ⏳ pre-deploy checks.
+- 5.5 ✅ pre-deploy checks (hardening RLS deny-by-default, revoke anon/authenticated, email Lautaro cargado en DB).
 - 5.6 ⏳ deploy manual a Easypanel reemplazando el servicio legacy en `lexstrategy.teotec.org`. Sin coexistencia, sin URL temporal beta, sin swap DNS.
 
 Pendientes conocidos:
-- Email de Lautaro: NULL hasta que confirme; si intenta loguear da 403.
 - Dockerfile en raíz: el viejo se movió a `/legacy/Dockerfile`, el nuevo se crea en 5.4.
 
 El plan detallado de las fases vive en la memoria del proyecto, no en el repo.
