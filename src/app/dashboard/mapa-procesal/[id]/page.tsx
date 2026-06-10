@@ -1,5 +1,7 @@
-// Página del mapa procesal de un caso. Server component: valida UUID + ownership
-// y delega en el client component (full-screen, con su propia toolbar).
+// Página del mapa procesal de un caso. Vive FUERA de /dashboard/mis-casos para
+// no heredar su layout (SiteHeader global + sidebar del caso): el mapa es una
+// vista inmersiva full-screen. Server component: valida UUID + ownership y
+// delega en el client component (que trae su propia toolbar).
 import { notFound } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
