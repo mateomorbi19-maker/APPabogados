@@ -38,6 +38,11 @@ type Props = {
 };
 
 export function AgendaFilters({ filtros, casos, onChange }: Props) {
+  // "Todos" = sin filtro de tipo (tipos vacío). Excluyente con los tipos
+  // específicos: al tildar un tipo, tipos deja de estar vacío → "Todos" se
+  // apaga. Al destildar el último, vuelve a [] → "Todos" se reactiva.
+  const todosActivo = filtros.tipos.length === 0;
+
   const toggleTipo = (t: TipoEvento) => {
     const has = filtros.tipos.includes(t);
     onChange({
@@ -54,6 +59,19 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
       <div className={cn(SECCION_CLS, "space-y-2.5")}>
         <p className={TITULO_CLS}>Tipo de evento</p>
         <div className="space-y-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={todosActivo}
+              onCheckedChange={() => onChange({ ...filtros, tipos: [] })}
+            />
+            <span
+              className="size-2 shrink-0 rounded-full bg-muted-foreground/30"
+              aria-hidden
+            />
+            <span className={cn(!todosActivo && "text-muted-foreground")}>
+              Todos
+            </span>
+          </label>
           {TIPOS_EVENTO_VALUES.map((t) => {
             const meta = TIPOS_EVENTO[t];
             const checked = filtros.tipos.includes(t);
