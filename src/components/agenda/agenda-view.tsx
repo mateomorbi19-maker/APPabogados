@@ -13,11 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { claveDia, etiquetaDiaPartes } from "@/lib/agenda/fechas";
-import {
-  TIPOS_EVENTO_VALUES,
-  type CasoOption,
-  type EventoAgenda,
-} from "@/lib/agenda/types";
+import { type CasoOption, type EventoAgenda } from "@/lib/agenda/types";
 import { AgendaFilters, type FiltrosUI, type Rango } from "./agenda-filters";
 import { EventoCard } from "./evento-card";
 import { EventoForm } from "./evento-form";
@@ -102,7 +98,7 @@ function StatCard({
 
 export function AgendaView({ casos }: Props) {
   const [filtros, setFiltros] = useState<FiltrosUI>({
-    tipos: [...TIPOS_EVENTO_VALUES], // todos tildados por default
+    tipos: [], // [] = "Todos" (sin filtro de tipo → se muestran todos)
     casoId: null,
     rango: "semana",
   });
@@ -118,12 +114,8 @@ export function AgendaView({ casos }: Props) {
 
   const cargar = useCallback(async (f: FiltrosUI) => {
     controllerRef.current?.abort();
-    // Ningún tipo tildado → no se muestra nada (no vale la pena pegarle a la API,
-    // que sin filtro de tipo devolvería todo).
-    if (f.tipos.length === 0) {
-      setEstado({ status: "ready", eventos: [] });
-      return;
-    }
+    // tipos vacío = "Todos": buildQuery no manda filtro de tipo y la API devuelve
+    // todos los eventos (filtrados por caso/período).
     const controller = new AbortController();
     controllerRef.current = controller;
     setEstado({ status: "loading" });
@@ -316,7 +308,7 @@ export function AgendaView({ casos }: Props) {
           </h1>
           {googleConnected ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">
-              <CalendarCheck2 className="size-3" /> Sync
+              <CalendarCheck2 className="size-3" /> Sincronizado
             </span>
           ) : null}
           <div className="flex-1" />
@@ -345,8 +337,8 @@ export function AgendaView({ casos }: Props) {
             danger={(stats?.venc ?? 0) > 0}
           />
           <StatCard
-            label="Pendientes de sync"
-            value={googleConnected ? (stats?.pend ?? "—") : "Sin sync"}
+            label="Pendientes de sincronización"
+            value={googleConnected ? (stats?.pend ?? "—") : "No conectado"}
             muted={!googleConnected}
           />
         </div>
