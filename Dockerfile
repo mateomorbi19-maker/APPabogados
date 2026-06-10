@@ -22,6 +22,10 @@ ARG SUPABASE_SERVICE_ROLE_KEY
 ARG ANTHROPIC_API_KEY
 ARG OPENAI_API_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
+# Headroom de heap para el type-check de `next build`: el builder de Easypanel
+# tiene RAM acotada y V8 se auto-limitaba en ~2 GB (heap OOM en "Running
+# TypeScript"). 4 GB le da margen sin depender solo del tamaño del default.
+ENV NODE_OPTIONS=--max-old-space-size=4096
 
 RUN npm run build
 

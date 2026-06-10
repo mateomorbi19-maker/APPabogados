@@ -1,8 +1,13 @@
 import "server-only";
 import { clerkClient } from "@clerk/nextjs/server";
-import { google, type calendar_v3 } from "googleapis";
+import { auth, calendar as makeCalendar, type calendar_v3 } from "@googleapis/calendar";
 import { claveDia } from "./fechas";
 import type { EventoAgenda } from "./types";
+
+// Usamos el paquete individual `@googleapis/calendar` en vez del meta-paquete
+// `googleapis`: este último arrastra los tipos de TODAS las APIs de Google, lo
+// que dispara la memoria del type-check de `next build` y reventaba el builder
+// de Easypanel (heap OOM). La API en runtime es idéntica.
 
 // TZ de todos los eventos con hora que mandamos a Google.
 const TZ = "America/Argentina/Buenos_Aires";
@@ -50,9 +55,9 @@ export async function getGoogleAccessToken(
 export function getCalendarClient(
   accessToken: string,
 ): calendar_v3.Calendar {
-  const oauth2Client = new google.auth.OAuth2();
+  const oauth2Client = new auth.OAuth2();
   oauth2Client.setCredentials({ access_token: accessToken });
-  return google.calendar({ version: "v3", auth: oauth2Client });
+  return makeCalendar({ version: "v3", auth: oauth2Client });
 }
 
 function sumarDiasAClave(clave: string, n: number): string {
