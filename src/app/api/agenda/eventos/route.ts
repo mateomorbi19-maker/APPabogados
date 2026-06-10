@@ -134,20 +134,31 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   // Push best-effort a Google Calendar. Cualquier fallo se loguea y se sigue:
   // el evento ya está creado en Supabase.
+  //
+  // google_error se setea SOLO cuando hay token pero el insert falla (para que
+  // la UI muestre el motivo real). Cuando no hay token (desconectado) se deja
+  // null: de eso ya avisa el banner "Conectá tu Google Calendar".
   let google_synced = false;
+  let google_error: string | null = null;
   try {
     const token = await getGoogleAccessToken(wl.clerk_user_id);
     if (token) {
-      const gid = await pushEventToGoogle(token, evento);
-      if (gid) {
-        await updateGoogleEventId(evento.id, wl.usuario_id, gid);
-        evento = { ...evento, google_calendar_event_id: gid };
+      const r = await pushEventToGoogle(token, evento);
+      if (r.id) {
+        await updateGoogleEventId(evento.id, wl.usuario_id, r.id);
+        evento = { ...evento, google_calendar_event_id: r.id };
         google_synced = true;
+      } else {
+        google_error = r.error;
       }
     }
   } catch (e) {
+    google_error = e instanceof Error ? e.message : String(e);
     console.error("[POST /api/agenda/eventos] push google (no bloqueante):", e);
   }
 
-  return jsonResponse({ ok: true, evento, google_synced }, 201);
+  return jsonResponse(
+    { ok: true, evento, google_synced, ...(google_error ? { google_error } : {}) },
+    201,
+  );
 }

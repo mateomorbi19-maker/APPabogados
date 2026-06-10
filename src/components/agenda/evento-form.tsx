@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -170,7 +171,7 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
         body: JSON.stringify(body),
       });
       const json = (await res.json().catch(() => null)) as
-        | { ok: true }
+        | { ok: true; google_synced?: boolean; google_error?: string }
         | { ok: false; error?: string }
         | null;
       if (!res.ok || !json || json.ok === false) {
@@ -185,6 +186,16 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
       onSaved();
       setLoading(false);
       onClose();
+      // Feedback de la sincronización con Google (best-effort). Si está
+      // desconectado (sin token), no hay google_error y de eso ya avisa el
+      // banner — no molestamos con un toast.
+      if (json.google_synced === true) {
+        toast.success("Evento guardado y sincronizado con Google Calendar");
+      } else if (json.google_error) {
+        toast.error(
+          `Evento guardado, pero no se sincronizó con Google Calendar: ${json.google_error}`,
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error de red");
       setLoading(false);

@@ -100,21 +100,39 @@ function eventoARecursoGoogle(
   return { summary: evento.titulo, description, start, end };
 }
 
-/** Crea el evento en Google Calendar. Devuelve el googleEventId o null si falla. */
+// Extrae un mensaje útil de un error de la Google API (GaxiosError trae el
+// detalle real en response.data.error.message; el .message a secas suele ser
+// genérico tipo "Request failed with status code 403").
+export function googleErrorMessage(e: unknown): string {
+  if (e instanceof Error) {
+    const resp = (
+      e as { response?: { data?: { error?: { message?: unknown } } } }
+    ).response;
+    const apiMsg = resp?.data?.error?.message;
+    if (typeof apiMsg === "string" && apiMsg.length > 0) return apiMsg;
+    return e.message;
+  }
+  return String(e);
+}
+
+export type PushResult = { id: string | null; error: string | null };
+
+/** Crea el evento en Google Calendar. Devuelve el googleEventId, o el error si falla. */
 export async function pushEventToGoogle(
   accessToken: string,
   evento: EventoAgenda,
-): Promise<string | null> {
+): Promise<PushResult> {
   try {
     const calendar = getCalendarClient(accessToken);
     const res = await calendar.events.insert({
       calendarId: "primary",
       requestBody: eventoARecursoGoogle(evento),
     });
-    return res.data.id ?? null;
+    return { id: res.data.id ?? null, error: null };
   } catch (e) {
-    console.error("[google-calendar] insert falló:", e);
-    return null;
+    const error = googleErrorMessage(e);
+    console.error("[google-calendar] insert falló:", error);
+    return { id: null, error };
   }
 }
 
@@ -162,8 +180,8 @@ export async function syncPendingEvents(
 ): Promise<Array<{ id: string; googleEventId: string }>> {
   const out: Array<{ id: string; googleEventId: string }> = [];
   for (const ev of eventos) {
-    const gid = await pushEventToGoogle(accessToken, ev);
-    if (gid) out.push({ id: ev.id, googleEventId: gid });
+    const r = await pushEventToGoogle(accessToken, ev);
+    if (r.id) out.push({ id: ev.id, googleEventId: r.id });
   }
   return out;
 }
