@@ -1,7 +1,13 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarCheck2, Loader2, Pencil, Trash2 } from "lucide-react";
+import {
+  Briefcase,
+  CalendarCheck2,
+  Loader2,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -48,60 +54,83 @@ export function EventoCard({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 rounded-lg border border-border border-l-4 bg-card px-3 py-2.5",
-        meta.borde,
+        "group relative flex items-stretch gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:border-foreground/20",
         evento.completado && "opacity-60",
       )}
     >
+      {/* Checkbox circular: verde al completar */}
       <Checkbox
         checked={evento.completado}
         onCheckedChange={() => onToggleCompletado(evento)}
-        className="mt-1"
         aria-label={
           evento.completado ? "Marcar como pendiente" : "Marcar como completado"
         }
+        className="size-[18px] self-center rounded-full border-muted-foreground/40 data-checked:border-emerald-500 data-checked:bg-emerald-500 data-checked:text-white"
       />
 
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {evento.todo_el_dia ? "Todo el día" : fmtHora(evento.fecha_inicio)}
+      {/* Acento de color del tipo: barra vertical de 4px rellena con el color
+          sólido del tipo. Reusa meta.dot (la clase bg-{color} del tipo) como
+          fill — no como puntito. No se puede usar un campo dedicado sin tocar
+          types.ts (fuera de scope de este refactor). */}
+      <div className={cn("w-1 shrink-0 self-stretch rounded-none", meta.dot)} aria-hidden />
+
+      {/* Hora / Todo el día */}
+      <div className="w-14 shrink-0 self-center text-center">
+        {evento.todo_el_dia ? (
+          <span className="text-xs text-muted-foreground">Todo el día</span>
+        ) : (
+          <span className="text-base font-medium tabular-nums">
+            {fmtHora(evento.fecha_inicio)}
           </span>
-          <Badge className={meta.badge}>{meta.label}</Badge>
+        )}
+      </div>
+
+      {/* Cuerpo */}
+      <div className="min-w-0 flex-1 self-center">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "text-base font-medium",
+              evento.completado && "line-through",
+            )}
+          >
+            {evento.titulo}
+          </span>
+          <Badge className={cn(meta.badge, evento.completado && "opacity-50")}>
+            {meta.label}
+          </Badge>
           {evento.google_calendar_event_id ? (
             <CalendarCheck2
-              className="size-3.5 text-emerald-400"
+              className="size-[13px] text-emerald-400"
               aria-label="Sincronizado con Google Calendar"
             />
           ) : null}
         </div>
 
-        <p
-          className={cn(
-            "mt-0.5 text-sm font-medium",
-            evento.completado && "line-through",
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs">
+          <Briefcase className="size-3.5 shrink-0 text-muted-foreground" />
+          {evento.caso_id && evento.nombre_caso ? (
+            <Link
+              href={`/dashboard/mis-casos/${evento.caso_id}`}
+              className="truncate text-primary hover:underline"
+            >
+              {evento.nombre_caso}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground">Sin caso asociado</span>
           )}
-        >
-          {evento.titulo}
-        </p>
+        </div>
 
-        {evento.descripcion ? (
-          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-            {evento.descripcion}
-          </p>
-        ) : null}
-
-        {evento.caso_id && evento.nombre_caso ? (
-          <Link
-            href={`/dashboard/mis-casos/${evento.caso_id}`}
-            className="mt-1 inline-block text-xs text-primary hover:underline"
-          >
-            {evento.nombre_caso}
-          </Link>
+        {evento.descripcion || evento.notas ? (
+          <div className="mt-2 space-y-1 border-t border-border pt-2 text-sm text-muted-foreground">
+            {evento.descripcion ? <p>{evento.descripcion}</p> : null}
+            {evento.notas ? <p>{evento.notas}</p> : null}
+          </div>
         ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5">
+      {/* Acciones: ocultas hasta hover en desktop, siempre visibles en mobile */}
+      <div className="flex shrink-0 items-center gap-0.5 self-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
         <Button
           variant="ghost"
           size="icon-sm"

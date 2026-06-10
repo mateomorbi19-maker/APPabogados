@@ -1,4 +1,5 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
   TIPOS_EVENTO,
@@ -9,26 +10,26 @@ import {
 
 export type Rango = "hoy" | "semana" | "mes" | "todo";
 
+// `tipos` = tipos que se MUESTRAN (todos tildados por default). Tildar/destildar
+// agrega/quita. Lista vacía = no se muestra ningún tipo (lo maneja agenda-view).
 export type FiltrosUI = {
-  tipos: TipoEvento[]; // vacío = todos los tipos
-  casoId: string | null; // null = todos los casos
+  tipos: TipoEvento[];
+  casoId: string | null;
   rango: Rango;
 };
 
 const RANGOS: { value: Rango; label: string }[] = [
   { value: "hoy", label: "Hoy" },
-  { value: "semana", label: "Esta semana" },
-  { value: "mes", label: "Este mes" },
+  { value: "semana", label: "Semana" },
+  { value: "mes", label: "Mes" },
   { value: "todo", label: "Todo" },
 ];
 
 const SELECT_CLS =
-  "h-9 rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
-
-const CHIP_BASE =
-  "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer";
-const CHIP_INACTIVO =
-  "border-border text-muted-foreground hover:text-foreground hover:bg-muted";
+  "h-9 w-full rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
+const TITULO_CLS =
+  "text-xs font-medium uppercase tracking-wide text-muted-foreground";
+const SECCION_CLS = "rounded-lg bg-secondary/40 p-3";
 
 type Props = {
   filtros: FiltrosUI;
@@ -37,8 +38,6 @@ type Props = {
 };
 
 export function AgendaFilters({ filtros, casos, onChange }: Props) {
-  const todosTipos = filtros.tipos.length === 0;
-
   const toggleTipo = (t: TipoEvento) => {
     const has = filtros.tipos.includes(t);
     onChange({
@@ -51,43 +50,41 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Tipos (multi-select) */}
-      <div className="flex flex-wrap gap-1.5">
-        <button
-          type="button"
-          onClick={() => onChange({ ...filtros, tipos: [] })}
-          className={cn(
-            CHIP_BASE,
-            todosTipos
-              ? "border-primary/30 bg-primary/15 text-primary"
-              : CHIP_INACTIVO,
-          )}
-        >
-          Todos
-        </button>
-        {TIPOS_EVENTO_VALUES.map((t) => {
-          const active = filtros.tipos.includes(t);
-          return (
-            <button
-              key={t}
-              type="button"
-              onClick={() => toggleTipo(t)}
-              className={cn(CHIP_BASE, active ? TIPOS_EVENTO[t].badge : CHIP_INACTIVO)}
-            >
-              {TIPOS_EVENTO[t].label}
-            </button>
-          );
-        })}
+      {/* Tipo de evento */}
+      <div className={cn(SECCION_CLS, "space-y-2.5")}>
+        <p className={TITULO_CLS}>Tipo de evento</p>
+        <div className="space-y-2">
+          {TIPOS_EVENTO_VALUES.map((t) => {
+            const meta = TIPOS_EVENTO[t];
+            const checked = filtros.tipos.includes(t);
+            return (
+              <label
+                key={t}
+                className="flex cursor-pointer items-center gap-2 text-sm"
+              >
+                <Checkbox checked={checked} onCheckedChange={() => toggleTipo(t)} />
+                <span
+                  className={cn("size-2 shrink-0 rounded-full", meta.dot)}
+                  aria-hidden
+                />
+                <span className={cn(!checked && "text-muted-foreground")}>
+                  {meta.label}
+                </span>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Caso + rango */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Caso */}
+      <div className={cn(SECCION_CLS, "space-y-2")}>
+        <p className={TITULO_CLS}>Caso</p>
         <select
           value={filtros.casoId ?? ""}
           onChange={(e) =>
             onChange({ ...filtros, casoId: e.target.value || null })
           }
-          className={cn(SELECT_CLS, "max-w-[16rem]")}
+          className={SELECT_CLS}
           aria-label="Filtrar por caso"
         >
           <option value="">Todos los casos</option>
@@ -97,8 +94,12 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
             </option>
           ))}
         </select>
+      </div>
 
-        <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+      {/* Período */}
+      <div className={cn(SECCION_CLS, "space-y-2")}>
+        <p className={TITULO_CLS}>Período</p>
+        <div className="grid grid-cols-2 gap-1.5">
           {RANGOS.map((r) => {
             const active = filtros.rango === r.value;
             return (
@@ -107,10 +108,10 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
                 type="button"
                 onClick={() => onChange({ ...filtros, rango: r.value })}
                 className={cn(
-                  "px-2.5 py-1 text-xs rounded transition-colors",
+                  "rounded-md px-2 py-1.5 text-xs transition-colors",
                   active
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
                 {r.label}

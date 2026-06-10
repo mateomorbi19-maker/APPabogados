@@ -57,3 +57,30 @@ export function etiquetaDia(clave: string): string {
   if (clave === mananaKey) return `Mañana — ${fechaLabel}`;
   return fechaLabel;
 }
+
+const SOLO_DIA_FMT = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  weekday: "long",
+});
+const DIA_MES_FMT = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  day: "numeric",
+  month: "long",
+}); // "10 de junio"
+
+// Partes separadas de la etiqueta de día, para los separadores del listado:
+// label ("Hoy" | "Mañana" | "Viernes") + fecha ("10 de junio") + flag esHoy.
+export function etiquetaDiaPartes(clave: string): {
+  label: string;
+  esHoy: boolean;
+  fecha: string;
+} {
+  const ahora = new Date();
+  const hoyKey = claveDia(ahora.toISOString());
+  const mananaKey = claveDia(new Date(ahora.getTime() + 86_400_000).toISOString());
+  const d = new Date(`${clave}T12:00:00Z`);
+  const fecha = DIA_MES_FMT.format(d);
+  if (clave === hoyKey) return { label: "Hoy", esHoy: true, fecha };
+  if (clave === mananaKey) return { label: "Mañana", esHoy: false, fecha };
+  return { label: capitalizar(SOLO_DIA_FMT.format(d)), esHoy: false, fecha };
+}

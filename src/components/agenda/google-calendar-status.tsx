@@ -1,48 +1,25 @@
 "use client";
-import { useEffect, useState } from "react";
-import { CalendarCheck2, CalendarX2, Loader2, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { CalendarCheck2, Loader2, RefreshCw } from "lucide-react";
 import { SignOutButton } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
+// Componente presentacional: el estado de conexión lo resuelve y posee
+// agenda-view (lo necesita también para el badge del header y la stat
+// "Pendientes de sync"). Acá solo mostramos + disparamos el sync.
 type Props = {
-  // Se llama tras un sync exitoso para que el parent recargue (y aparezcan los
-  // íconos de "sincronizado" en las cards).
+  connected: boolean | null; // null = verificando
   onSynced: () => void;
+  onConnectedChange: (c: boolean) => void;
 };
 
-type Estado = "checking" | "connected" | "disconnected" | "error";
-
-export function GoogleCalendarStatus({ onSynced }: Props) {
-  const [estado, setEstado] = useState<Estado>("checking");
+export function GoogleCalendarStatus({
+  connected,
+  onSynced,
+  onConnectedChange,
+}: Props) {
   const [syncing, setSyncing] = useState(false);
-
-  // Check de conexión al montar (GET no tiene efectos: solo consulta si hay
-  // token de Google con scope de calendario).
-  useEffect(() => {
-    let cancelado = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/agenda/eventos/sync");
-        // Éxito = objeto crudo { connected }; error = { ok: false }.
-        const json = (await res.json().catch(() => null)) as
-          | { connected: boolean }
-          | { ok: false }
-          | null;
-        if (cancelado) return;
-        if (res.ok && json && "connected" in json) {
-          setEstado(json.connected ? "connected" : "disconnected");
-        } else {
-          setEstado("error");
-        }
-      } catch {
-        if (!cancelado) setEstado("error");
-      }
-    })();
-    return () => {
-      cancelado = true;
-    };
-  }, []);
 
   const handleSync = async () => {
     if (syncing) return;
@@ -59,8 +36,7 @@ export function GoogleCalendarStatus({ onSynced }: Props) {
         return;
       }
       if (json.synced === false) {
-        // El usuario perdió/nunca tuvo el scope: pasamos a estado desconectado.
-        setEstado("disconnected");
+        onConnectedChange(false);
         toast.error("Conectá tu Google Calendar primero");
         return;
       }
@@ -78,23 +54,24 @@ export function GoogleCalendarStatus({ onSynced }: Props) {
     }
   };
 
-  if (estado === "checking") {
+  if (connected === null) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Loader2 className="size-3.5 animate-spin" /> Verificando Google Calendar…
-      </span>
+      <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="size-3 animate-spin" /> Google Calendar…
+      </p>
     );
   }
 
-  if (estado === "connected") {
+  if (connected) {
     return (
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
-          <CalendarCheck2 className="size-4" /> Google Calendar sincronizado
-        </span>
+      <div className="space-y-2">
+        <p className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
+          <CalendarCheck2 className="size-3.5" /> Google Calendar
+        </p>
         <Button
           variant="outline"
           size="sm"
+          className="w-full text-muted-foreground"
           onClick={handleSync}
           disabled={syncing}
         >
@@ -109,24 +86,16 @@ export function GoogleCalendarStatus({ onSynced }: Props) {
     );
   }
 
-  // disconnected | error → banner con CTA de reconexión.
+  // Desconectado
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 sm:flex-row sm:items-center">
-      <CalendarX2 className="size-5 shrink-0 text-amber-400" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm">
-          Conectá tu Google Calendar para que tus eventos aparezcan en tu
-          teléfono.
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {estado === "error"
-            ? "No pudimos verificar la conexión. "
-            : "Si iniciaste sesión antes de activar la sincronización, "}
-          cerrá sesión y volvé a entrar con Google para habilitarla.
-        </p>
-      </div>
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Google Calendar</p>
       <SignOutButton redirectUrl="/sign-in">
-        <Button variant="outline" size="sm" className="shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full text-muted-foreground"
+        >
           Conectar
         </Button>
       </SignOutButton>
