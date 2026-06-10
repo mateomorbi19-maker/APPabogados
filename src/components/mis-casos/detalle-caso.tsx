@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, Network } from "lucide-react";
 import type { Caso, EventoCaso } from "@/lib/types";
 import { HeaderCaso } from "./header-caso";
 import { AnalisisOriginalColapsable } from "./analisis-original-colapsable";
@@ -47,6 +47,28 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
           </div>
           <span className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
             Abrir chat
+            <ArrowRight className="size-4" />
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href={`/dashboard/mis-casos/${caso.id}/mapa`}
+        className="block rounded-md border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start gap-2 min-w-0">
+            <Network className="size-4 text-primary mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Mapa procesal</p>
+              <p className="text-xs text-muted-foreground">
+                Árbol visual de la progresión del caso y los caminos procesales
+                posibles. Agregá, marcá y ramificá etapas.
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
+            Abrir mapa
             <ArrowRight className="size-4" />
           </span>
         </div>

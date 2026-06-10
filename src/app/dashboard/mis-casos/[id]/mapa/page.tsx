@@ -1,0 +1,33 @@
+// Página del mapa procesal de un caso. Server component: valida UUID + ownership
+// y delega en el client component (full-screen, con su propia toolbar).
+import { notFound } from "next/navigation";
+import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
+import { createServerClient } from "@/lib/supabase/server";
+import { MapaProcesalView } from "@/components/mapa-procesal/mapa-procesal-view";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function MapaProcesalPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  if (!UUID_RE.test(id)) notFound();
+
+  const auth = await requireUsuarioOr403();
+  if (!auth.ok) notFound();
+
+  const supabase = createServerClient();
+  const { data: caso } = await supabase
+    .from("casos")
+    .select("id, titulo")
+    .eq("id", id)
+    .eq("usuario_id", auth.usuario_id)
+    .maybeSingle();
+  if (!caso) notFound();
+
+  const { id: casoId, titulo } = caso as { id: string; titulo: string };
+  return <MapaProcesalView casoId={casoId} casoTitulo={titulo} />;
+}
