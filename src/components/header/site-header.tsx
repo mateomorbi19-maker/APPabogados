@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsumoBar } from "./consumo-bar";
 
@@ -9,6 +10,7 @@ export function SiteHeader({ nombreUsuario }: { nombreUsuario: string }) {
   const pathname = usePathname();
   const enHome = pathname === "/";
   const enMisCasos = pathname.startsWith("/dashboard/mis-casos");
+  const enAgenda = pathname.startsWith("/dashboard/agenda");
 
   return (
     <header className="border-b border-border sticky top-0 z-10 bg-background/80 backdrop-blur">
@@ -45,6 +47,18 @@ export function SiteHeader({ nombreUsuario }: { nombreUsuario: string }) {
             )}
           >
             Mis casos
+          </Link>
+          <Link
+            href="/dashboard/agenda"
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
+              enAgenda
+                ? "text-primary bg-primary/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            <CalendarDays className="size-4" />
+            Agenda
           </Link>
         </nav>
 
