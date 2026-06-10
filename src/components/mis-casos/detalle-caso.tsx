@@ -53,7 +53,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
       </Link>
 
       <Link
-        href={`/dashboard/mis-casos/${caso.id}/mapa`}
+        href={`/dashboard/mapa-procesal/${caso.id}`}
         className="block rounded-md border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group"
       >
         <div className="flex items-center justify-between gap-3">
