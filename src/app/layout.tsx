@@ -1,36 +1,35 @@
 import type { Metadata } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/themes";
 import { esES } from "@clerk/localizations";
 import "./globals.css";
 
-// Stack del proyecto (mayo 2026):
-//   - Body / UI: Inter (sans). Reemplazó a IBM Plex Sans, que tenía vibe
-//     "ofimática". Inter es el standard de productos SaaS modernos (Linear,
-//     Vercel, Stripe) y se ve más clean en dark mode.
-//   - Display / Headings: Instrument Serif. Reemplazó a DM Serif Display,
-//     que se sentía demasiado "Times New Roman / Word". Instrument Serif
-//     es una serif moderna con detalles editoriales sutiles (cursivas
-//     italianizantes, alto contraste) — le da personalidad a los títulos
-//     sin caer en lo ornamental.
+// Stack del proyecto (rediseño jun 2026):
+//   - Body / UI: Inter (sans), expuesta como --font-sans.
+//   - Display / Headings + wordmark: Space Grotesk, expuesta como
+//     --font-display. Reemplaza a Instrument Serif (serif) por una grotesque
+//     moderna con tracking ajustado — más acorde a un producto SaaS dark.
+//     El remapeo de --font-serif/--font-heading → --font-display en
+//     globals.css hace que los títulos existentes adopten la grotesque sin
+//     tocar cada componente.
 const inter = Inter({
-  variable: "--font-inter",
+  variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
 });
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
+const display = Space_Grotesk({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400"],
+  weight: ["500", "600"],
 });
 
 // Stack de fuente para el card de Clerk. La CSS variable inyectada por
 // next/font, con fallback explícito por si no propaga al árbol del
 // componente Clerk en algún caso.
 const CLERK_FONT_FAMILY =
-  'var(--font-inter), Inter, system-ui, sans-serif';
+  'var(--font-sans), Inter, system-ui, sans-serif';
 
 export const metadata: Metadata = {
   title: "EstrategiaLegal",
@@ -59,7 +58,7 @@ export default function RootLayout({
     >
       <html
         lang="es"
-        className={`dark ${inter.variable} ${instrumentSerif.variable} h-full antialiased`}
+        className={`dark ${inter.variable} ${display.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col bg-background text-foreground">
           {children}

@@ -19,11 +19,11 @@ export function NavShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[var(--el-canvas)] text-[var(--el-text)]">
       <TopBar />
       <div className="flex flex-1">
         <AppSidebar nombreUsuario={nombreUsuario} isAdmin={isAdmin} />
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 bg-[var(--el-canvas)]">
           <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">{children}</div>
         </main>
       </div>

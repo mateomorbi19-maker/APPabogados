@@ -30,9 +30,9 @@ export type EventoProximo = {
 // badges de tipo de evento de la agenda. Clases literales completas porque
 // Tailwind v4 escanea strings (no construye `bg-${x}` en runtime).
 const ROL_BADGE: Record<string, string> = {
-  defensor: "bg-blue-500/10 text-blue-300 border-blue-500/20",
-  querellante: "bg-amber-500/10 text-amber-300 border-amber-500/20",
-  ambos: "bg-violet-500/10 text-violet-300 border-violet-500/20",
+  defensor: "bg-[rgba(59,130,246,0.22)] text-[#A9CDFF] border-transparent",
+  querellante: "bg-[rgba(245,158,11,0.22)] text-[#FFE0A3] border-transparent",
+  ambos: "bg-[rgba(139,92,246,0.22)] text-[#CDBEFF] border-transparent",
 };
 
 function capitalizar(s: string): string {
@@ -72,14 +72,16 @@ export function InicioDashboard({
     <div className="space-y-8">
       {/* 1. Saludo */}
       <div>
-        <h1 className="font-serif text-3xl tracking-tight">Hola, {nombre}</h1>
-        <p className="mt-1 text-muted-foreground">¿Qué querés hacer hoy?</p>
+        <h1 className="font-display text-[25px] font-semibold text-[#FAFAFC]">
+          Hola, {nombre}
+        </h1>
+        <p className="mt-1 text-[var(--el-text-soft)]">¿Qué querés hacer hoy?</p>
       </div>
 
       {/* 2. CTA destacado */}
       <Link
         href="/analisis"
-        className="group flex items-center gap-4 rounded-xl bg-primary px-6 py-5 text-primary-foreground transition-opacity hover:opacity-90"
+        className="group flex items-center gap-4 rounded-[13px] bg-[var(--el-cta)] px-6 py-5 text-white shadow-[0_4px_20px_rgba(124,92,252,0.32)] transition-opacity hover:opacity-90"
       >
         <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/15">
           <Sparkles className="size-6" />
@@ -88,7 +90,7 @@ export function InicioDashboard({
           <span className="block text-lg font-semibold">
             Analizar un caso nuevo
           </span>
-          <span className="block text-sm text-primary-foreground/80">
+          <span className="block text-sm text-white/80">
             Cargá el caso y recibí estrategias fundamentadas
           </span>
         </span>
@@ -98,13 +100,14 @@ export function InicioDashboard({
       {/* 3. Casos recientes */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <FolderOpen className="size-4" /> Casos recientes
+          <h2 className="flex items-center gap-2 text-sm font-medium text-[var(--el-text)]">
+            <FolderOpen className="size-4 text-[var(--el-text-muted)]" /> Casos
+            recientes
           </h2>
           {casos.length > 0 ? (
             <Link
               href="/dashboard/mis-casos"
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-[var(--el-violet-light)] hover:underline"
             >
               Ver todos
             </Link>
@@ -112,13 +115,13 @@ export function InicioDashboard({
         </div>
 
         {casos.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 py-10 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 rounded-[11px] border border-[var(--el-border)] bg-[var(--el-surface-card)] py-10 text-center shadow-[var(--el-shadow-card)]">
+            <p className="text-sm text-[var(--el-text-soft)]">
               Todavía no analizaste ningún caso.
             </p>
             <Link
               href="/analisis"
-              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm text-[var(--el-violet-light)] hover:underline"
             >
               <Sparkles className="size-4" /> Analizar un caso nuevo
             </Link>
@@ -129,14 +132,14 @@ export function InicioDashboard({
               <Link
                 key={c.id}
                 href={`/dashboard/mis-casos/${c.id}`}
-                className="flex flex-col gap-2 rounded-xl border border-border bg-card/40 p-4 transition-colors hover:border-primary/40 hover:bg-card"
+                className="flex flex-col gap-2 rounded-[11px] border border-[var(--el-border)] bg-[var(--el-surface-card)] p-4 shadow-[var(--el-shadow-card)] transition-colors hover:border-[var(--el-violet)]/50"
               >
-                <p className="line-clamp-2 text-sm font-medium leading-snug">
+                <p className="line-clamp-2 text-sm font-medium leading-snug text-[var(--el-text)]">
                   {c.titulo}
                 </p>
                 <div className="mt-auto flex items-center justify-between gap-2">
                   <RolBadge rol={c.rol} />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-[var(--el-text-muted)]">
                     {fmtRelativo(c.actualizado_en)}
                   </span>
                 </div>
@@ -149,13 +152,14 @@ export function InicioDashboard({
       {/* 4. Próximos eventos */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <CalendarClock className="size-4" /> Próximos eventos
+          <h2 className="flex items-center gap-2 text-sm font-medium text-[var(--el-text)]">
+            <CalendarClock className="size-4 text-[var(--el-text-muted)]" />{" "}
+            Próximos eventos
           </h2>
           {eventos.length > 0 ? (
             <Link
               href="/dashboard/agenda"
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-[var(--el-violet-light)] hover:underline"
             >
               Ver agenda
             </Link>
@@ -163,35 +167,35 @@ export function InicioDashboard({
         </div>
 
         {eventos.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 py-10 text-center">
-            <CalendarX2 className="size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 rounded-[11px] border border-[var(--el-border)] bg-[var(--el-surface-card)] py-10 text-center shadow-[var(--el-shadow-card)]">
+            <CalendarX2 className="size-8 text-[var(--el-text-muted)]" />
+            <p className="text-sm text-[var(--el-text-soft)]">
               No tenés audiencias agendadas.
             </p>
             <Link
               href="/dashboard/agenda"
-              className="text-sm text-primary hover:underline"
+              className="text-sm text-[var(--el-violet-light)] hover:underline"
             >
               Ir a la agenda
             </Link>
           </div>
         ) : (
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card/40">
+          <ul className="divide-y divide-[var(--el-border-soft)] overflow-hidden rounded-[11px] border border-[var(--el-border)] bg-[var(--el-surface-card)] shadow-[var(--el-shadow-card)]">
             {eventos.map((e) => (
               <li key={e.id}>
                 <Link
                   href="/dashboard/agenda"
-                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
+                    <span className="block truncate text-sm font-medium text-[var(--el-text)]">
                       {e.titulo}
                     </span>
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="block text-xs text-[var(--el-text-muted)]">
                       {tipoLabel(e.tipo)}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                  <span className="shrink-0 text-xs font-medium text-[var(--el-text-muted)]">
                     {etiquetaEvento(e)}
                   </span>
                 </Link>

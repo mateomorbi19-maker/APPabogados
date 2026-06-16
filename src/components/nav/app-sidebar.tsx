@@ -71,7 +71,7 @@ export function AppSidebar({
   const items = ITEMS.filter((i) => !i.adminOnly || isAdmin);
 
   return (
-    <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 flex-col border-r border-border bg-card/40 md:flex">
+    <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 flex-col border-r border-[var(--el-border)] bg-[var(--el-surface-side)] md:flex">
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {items.map((item) => {
           const activo = item.match(pathname);
@@ -81,13 +81,18 @@ export function AppSidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md border-l-2 px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-[9px] px-3 py-2 text-sm transition-colors",
                 activo
-                  ? "border-primary bg-primary/10 font-medium text-primary"
-                  : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "bg-[rgba(139,92,246,0.22)] font-medium text-[#CDBEFF]"
+                  : "text-[var(--el-text-soft)] hover:bg-white/5 hover:text-[var(--el-text)]",
               )}
             >
-              <Icon className="size-[18px] shrink-0" />
+              <Icon
+                className={cn(
+                  "size-[18px] shrink-0",
+                  !activo && "text-[#9494A2]",
+                )}
+              />
               {item.label}
             </Link>
           );
@@ -95,7 +100,7 @@ export function AppSidebar({
       </nav>
 
       {/* Bloque de perfil */}
-      <div className="border-t border-border px-3 py-3">
+      <div className="border-t border-[var(--el-border-soft)] px-3 py-3">
         <div className="flex items-center gap-3 px-1">
           {user?.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
