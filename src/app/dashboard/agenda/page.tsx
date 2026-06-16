@@ -2,12 +2,12 @@ import { redirect } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
 import { ConsumoProvider } from "@/lib/hooks/use-consumo";
-import { SiteHeader } from "@/components/header/site-header";
+import { NavShell } from "@/components/nav/nav-shell";
 import { AgendaView } from "@/components/agenda/agenda-view";
 import type { CasoOption } from "@/lib/agenda/types";
 
 // Página de la Agenda. Mismo shell que /dashboard/mis-casos (auth + ConsumoProvider
-// para la ConsumoBar del header + SiteHeader). No hay rutas anidadas, así que el
+// para la ConsumoBar del header + NavShell). No hay rutas anidadas, así que el
 // shell vive en la propia page en vez de un layout dedicado.
 export default async function AgendaPage() {
   const result = await requireUsuarioOr403();
@@ -27,14 +27,9 @@ export default async function AgendaPage() {
 
   return (
     <ConsumoProvider>
-      <div className="min-h-screen flex flex-col">
-        <SiteHeader nombreUsuario={result.nombre} />
-        <main className="flex-1">
-          <div className="container max-w-6xl mx-auto px-4 py-6">
-            <AgendaView casos={casos} />
-          </div>
-        </main>
-      </div>
+      <NavShell nombreUsuario={result.nombre} isAdmin={result.role === "admin"}>
+        <AgendaView casos={casos} />
+      </NavShell>
     </ConsumoProvider>
   );
 }

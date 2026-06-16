@@ -9,6 +9,7 @@ export type WhitelistResult =
       nombre: string;
       clerk_user_id: string;
       email: string;
+      role: "admin" | "user";
     }
   | {
       ok: false;
@@ -37,7 +38,7 @@ export async function requireUsuarioOr403(): Promise<WhitelistResult> {
 
   const { data: match, error } = await supabase
     .from("usuarios")
-    .select("id, nombre, email, clerk_user_id")
+    .select("id, nombre, email, clerk_user_id, role")
     .eq("email", clerkEmail)
     .maybeSingle();
 
@@ -77,5 +78,6 @@ export async function requireUsuarioOr403(): Promise<WhitelistResult> {
     nombre: match.nombre,
     clerk_user_id: userId,
     email: match.email,
+    role: match.role === "admin" ? "admin" : "user",
   };
 }
