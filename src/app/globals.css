@@ -7,9 +7,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-serif: var(--font-instrument-serif);
-  --font-heading: var(--font-instrument-serif);
+  --font-sans: var(--font-sans);
+  /* font-serif/font-heading se remapean a la grotesque (Space Grotesk) para
+     que los títulos existentes adopten la display sin editar cada componente.
+     La serif (Instrument Serif) se eliminó en el rediseño de jun 2026. */
+  --font-serif: var(--font-display);
+  --font-heading: var(--font-display);
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
@@ -90,6 +93,22 @@
   --sidebar-accent-foreground: #e5e7eb;
   --sidebar-border: #1e293b;
   --sidebar-ring: #8b5cf6;
+
+  /* Rediseño jun 2026 — jerarquía de 3 superficies + tokens de contraste.
+     Se consumen vía arbitrary values de Tailwind: bg-[var(--el-surface-card)],
+     border-[var(--el-border)], etc. Dark-only. */
+  --el-canvas: #08080c; /* fondo general / área de contenido */
+  --el-surface-side: #16161f; /* sidebar */
+  --el-surface-card: #20202e; /* tarjetas / paneles elevados */
+  --el-border: rgba(255, 255, 255, 0.13); /* borde de tarjetas y sidebar */
+  --el-border-soft: rgba(255, 255, 255, 0.1); /* divisores / topbar */
+  --el-shadow-card: 0 2px 14px rgba(0, 0, 0, 0.55);
+  --el-text: #f5f5f8; /* texto primario */
+  --el-text-soft: #a2a2b2; /* secundario */
+  --el-text-muted: #85858f; /* terciario / metadatos */
+  --el-violet: #8b5cf6; /* acento */
+  --el-violet-light: #a78bfa; /* links "Ver todos" / "Legal" del logo */
+  --el-cta: #7c5cfc; /* card "Analizar un caso nuevo" */
 }
 
 @layer base {
@@ -116,4 +135,11 @@
   option {
     @apply bg-card text-foreground;
   }
+}
+
+/* Util de la fuente display (Space Grotesk) con el tracking ajustado del
+   rediseño. Se aplica al wordmark del logo y a los títulos h1/h2. */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
 }
