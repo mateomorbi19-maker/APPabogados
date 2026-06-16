@@ -4,7 +4,7 @@ import type { EventoAgenda, TipoEvento } from "./types";
 
 // Columnas de eventos_agenda (sin el join). nombre_caso se arma aparte.
 const COLS =
-  "id, usuario_id, caso_id, titulo, descripcion, tipo, fecha_inicio, fecha_fin, todo_el_dia, google_calendar_event_id, notas, completado, created_at, updated_at";
+  "id, usuario_id, caso_id, titulo, descripcion, tipo, fecha_inicio, fecha_fin, todo_el_dia, google_calendar_event_id, google_updated, notas, completado, created_at, updated_at";
 
 // Mismo set + embed del titulo del caso asociado vía la FK caso_id -> casos.id.
 const COLS_CON_CASO = `${COLS}, casos(titulo)`;
@@ -155,16 +155,38 @@ export async function updateGoogleEventId(
   id: string,
   usuarioId: string,
   googleEventId: string,
+  googleUpdated?: string | null,
 ): Promise<void> {
   // Doble filtro id + usuario_id por defensa en profundidad, igual que el resto
   // de las queries (los call sites ya son user-filtered, pero no dependemos de eso).
   const supabase = createServerClient();
+  const patch: { google_calendar_event_id: string; google_updated?: string | null } =
+    { google_calendar_event_id: googleEventId };
+  // Solo seteamos google_updated si Google devolvió un timestamp (para no pisar
+  // con null un valor previo).
+  if (googleUpdated != null) patch.google_updated = googleUpdated;
   const { error } = await supabase
     .from("eventos_agenda")
-    .update({ google_calendar_event_id: googleEventId })
+    .update(patch)
     .eq("id", id)
     .eq("usuario_id", usuarioId);
   if (error) throw new Error(`updateGoogleEventId: ${error.message}`);
+}
+
+// Persiste el `updated` de Google tras un push de edición (PUT). Aísla el
+// control de conflicto del pull de los cambios que originó la propia app.
+export async function setGoogleUpdated(
+  id: string,
+  usuarioId: string,
+  googleUpdated: string,
+): Promise<void> {
+  const supabase = createServerClient();
+  const { error } = await supabase
+    .from("eventos_agenda")
+    .update({ google_updated: googleUpdated })
+    .eq("id", id)
+    .eq("usuario_id", usuarioId);
+  if (error) throw new Error(`setGoogleUpdated: ${error.message}`);
 }
 
 // Valida que un caso exista y pertenezca al usuario (para asociar un evento).

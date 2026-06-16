@@ -97,6 +97,9 @@ export type EventoAgenda = {
   fecha_fin: string | null;
   todo_el_dia: boolean;
   google_calendar_event_id: string | null;
+  // Timestamp `updated` del evento en Google. Se setea al pushear/pullear y se
+  // usa como control de conflicto del pull (Google gana solo si es más nuevo).
+  google_updated: string | null;
   notas: string | null;
   completado: boolean;
   created_at: string;

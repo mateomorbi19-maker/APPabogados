@@ -1,5 +1,5 @@
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
-import { jsonResponse, isDev } from "@/lib/http";
+import { jsonResponse } from "@/lib/http";
 import {
   getEventosSinSincronizar,
   updateGoogleEventId,
@@ -8,9 +8,11 @@ import {
   getGoogleAccessToken,
   syncPendingEvents,
 } from "@/lib/agenda/google-calendar";
+import { pullFromGoogle } from "@/lib/agenda/google-pull";
 
-// Empuja a Google los eventos del usuario que todavía no tienen
-// google_calendar_event_id. Loop secuencial → le damos margen de duración.
+// Sincronización bidireccional: empuja los pendientes (app → Google) y después
+// trae los cambios remotos (Google → app, pull incremental con syncToken).
+// Loop secuencial + paginación → le damos margen de duración.
 export const maxDuration = 60;
 
 // === GET /api/agenda/eventos/sync ===
@@ -27,6 +29,8 @@ export async function GET(): Promise<Response> {
 }
 
 // === POST /api/agenda/eventos/sync ===
+// Push de pendientes + pull incremental. Devuelve { pushed, pulled }. Ningún
+// fallo de Google rompe la operación: la agenda local siempre queda consistente.
 export async function POST(): Promise<Response> {
   const wl = await requireUsuarioOr403();
   if (!wl.ok) return jsonResponse({ ok: false, error: wl.message }, wl.status);
@@ -40,39 +44,43 @@ export async function POST(): Promise<Response> {
     );
   }
 
-  let pendientes;
+  // 1) PUSH de pendientes (app → Google), como antes.
+  let pushed = 0;
   try {
-    pendientes = await getEventosSinSincronizar(wl.usuario_id);
-  } catch (e) {
-    console.error("[POST /api/agenda/eventos/sync] pendientes:", e);
-    return jsonResponse(
-      {
-        ok: false,
-        error: "Error consultando eventos a sincronizar",
-        ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
-      },
-      500,
-    );
-  }
-
-  if (pendientes.length === 0) {
-    return jsonResponse({ ok: true, synced: true, count: 0 }, 200);
-  }
-
-  const results = await syncPendingEvents(token, pendientes);
-  for (const r of results) {
-    try {
-      await updateGoogleEventId(r.id, wl.usuario_id, r.googleEventId);
-    } catch (e) {
-      // El evento se creó en Google pero no pudimos guardar el id local: se
-      // reintentará en el próximo sync (quedaría como pendiente). Logueamos.
-      console.error(
-        "[POST /api/agenda/eventos/sync] updateGoogleEventId:",
-        r.id,
-        e,
-      );
+    const pendientes = await getEventosSinSincronizar(wl.usuario_id);
+    if (pendientes.length > 0) {
+      const results = await syncPendingEvents(token, pendientes);
+      for (const r of results) {
+        try {
+          await updateGoogleEventId(
+            r.id,
+            wl.usuario_id,
+            r.googleEventId,
+            r.googleUpdated,
+          );
+        } catch (e) {
+          // El evento se creó en Google pero no pudimos guardar el id local: se
+          // reintentará en el próximo sync (queda como pendiente). Logueamos.
+          console.error("[POST /api/agenda/eventos/sync] updateGoogleEventId:", r.id, e);
+        }
+      }
+      pushed = results.length;
     }
+  } catch (e) {
+    // Un fallo del push no aborta el pull: el pendiente se reintenta luego.
+    console.error("[POST /api/agenda/eventos/sync] push:", e);
   }
 
-  return jsonResponse({ ok: true, synced: true, count: results.length }, 200);
+  // 2) PULL incremental (Google → app).
+  let pulled = 0;
+  try {
+    const r = await pullFromGoogle(wl.usuario_id, wl.clerk_user_id);
+    pulled = r.pulled;
+  } catch (e) {
+    // El pull es best-effort: si falla, el push ya se hizo y la agenda local
+    // sigue intacta. Se reintenta en el próximo sync.
+    console.error("[POST /api/agenda/eventos/sync] pull:", e);
+  }
+
+  return jsonResponse({ ok: true, synced: true, pushed, pulled }, 200);
 }

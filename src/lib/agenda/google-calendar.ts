@@ -115,9 +115,16 @@ export function googleErrorMessage(e: unknown): string {
   return String(e);
 }
 
-export type PushResult = { id: string | null; error: string | null };
+// `updated`: el timestamp `updated` que devuelve Google para el evento. Se
+// persiste en eventos_agenda.google_updated para el control de conflicto del
+// PULL — así un cambio que originó la propia app no se re-aplica al volver.
+export type PushResult = {
+  id: string | null;
+  updated: string | null;
+  error: string | null;
+};
 
-/** Crea el evento en Google Calendar. Devuelve el googleEventId, o el error si falla. */
+/** Crea el evento en Google Calendar. Devuelve el googleEventId + updated, o el error si falla. */
 export async function pushEventToGoogle(
   accessToken: string,
   evento: EventoAgenda,
@@ -128,30 +135,32 @@ export async function pushEventToGoogle(
       calendarId: "primary",
       requestBody: eventoARecursoGoogle(evento),
     });
-    return { id: res.data.id ?? null, error: null };
+    return { id: res.data.id ?? null, updated: res.data.updated ?? null, error: null };
   } catch (e) {
     const error = googleErrorMessage(e);
     console.error("[google-calendar] insert falló:", error);
-    return { id: null, error };
+    return { id: null, updated: null, error };
   }
 }
+
+export type UpdateResult = { ok: boolean; updated: string | null };
 
 export async function updateEventInGoogle(
   accessToken: string,
   googleEventId: string,
   evento: EventoAgenda,
-): Promise<boolean> {
+): Promise<UpdateResult> {
   try {
     const calendar = getCalendarClient(accessToken);
-    await calendar.events.update({
+    const res = await calendar.events.update({
       calendarId: "primary",
       eventId: googleEventId,
       requestBody: eventoARecursoGoogle(evento),
     });
-    return true;
+    return { ok: true, updated: res.data.updated ?? null };
   } catch (e) {
     console.error("[google-calendar] update falló:", e);
-    return false;
+    return { ok: false, updated: null };
   }
 }
 
@@ -172,16 +181,17 @@ export async function deleteEventFromGoogle(
   }
 }
 
-// Pushea una lista de eventos sin sincronizar; devuelve los pares
-// { id, googleEventId } que se crearon OK (para persistir en Supabase).
+// Pushea una lista de eventos sin sincronizar; devuelve los registros
+// { id, googleEventId, googleUpdated } que se crearon OK (para persistir en
+// Supabase: el id de Google + su updated para el control de conflicto del pull).
 export async function syncPendingEvents(
   accessToken: string,
   eventos: EventoAgenda[],
-): Promise<Array<{ id: string; googleEventId: string }>> {
-  const out: Array<{ id: string; googleEventId: string }> = [];
+): Promise<Array<{ id: string; googleEventId: string; googleUpdated: string | null }>> {
+  const out: Array<{ id: string; googleEventId: string; googleUpdated: string | null }> = [];
   for (const ev of eventos) {
     const r = await pushEventToGoogle(accessToken, ev);
-    if (r.id) out.push({ id: ev.id, googleEventId: r.id });
+    if (r.id) out.push({ id: ev.id, googleEventId: r.id, googleUpdated: r.updated });
   }
   return out;
 }
