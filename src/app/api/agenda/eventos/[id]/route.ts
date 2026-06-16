@@ -6,6 +6,7 @@ import { jsonResponse, isDev } from "@/lib/http";
 import {
   casoEsDelUsuario,
   deleteEvento,
+  setGoogleUpdated,
   updateEvento,
   type ActualizarEventoData,
 } from "@/lib/agenda/queries";
@@ -103,11 +104,17 @@ export async function PUT(
     try {
       const token = await getGoogleAccessToken(wl.clerk_user_id);
       if (token) {
-        await updateEventInGoogle(
+        const r = await updateEventInGoogle(
           token,
           evento.google_calendar_event_id,
           evento,
         );
+        // Guardamos el nuevo `updated` para que el pull no re-aplique este
+        // cambio (que originó la propia app) cuando vuelva desde Google.
+        if (r.ok && r.updated) {
+          await setGoogleUpdated(evento.id, wl.usuario_id, r.updated);
+          evento = { ...evento, google_updated: r.updated };
+        }
       }
     } catch (e) {
       console.error(

@@ -27,7 +27,7 @@ export function GoogleCalendarStatus({
     try {
       const res = await fetch("/api/agenda/eventos/sync", { method: "POST" });
       const json = (await res.json().catch(() => null)) as
-        | { ok: true; synced: true; count: number }
+        | { ok: true; synced: true; pushed: number; pulled: number }
         | { ok: true; synced: false; reason: string }
         | { ok: false; error?: string }
         | null;
@@ -40,12 +40,16 @@ export function GoogleCalendarStatus({
         toast.error("Conectá tu Google Calendar primero");
         return;
       }
-      const n = json.count;
-      toast.success(
-        n > 0
-          ? `${n} evento${n === 1 ? "" : "s"} sincronizado${n === 1 ? "" : "s"} con Google Calendar`
-          : "Todo al día: no había eventos pendientes",
-      );
+      const { pushed, pulled } = json;
+      if (pushed === 0 && pulled === 0) {
+        toast.success("Todo al día con Google Calendar");
+      } else {
+        const partes: string[] = [];
+        if (pushed > 0) partes.push(`${pushed} subido${pushed === 1 ? "" : "s"}`);
+        if (pulled > 0)
+          partes.push(`${pulled} actualizado${pulled === 1 ? "" : "s"} desde Google`);
+        toast.success(partes.join(" · "));
+      }
       onSynced();
     } catch {
       toast.error("Error de red al sincronizar");
@@ -80,7 +84,7 @@ export function GoogleCalendarStatus({
           ) : (
             <RefreshCw className="size-3.5" />
           )}
-          {syncing ? "Sincronizando..." : "Sincronizar pendientes"}
+          {syncing ? "Sincronizando..." : "Sincronizar"}
         </Button>
       </div>
     );

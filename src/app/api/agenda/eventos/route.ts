@@ -145,8 +145,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     if (token) {
       const r = await pushEventToGoogle(token, evento);
       if (r.id) {
-        await updateGoogleEventId(evento.id, wl.usuario_id, r.id);
-        evento = { ...evento, google_calendar_event_id: r.id };
+        // Guardamos también r.updated: el control de conflicto del pull lo usa
+        // para no re-aplicar este cambio cuando vuelva desde Google.
+        await updateGoogleEventId(evento.id, wl.usuario_id, r.id, r.updated);
+        evento = {
+          ...evento,
+          google_calendar_event_id: r.id,
+          google_updated: r.updated,
+        };
         google_synced = true;
       } else {
         google_error = r.error;

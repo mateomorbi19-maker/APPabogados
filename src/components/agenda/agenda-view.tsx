@@ -177,6 +177,41 @@ export function AgendaView({ casos }: Props) {
     };
   }, []);
 
+  // Auto-sync con Google al montar: push de pendientes + pull de cambios hechos
+  // dentro de Google Calendar (ruta /sync extendida). Es ADEMÁS del botón
+  // manual. Silencioso: si no hay token o falla, la agenda local sigue
+  // funcionando. Si el pull trajo cambios, refrescamos la lista (bump de
+  // filtros → re-dispara `cargar`).
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/agenda/eventos/sync", { method: "POST" });
+        const json = (await res.json().catch(() => null)) as
+          | { ok: true; synced: true; pushed: number; pulled: number }
+          | { ok: true; synced: false; reason: string }
+          | { ok: false }
+          | null;
+        if (cancel || !res.ok || !json || json.ok === false) return;
+        if (json.synced === false) {
+          setGoogleConnected(false);
+          return;
+        }
+        setGoogleConnected(true);
+        if (json.pulled > 0 || json.pushed > 0) {
+          setFiltros((f) => ({ ...f }));
+        }
+      } catch {
+        // Silencioso: la agenda funciona 100% sin Google.
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+    // Solo al montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const refetch = useCallback(() => {
     void cargar(filtros);
   }, [cargar, filtros]);
