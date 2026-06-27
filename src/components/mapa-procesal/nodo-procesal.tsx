@@ -1,96 +1,131 @@
 "use client";
+import { createElement, type CSSProperties } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { AlertTriangle, Check, Lock, Sparkles } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { diametroNodo, type NodoData, type NodoFlow } from "@/lib/mapa-procesal/layout";
+import {
+  categoriaNodo,
+  diametroNodo,
+  type Categoria,
+  type NodoFlow,
+} from "@/lib/mapa-procesal/layout";
+import { iconoDeNodo } from "@/lib/mapa-procesal/plantilla-base";
 
 // ============================================================================
-// SISTEMA DE 4 COLORES POR ESTADO DEL NODO — ⚠️ PROVISORIO
+// TRATAMIENTO VISUAL DEL NODO — ⚠️ PROVISORIO (rediseño visual)
 // ----------------------------------------------------------------------------
-// El mapeo de categorías → color Y la precedencia entre categorías están
-// centralizados acá a propósito, para poder ajustarlos rápido al validar con el
-// experto legal. Categorías:
+// La LÓGICA estado→categoría y su precedencia viven en layout.ts (categoriaNodo)
+// y NO se tocan acá. Esto define solo CÓMO se ve cada categoría: tono (tokens
+// --el-estado-*), borde, fill, glow y si pulsa. Centralizado para iterar rápido.
 //
-//   Verde  "Ejecutada"          → estado 'ocurrido'
-//   Rojo   "Riesgo alto"        → riesgo_alto === true
-//   Amarillo "Decisión pendiente" → derivado: >=2 hijos y ninguno 'ocurrido'
-//   Azul   "Posible"            → todo lo demás (default)
-//
-// PRECEDENCIA (de mayor a menor) cuando un nodo cae en más de una categoría:
-//   Ejecutada (verde) > Riesgo alto (rojo) > Decisión pendiente (amarillo) > Posible (azul)
-//
-// Tonos elegidos para contrastar sobre el dark theme (canvas #08080C, cards
-// #20202E), coherentes con la paleta del proyecto. Cambiar acá = cambia todo.
+//   ejecutada → verde, "encendida": borde brillante, glow estático, check.
+//   posible   → azul apagado, "latente": fill card, borde tenue, sin glow, dim.
+//   decision  → ámbar, llama la atención: borde brillante, glow con pulso sutil.
+//   riesgo    → rojo, alerta sin estridencia: borde+glow rojos, pulso sutil.
 // ============================================================================
 
-type Categoria = "ejecutada" | "riesgo" | "decision" | "posible";
+type Glow = "none" | "static" | "pulse";
 
-function categoriaNodo(data: NodoData): Categoria {
-  if (data.estado === "ocurrido") return "ejecutada"; // incluye la raíz 'ocurrido'
-  if (data.riesgoAlto) return "riesgo";
-  if (data.decisionPendiente) return "decision";
-  return "posible";
+const VISUAL: Record<Categoria, { token: string; glow: Glow; dim: boolean }> = {
+  ejecutada: { token: "--el-estado-ejecutada", glow: "static", dim: false },
+  riesgo: { token: "--el-estado-riesgo", glow: "pulse", dim: false },
+  decision: { token: "--el-estado-decision", glow: "pulse", dim: false },
+  posible: { token: "--el-estado-posible", glow: "none", dim: true },
+};
+
+// Estilo inline del círculo según categoría (borde, fill y --el-glow para las
+// clases de glow). Tonos derivados del token con color-mix sobre el canvas.
+function estiloNodo(cat: Categoria): CSSProperties {
+  const accent = `var(${VISUAL[cat].token})`;
+  if (cat === "posible") {
+    // Latente: fill de card, borde tenue, sin glow.
+    return {
+      borderColor: `color-mix(in srgb, ${accent} 40%, transparent)`,
+      background: "var(--el-surface-card)",
+    };
+  }
+  const fillPct = cat === "ejecutada" ? 16 : 13;
+  const glowPct = cat === "ejecutada" ? 42 : 46;
+  return {
+    borderColor: accent,
+    background: `color-mix(in srgb, ${accent} ${fillPct}%, #0b0b11)`,
+    ["--el-glow"]: `color-mix(in srgb, ${accent} ${glowPct}%, transparent)`,
+  } as CSSProperties;
 }
 
-const COLOR_POR_CATEGORIA: Record<Categoria, string> = {
-  ejecutada: "border-[#1D9E75] bg-emerald-950/55 text-emerald-200",
-  riesgo: "border-[#E0524D] bg-red-950/55 text-red-200",
-  decision: "border-[#E0B341] bg-amber-950/50 text-amber-100",
-  posible: "border-[#378ADD] bg-blue-950/55 text-blue-200",
-};
-
-// Realce hover solo para nodos interactivos (no bloqueados): el color del glow
-// matchea la categoría para reforzar el feedback.
-const HOVER_POR_CATEGORIA: Record<Categoria, string> = {
-  ejecutada: "hover:border-[#34C795] hover:shadow-[0_0_10px_rgba(29,158,117,0.45)]",
-  riesgo: "hover:border-[#EC6F6A] hover:shadow-[0_0_10px_rgba(224,82,77,0.5)]",
-  decision: "hover:border-[#EEC25A] hover:shadow-[0_0_10px_rgba(224,179,65,0.5)]",
-  posible: "hover:border-[#5BA3E8] hover:shadow-[0_0_10px_rgba(55,138,221,0.5)]",
-};
+function glowClass(cat: Categoria): string {
+  const g = VISUAL[cat].glow;
+  if (g === "pulse") return "el-nodo-pulso";
+  if (g === "static") return "el-nodo-glow";
+  return "el-nodo";
+}
 
 const HANDLE_CLS = "!h-1.5 !w-1.5 !border-0 !bg-foreground/20";
 
 export function NodoProcesal({ data, selected }: NodeProps<NodoFlow>) {
-  const { titulo, tipo, estado, riesgoAlto } = data;
+  const { titulo, tipo, estado } = data;
   const d = diametroNodo(tipo, estado);
   const esRaiz = tipo === "raiz";
   const bloqueado = estado === "bloqueado"; // solo en mapas viejos
-  const categoria = categoriaNodo(data);
-  const ejecutadaNoRaiz = categoria === "ejecutada" && !esRaiz;
+  const cat = categoriaNodo(data);
+  // Componente de ícono (referencia estable desde el Record del template). Se
+  // renderiza con createElement para no disparar react-hooks/static-components.
+  const icono = bloqueado ? Lock : iconoDeNodo(titulo);
+  const ejecutadaNoRaiz = cat === "ejecutada" && !esRaiz;
+  const iconSize = Math.round(d * 0.4);
+  const dim = VISUAL[cat].dim && !bloqueado;
 
   return (
-    <div
-      className={cn(
-        "relative flex flex-col items-center justify-center rounded-full text-center transition-all duration-150",
-        // Grosor de borde: raíz más marcada; bloqueado (legacy) más fino.
-        esRaiz ? "border-[3px]" : bloqueado ? "border-[1.5px]" : "border-2",
-        COLOR_POR_CATEGORIA[categoria],
-        bloqueado
-          ? "cursor-default opacity-60"
-          : cn("cursor-pointer", HOVER_POR_CATEGORIA[categoria]),
-        selected && "ring-2 ring-primary/70 ring-offset-2 ring-offset-background",
-      )}
-      style={{ width: d, height: d }}
-    >
-      <Handle type="target" position={Position.Top} className={HANDLE_CLS} />
+    <div className="relative" style={{ width: d, height: d }}>
+      <div
+        className={cn(
+          "relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-200",
+          esRaiz ? "border-[3px]" : "border-2",
+          bloqueado
+            ? "el-nodo cursor-default border-[rgba(130,130,140,0.4)] bg-[#101019] opacity-60"
+            : cn("cursor-pointer hover:scale-[1.06]", glowClass(cat), dim && "opacity-[0.82]"),
+          // Selección vía outline (no box-shadow) para que conviva con el glow.
+          selected &&
+            "outline-offset-2 [outline:2px_solid_var(--el-violet-light)]",
+        )}
+        style={bloqueado ? undefined : estiloNodo(cat)}
+      >
+        <Handle type="target" position={Position.Top} className={HANDLE_CLS} />
 
-      {esRaiz ? <Sparkles className="mb-0.5 size-3 shrink-0" /> : null}
-      {bloqueado ? <Lock className="mb-0.5 size-3 shrink-0" /> : null}
-      {!esRaiz && !bloqueado && riesgoAlto && categoria === "riesgo" ? (
-        <AlertTriangle className="mb-0.5 size-3 shrink-0" />
-      ) : null}
+        {createElement(icono, {
+          size: iconSize,
+          strokeWidth: 1.75,
+          className: cn("shrink-0", bloqueado && "text-gray-500"),
+          style: bloqueado ? undefined : { color: `var(${VISUAL[cat].token})` },
+        })}
 
-      <span className="line-clamp-2 break-words px-1 text-[10px] font-medium leading-tight">
+        {/* Indicador discreto de etapa completada (verde). */}
+        {ejecutadaNoRaiz ? (
+          <span
+            className="absolute -right-1 -top-1 flex size-[18px] items-center justify-center rounded-full text-[#06281d]"
+            style={{ background: "var(--el-estado-ejecutada)" }}
+          >
+            <Check className="size-3" strokeWidth={3} />
+          </span>
+        ) : null}
+
+        <Handle type="source" position={Position.Bottom} className={HANDLE_CLS} />
+      </div>
+
+      {/* Label debajo del círculo (estilo skill tree). Absoluto → no agranda el
+          nodo ni mueve los handles; dagre sigue midiendo solo el círculo. */}
+      <span
+        className={cn(
+          "pointer-events-none absolute left-1/2 top-[calc(100%+6px)] w-28 -translate-x-1/2 text-center text-[10px] font-medium leading-tight line-clamp-2",
+          bloqueado
+            ? "text-gray-500"
+            : dim
+              ? "text-[var(--el-text-muted)]"
+              : "text-[var(--el-text-soft)]",
+        )}
+      >
         {titulo}
       </span>
-
-      {ejecutadaNoRaiz ? (
-        <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-[#1D9E75] text-white">
-          <Check className="size-2.5" />
-        </span>
-      ) : null}
-
-      <Handle type="source" position={Position.Bottom} className={HANDLE_CLS} />
     </div>
   );
 }

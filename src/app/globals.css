@@ -109,6 +109,16 @@
   --el-violet: #8b5cf6; /* acento */
   --el-violet-light: #a78bfa; /* links "Ver todos" / "Legal" del logo */
   --el-cta: #7c5cfc; /* card "Analizar un caso nuevo" */
+
+  /* Mapa procesal — acentos por estado del nodo (rediseño visual jun 2026).
+     Centralizados acá para iterar rápido los tonos. Calibrados para contrastar
+     sobre el canvas #08080c y convivir con el violeta de marca #a78bfa. La
+     LÓGICA de qué estado le toca a cada nodo NO vive acá (está en
+     nodo-procesal.tsx); esto es solo el tono de cada estado. */
+  --el-estado-ejecutada: #34d399; /* verde — Ejecutada (estado ocurrido) */
+  --el-estado-posible: #60a5fa; /* azul — Posible (uso apagado/latente) */
+  --el-estado-decision: #fbbf24; /* ámbar — Decisión pendiente */
+  --el-estado-riesgo: #f87171; /* rojo — Riesgo alto */
 }
 
 @layer base {
@@ -142,4 +152,71 @@
 .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.025em;
+}
+
+/* ===========================================================================
+   Mapa procesal — tratamiento visual de nodos y conexiones (rediseño visual).
+   Glows suaves y animación discreta (estética Linear/Vercel, no neón). Cada
+   nodo setea su color de glow en la custom prop --el-glow; estas clases lo
+   consumen. Las animaciones van guardadas por prefers-reduced-motion.
+   =========================================================================== */
+
+/* Profundidad + glow de los nodos. Van en @layer components (DEBAJO de
+   utilities) a propósito: si quedaran sin capa, su box-shadow ganaría sobre las
+   utilities de Tailwind por las reglas de cascade layers. La selección del nodo
+   usa `outline` (no box-shadow), así glow y selección conviven. */
+@layer components {
+  /* Profundidad base: todos los nodos "flotan" sobre el canvas. */
+  .el-nodo {
+    box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Glow estático del acento del estado (Ejecutada). */
+  .el-nodo-glow {
+    box-shadow:
+      0 6px 16px -4px rgba(0, 0, 0, 0.6),
+      0 0 16px -1px var(--el-glow, transparent);
+  }
+
+  /* Pulso (Decisión pendiente / Riesgo alto). Sin animación: glow estático. */
+  .el-nodo-pulso {
+    box-shadow:
+      0 6px 16px -4px rgba(0, 0, 0, 0.6),
+      0 0 18px -1px var(--el-glow);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .el-nodo-pulso {
+      animation: el-nodo-pulso 2.6s ease-in-out infinite;
+    }
+  }
+}
+
+/* Pulso muy sutil del glow. Keyframes fuera de @layer (las animaciones ganan
+   sobre la declaración normal de box-shadow mientras corren). */
+@keyframes el-nodo-pulso {
+  0%,
+  100% {
+    box-shadow:
+      0 6px 16px -4px rgba(0, 0, 0, 0.6),
+      0 0 12px -2px var(--el-glow);
+  }
+  50% {
+    box-shadow:
+      0 6px 16px -4px rgba(0, 0, 0, 0.6),
+      0 0 22px 1px var(--el-glow);
+  }
+}
+
+/* Flujo de las conexiones: refina el `animated` default de ReactFlow para que
+   el dash sea más fino y lento (discreto, no llamativo). */
+@keyframes el-edge-flujo {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .react-flow__edge.animated .react-flow__edge-path {
+    stroke-dasharray: 4 5;
+    animation: el-edge-flujo 1.1s linear infinite;
+  }
 }

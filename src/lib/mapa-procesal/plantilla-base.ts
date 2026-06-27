@@ -29,6 +29,21 @@
 // las invariantes existentes (índice único `WHERE tipo='raiz'` y el guard
 // `.neq tipo raiz` de `marcarComoOcurrido`) sin tocar la mecánica.
 
+import type { LucideIcon } from "lucide-react";
+import {
+  Circle,
+  CircleCheck,
+  CirclePause,
+  FileText,
+  Fingerprint,
+  FolderCheck,
+  Landmark,
+  Lock,
+  ScanSearch,
+  Scale,
+  Search,
+  UserSearch,
+} from "lucide-react";
 import type { NodoProcesalInsert } from "./types";
 
 type NodoTemplate = {
@@ -78,4 +93,29 @@ export function generarPlantillaBase(casoId: string): NodoProcesalInsert[] {
       riesgo_alto: n.riesgoAlto ?? false,
     };
   });
+}
+
+// Ícono lineal (lucide) por etapa, para el render del nodo. ⚠️ PROVISORIO y
+// acoplado a los TÍTULOS de `FLUJO` de arriba — vive acá a propósito para que
+// título e ícono se editen en el mismo lugar. Si el vocabulario cambia tras
+// validar con el experto legal, se actualiza acá. Los nodos con título fuera del
+// template (agregados a mano por el abogado) caen a ICONO_DEFAULT.
+export const ICONO_DEFAULT: LucideIcon = Circle;
+
+export const ICONO_POR_TITULO: Record<string, LucideIcon> = {
+  Denuncia: FileText,
+  "Inicio de la investigación": Search,
+  "Medidas de investigación": ScanSearch,
+  "Identificación del imputado": Fingerprint,
+  "Persona a identificar": UserSearch,
+  "Formalización (audiencia)": Landmark,
+  "Prisión preventiva": Lock,
+  "Cierre de la investigación": FolderCheck,
+  "Elevación a juicio": Scale,
+  Sobreseimiento: CircleCheck,
+  "Suspensión a prueba": CirclePause,
+};
+
+export function iconoDeNodo(titulo: string): LucideIcon {
+  return ICONO_POR_TITULO[titulo] ?? ICONO_DEFAULT;
 }
