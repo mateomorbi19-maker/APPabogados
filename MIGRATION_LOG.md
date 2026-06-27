@@ -224,3 +224,23 @@ Smoke de retrieval (`match_documents`): "estafa art 172" → art 172 (0.642); "a
 **Pendiente (mismo que el CP):** el threshold 0.55 del RPC rechaza matches correctos top-ranked — reforzado por el CPPF: "control de la detención" → arts 215/216/245 (detención/aprehensión/arresto) rankean al tope a 0.52-0.55 → la RPC devuelve vacío.
 
 **No se tocaron** los corpus `codigo` (CP, 425 chunks) ni `manual` (2974 chunks).
+
+---
+
+## 2026-06-27 · 00:39:11 — `20260627003911_match_documents_threshold_param.sql`
+
+**Contexto:** baja del umbral de similaridad del RAG de **0.55 → 0.50**, parametrizándolo en vez de volver a hardcodearlo. Resuelve además el drift de bitácora detectado en la auditoría (la palanca "threshold 0.55" venía marcada como pendiente en las dos entradas de re-ingesta del corpus).
+
+**Tipo:** migración SQL de schema (redefinición de función). `CREATE OR REPLACE FUNCTION public.match_documents(...)` **sin DROP**, aplicable sin downtime.
+
+**Cambios:**
+
+1. Se agrega el parámetro **`match_threshold float8 DEFAULT 0.5`** al final de la firma del RPC (requisito de PostgreSQL para `CREATE OR REPLACE`: parámetro nuevo, con default, agregado al final, sin alterar los existentes `query_embedding` / `match_count` / `filter`).
+2. La condición hardcodeada `1 - (embedding <=> query_embedding) > 0.55` pasa a `> match_threshold`.
+3. Todo lo demás de la firma y el cuerpo queda **intacto** (tipo de retorno, `jsonb_build_object` de metadata, `order by`, `limit match_count`).
+
+**Motivo:** con 0.55 se descartaban matches correctos **top-ranked** por márgenes chicos. Ej.: la consulta **"femicidio art 80"** rankea el artículo correcto en el puesto #1 con score **0.5466 < 0.55** → el RPC devolvía vacío. Mismo patrón en CPPF ("control de la detención" → arts 215/216/245 a 0.52-0.55). 0.50 recupera esos casos.
+
+**Fuente de verdad operativa:** a partir de ahora el umbral lo fija la constante TS **`RAG_SIMILARITY_THRESHOLD = 0.5`** en [src/lib/rag/match-documents.ts](src/lib/rag/match-documents.ts), que se pasa como `match_threshold` en la llamada al RPC (`buscarDocumentos`, único call site — lo usan tanto `analizar-caso` como el chat). Recalibrar el umbral = cambiar esa constante, **sin nueva migración SQL**. El `DEFAULT 0.5` del parámetro SQL es solo el fallback si algún caller no lo pasa.
+
+**Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code. Mateo la corre en el SQL Editor de Supabase. Post-aplicación: verificar que "femicidio art 80" ahora devuelva el art. 80 y que no entre ruido evidente por el umbral más bajo.
