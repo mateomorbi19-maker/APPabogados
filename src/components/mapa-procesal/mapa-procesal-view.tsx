@@ -33,6 +33,13 @@ import { EdgeProcesal } from "./edge-procesal";
 import { MapaToolbar } from "./mapa-toolbar";
 import { MapaMinimap } from "./mapa-minimap";
 import { NodoDetailPanel } from "./nodo-detail-panel";
+import { ParticlesOverlay } from "./particles-overlay";
+
+// Profundidad de fondo del canvas: degradado radial (más claro al centro,
+// oscureciendo a los bordes). El ReactFlow va transparente por encima, y las
+// partículas quedan ENTRE este fondo y los nodos.
+const FONDO_CANVAS =
+  "radial-gradient(ellipse 70% 55% at 50% 38%, #12121c 0%, #0a0a10 55%, #08080c 100%)";
 
 // nodeTypes/edgeTypes a scope de módulo: si se recrean por render, ReactFlow
 // re-monta los componentes (warning + jank).
@@ -300,7 +307,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         }
       />
 
-      <div className="relative flex-1">
+      <div className="relative flex-1" style={{ background: FONDO_CANVAS }}>
         {estado.status === "loading" ? (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Cargando mapa…
@@ -332,6 +339,9 @@ function MapaInner({ casoId, casoTitulo }: Props) {
           </div>
         ) : (
           <>
+            {/* Partículas entre el fondo (degradado del contenedor) y los nodos.
+                ReactFlow va transparente por encima para dejarlas ver. */}
+            <ParticlesOverlay />
             <ReactFlow<NodoFlow, EdgeFlow>
               nodes={nodes}
               edges={edges}
@@ -346,18 +356,13 @@ function MapaInner({ casoId, casoTitulo }: Props) {
               fitViewOptions={{ padding: 0.25 }}
               minZoom={0.2}
               proOptions={{ hideAttribution: true }}
-              // Profundidad de fondo: degradado radial sutil, más claro hacia el
-              // centro y oscureciendo a los bordes, para dar foco.
-              style={{
-                background:
-                  "radial-gradient(120% 120% at 50% 38%, #0d0d14 0%, #08080c 72%)",
-              }}
+              style={{ background: "transparent" }}
             >
               <Background
                 variant={BackgroundVariant.Dots}
-                gap={22}
+                gap={24}
                 size={1}
-                color="#1a1a24"
+                color="rgba(255,255,255,0.035)"
               />
               <Controls />
               <MapaMinimap />

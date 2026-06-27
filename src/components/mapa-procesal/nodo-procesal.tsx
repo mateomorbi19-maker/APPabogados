@@ -1,5 +1,5 @@
 "use client";
-import { createElement, type CSSProperties } from "react";
+import { createElement } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,53 +12,22 @@ import {
 import { iconoDeNodo } from "@/lib/mapa-procesal/plantilla-base";
 
 // ============================================================================
-// TRATAMIENTO VISUAL DEL NODO — ⚠️ PROVISORIO (rediseño visual)
+// TRATAMIENTO VISUAL DEL NODO — v2 (presencia y vida) — ⚠️ PROVISORIO
 // ----------------------------------------------------------------------------
 // La LÓGICA estado→categoría y su precedencia viven en layout.ts (categoriaNodo)
-// y NO se tocan acá. Esto define solo CÓMO se ve cada categoría: tono (tokens
-// --el-estado-*), borde, fill, glow y si pulsa. Centralizado para iterar rápido.
-//
-//   ejecutada → verde, "encendida": borde brillante, glow estático, check.
-//   posible   → azul apagado, "latente": fill card, borde tenue, sin glow, dim.
-//   decision  → ámbar, llama la atención: borde brillante, glow con pulso sutil.
-//   riesgo    → rojo, alerta sin estridencia: borde+glow rojos, pulso sutil.
+// y NO se tocan acá. El relleno/borde/glow/pulso de cada orbe viven en las
+// clases .el-orb-* de globals.css; acá solo elegimos la clase por categoría y
+// los colores de ícono/label (tokens --el-estado-*-icon/-label). Centralizado
+// para ajustar la intensidad fácil.
 // ============================================================================
 
-type Glow = "none" | "static" | "pulse";
-
-const VISUAL: Record<Categoria, { token: string; glow: Glow; dim: boolean }> = {
-  ejecutada: { token: "--el-estado-ejecutada", glow: "static", dim: false },
-  riesgo: { token: "--el-estado-riesgo", glow: "pulse", dim: false },
-  decision: { token: "--el-estado-decision", glow: "pulse", dim: false },
-  posible: { token: "--el-estado-posible", glow: "none", dim: true },
+// Clase de orbe (globals.css) por categoría.
+const ORB_CLASS: Record<Categoria, string> = {
+  ejecutada: "el-orb-ejecutada",
+  riesgo: "el-orb-riesgo",
+  decision: "el-orb-decision",
+  posible: "el-orb-posible",
 };
-
-// Estilo inline del círculo según categoría (borde, fill y --el-glow para las
-// clases de glow). Tonos derivados del token con color-mix sobre el canvas.
-function estiloNodo(cat: Categoria): CSSProperties {
-  const accent = `var(${VISUAL[cat].token})`;
-  if (cat === "posible") {
-    // Latente: fill de card, borde tenue, sin glow.
-    return {
-      borderColor: `color-mix(in srgb, ${accent} 40%, transparent)`,
-      background: "var(--el-surface-card)",
-    };
-  }
-  const fillPct = cat === "ejecutada" ? 16 : 13;
-  const glowPct = cat === "ejecutada" ? 42 : 46;
-  return {
-    borderColor: accent,
-    background: `color-mix(in srgb, ${accent} ${fillPct}%, #0b0b11)`,
-    ["--el-glow"]: `color-mix(in srgb, ${accent} ${glowPct}%, transparent)`,
-  } as CSSProperties;
-}
-
-function glowClass(cat: Categoria): string {
-  const g = VISUAL[cat].glow;
-  if (g === "pulse") return "el-nodo-pulso";
-  if (g === "static") return "el-nodo-glow";
-  return "el-nodo";
-}
 
 const HANDLE_CLS = "!h-1.5 !w-1.5 !border-0 !bg-foreground/20";
 
@@ -68,27 +37,28 @@ export function NodoProcesal({ data, selected }: NodeProps<NodoFlow>) {
   const esRaiz = tipo === "raiz";
   const bloqueado = estado === "bloqueado"; // solo en mapas viejos
   const cat = categoriaNodo(data);
-  // Componente de ícono (referencia estable desde el Record del template). Se
+  // Componente de ícono (referencia estable del Record del template). Se
   // renderiza con createElement para no disparar react-hooks/static-components.
   const icono = bloqueado ? Lock : iconoDeNodo(titulo);
   const ejecutadaNoRaiz = cat === "ejecutada" && !esRaiz;
-  const iconSize = Math.round(d * 0.4);
-  const dim = VISUAL[cat].dim && !bloqueado;
+  const iconSize = Math.round(d * 0.4); // ~26px en un orbe de 66
 
   return (
     <div className="relative" style={{ width: d, height: d }}>
       <div
         className={cn(
-          "relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-200",
-          esRaiz ? "border-[3px]" : "border-2",
+          "relative flex h-full w-full items-center justify-center rounded-full",
+          // Hover: escala + brillo. transition solo de transform/filter para no
+          // pisar la animación de box-shadow (pulso). El scale del orbe NO choca
+          // con el translate que ReactFlow aplica al wrapper del nodo.
+          "transition-[transform,filter] duration-[250ms] ease-[cubic-bezier(.2,.8,.2,1)]",
           bloqueado
-            ? "el-nodo cursor-default border-[rgba(130,130,140,0.4)] bg-[#101019] opacity-60"
-            : cn("cursor-pointer hover:scale-[1.06]", glowClass(cat), dim && "opacity-[0.82]"),
+            ? "cursor-default border-[1.5px] border-[rgba(130,130,140,0.4)] bg-[#101019] opacity-60 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+            : cn(ORB_CLASS[cat], "cursor-pointer hover:scale-[1.09] hover:brightness-125"),
           // Selección vía outline (no box-shadow) para que conviva con el glow.
           selected &&
             "outline-offset-2 [outline:2px_solid_var(--el-violet-light)]",
         )}
-        style={bloqueado ? undefined : estiloNodo(cat)}
       >
         <Handle type="target" position={Position.Top} className={HANDLE_CLS} />
 
@@ -96,33 +66,33 @@ export function NodoProcesal({ data, selected }: NodeProps<NodoFlow>) {
           size: iconSize,
           strokeWidth: 1.75,
           className: cn("shrink-0", bloqueado && "text-gray-500"),
-          style: bloqueado ? undefined : { color: `var(${VISUAL[cat].token})` },
+          style: bloqueado
+            ? undefined
+            : { color: `var(--el-estado-${cat}-icon)` },
         })}
 
-        {/* Indicador discreto de etapa completada (verde). */}
+        {/* Badge de etapa completada (verde) arriba a la derecha. */}
         {ejecutadaNoRaiz ? (
           <span
-            className="absolute -right-1 -top-1 flex size-[18px] items-center justify-center rounded-full text-[#06281d]"
-            style={{ background: "var(--el-estado-ejecutada)" }}
+            className="absolute -right-1.5 -top-1.5 flex size-[22px] items-center justify-center rounded-full text-[#06281e] shadow-[0_0_12px_rgba(52,211,153,0.7)]"
+            style={{ background: "#34d399" }}
           >
-            <Check className="size-3" strokeWidth={3} />
+            <Check className="size-3.5" strokeWidth={3} />
           </span>
         ) : null}
 
         <Handle type="source" position={Position.Bottom} className={HANDLE_CLS} />
       </div>
 
-      {/* Label debajo del círculo (estilo skill tree). Absoluto → no agranda el
+      {/* Label debajo del orbe (estilo skill tree). Absoluto → no agranda el
           nodo ni mueve los handles; dagre sigue midiendo solo el círculo. */}
       <span
-        className={cn(
-          "pointer-events-none absolute left-1/2 top-[calc(100%+6px)] w-28 -translate-x-1/2 text-center text-[10px] font-medium leading-tight line-clamp-2",
-          bloqueado
-            ? "text-gray-500"
-            : dim
-              ? "text-[var(--el-text-muted)]"
-              : "text-[var(--el-text-soft)]",
-        )}
+        className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] w-28 -translate-x-1/2 text-center text-[10px] font-medium leading-tight line-clamp-2"
+        style={{
+          color: bloqueado
+            ? "#6b7280"
+            : `var(--el-estado-${cat}-label)`,
+        }}
       >
         {titulo}
       </span>

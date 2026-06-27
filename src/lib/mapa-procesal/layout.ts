@@ -31,22 +31,28 @@ export function categoriaNodo(data: NodoData): Categoria {
   return "posible";
 }
 
-// El edge se colorea según la categoría de su nodo DESTINO (categoriaTarget).
-export type EdgeData = { estadoTarget: EstadoNodo; categoriaTarget: Categoria };
+// El edge lleva la categoría de su nodo ORIGEN y DESTINO para pintar un
+// gradiente origen→destino (mismos colores que los nodos).
+export type EdgeData = {
+  estadoTarget: EstadoNodo;
+  categoriaSource: Categoria;
+  categoriaTarget: Categoria;
+};
 export type EdgeFlow = Edge<EdgeData, "edgeProcesal">;
 
 // Diámetro del nodo según tipo/estado. Compartido entre el layout (alimenta a
 // dagre) y el componente del nodo (tamaño de render) para que coincidan.
 export function diametroNodo(tipo: TipoNodo, estado: EstadoNodo): number {
-  if (tipo === "raiz") return 70;
-  if (estado === "bloqueado") return 48;
-  return 56;
+  if (tipo === "raiz") return 76;
+  if (estado === "bloqueado") return 56;
+  return 66; // orbe estándar (~66px) que aloja ícono (~26px) + glow
 }
 
-// Spacing un poco más amplio que antes para dar aire al label que ahora se
-// renderiza DEBAJO del círculo del nodo (estilo skill tree) sin colisiones.
-const RANK_SEP = 150; // separación entre niveles (vertical)
-const NODE_SEP = 96; // separación entre nodos del mismo nivel (horizontal)
+// Spacing amplio: los glows v2 se extienden bastante (hasta ~46px del borde, y
+// los pulsos hasta ~64-66px). Más aire para que los halos no se pisen entre
+// nodos vecinos, y para el label que va DEBAJO del orbe.
+const RANK_SEP = 170; // separación entre niveles (vertical)
+const NODE_SEP = 130; // separación entre nodos del mismo nivel (horizontal)
 
 export function calcularLayout(nodos: NodoProcesalDB[]): {
   nodes: NodoFlow[];
@@ -103,10 +109,9 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
         type: "edgeProcesal",
         data: {
           estadoTarget: n.estado,
+          categoriaSource: categoriaPorId.get(n.padre_id) ?? "posible",
           categoriaTarget: categoriaPorId.get(n.id) ?? "posible",
         },
-        // Animación de flujo solo hacia nodos desbloqueados (próximo paso).
-        animated: n.estado === "desbloqueado",
       });
     }
   }

@@ -1,14 +1,19 @@
 "use client";
 import { MiniMap, type Node } from "@xyflow/react";
-import type { NodoData } from "@/lib/mapa-procesal/layout";
+import { categoriaNodo, type Categoria, type NodoData } from "@/lib/mapa-procesal/layout";
 
-// Color del nodo en el minimap según tipo/estado (misma paleta que los nodos).
+// Color del nodo en el minimap = misma categoría/paleta que los orbes del mapa.
+const COLOR_ESTADO: Record<Categoria, string> = {
+  ejecutada: "#34d399",
+  posible: "#60a5fa",
+  decision: "#fbbf24",
+  riesgo: "#f87171",
+};
+
 function colorNodo(n: Node): string {
-  const data = n.data as Partial<NodoData> | undefined;
-  if (data?.tipo === "raiz") return "#1D9E75";
-  if (data?.tipo === "real" || data?.estado === "ocurrido") return "#7F77DD";
-  if (data?.estado === "desbloqueado") return "#378ADD";
-  return "#4b5563"; // bloqueado
+  const data = n.data as NodoData | undefined;
+  if (!data || data.estado === "bloqueado") return "#4b5563"; // legacy/bloqueado
+  return COLOR_ESTADO[categoriaNodo(data)];
 }
 
 export function MapaMinimap() {
