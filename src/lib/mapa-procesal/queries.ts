@@ -4,7 +4,7 @@ import { generarPlantillaBase } from "./plantilla-base";
 import type { EstadoNodo, NodoProcesalDB } from "./types";
 
 const COLS =
-  "id, caso_id, titulo, descripcion, tipo, estado, padre_id, posicion_x, posicion_y, metadata, created_at, updated_at";
+  "id, caso_id, titulo, descripcion, tipo, estado, padre_id, posicion_x, posicion_y, riesgo_alto, metadata, created_at, updated_at";
 
 // Ownership: los nodos pertenecen a un caso; el caso pertenece a un usuario.
 // Cada función verifica que el caso sea del usuario antes de operar, y todas
@@ -144,7 +144,12 @@ export async function actualizarNodo(
   nodoId: string,
   casoId: string,
   usuarioId: string,
-  data: { titulo?: string; descripcion?: string | null; estado?: EstadoNodo },
+  data: {
+    titulo?: string;
+    descripcion?: string | null;
+    estado?: EstadoNodo;
+    riesgo_alto?: boolean;
+  },
 ): Promise<NodoProcesalDB | null> {
   if (data.estado === "ocurrido") {
     return marcarComoOcurrido(nodoId, casoId, usuarioId);
@@ -156,6 +161,7 @@ export async function actualizarNodo(
   if (data.titulo !== undefined) patch.titulo = data.titulo;
   if (data.descripcion !== undefined) patch.descripcion = data.descripcion ?? null;
   if (data.estado !== undefined) patch.estado = data.estado;
+  if (data.riesgo_alto !== undefined) patch.riesgo_alto = data.riesgo_alto;
 
   const { data: nodo, error } = await supabase
     .from("mapa_procesal_nodos")
@@ -201,4 +207,44 @@ export async function eliminarNodo(
     .eq("caso_id", casoId);
   if (error) throw new Error(`eliminarNodo: ${error.message}`);
   return { status: "ok" };
+}
+
+export type ReiniciarResult =
+  | { status: "ok"; nodos: NodoProcesalDB[] }
+  | { status: "not_owned" };
+
+// Borra TODOS los nodos del caso y reinstancia la plantilla base actual. Sirve
+// para que un mapa viejo (template anterior) pase al flujo nuevo sin crear un
+// caso nuevo. Destructivo POR DISEÑO: pierde el progreso del mapa (estados/nodos
+// manuales) — el usuario lo confirma en un diálogo antes.
+//
+// LIMITACIÓN CONOCIDA (aceptada para esta versión provisional): el delete y el
+// insert son dos round-trips sin transacción. Si el insert fallara (timeout/red)
+// después de que el delete commitea, el mapa queda con 0 nodos. NO se puede
+// invertir el orden (insertar antes de borrar) porque el índice único de raíz
+// por caso (`WHERE tipo='raiz'`) rechazaría dos raíces simultáneas. El estado
+// vacío es RECUPERABLE en un click: el mapa vuelve a mostrar "sin inicializar" y
+// reinicializar (o re-"Reiniciar") reinstancia el template. Si esta utilidad
+// deja de ser provisional, el fix correcto es una RPC plpgsql transaccional que
+// reciba los nodos por jsonb (manteniendo plantilla-base.ts como fuente única).
+export async function reiniciarMapa(
+  casoId: string,
+  usuarioId: string,
+): Promise<ReiniciarResult> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return { status: "not_owned" };
+  const supabase = createServerClient();
+
+  const { error: delErr } = await supabase
+    .from("mapa_procesal_nodos")
+    .delete()
+    .eq("caso_id", casoId);
+  if (delErr) throw new Error(`reiniciarMapa delete: ${delErr.message}`);
+
+  const plantilla = generarPlantillaBase(casoId);
+  const { data, error } = await supabase
+    .from("mapa_procesal_nodos")
+    .insert(plantilla)
+    .select(COLS);
+  if (error) throw new Error(`reiniciarMapa insert: ${error.message}`);
+  return { status: "ok", nodos: (data ?? []) as NodoProcesalDB[] };
 }
