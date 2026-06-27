@@ -32,7 +32,12 @@ export async function PUT(
     );
   }
   const d = parsed.data;
-  if (d.titulo === undefined && d.descripcion === undefined && d.estado === undefined) {
+  if (
+    d.titulo === undefined &&
+    d.descripcion === undefined &&
+    d.estado === undefined &&
+    d.riesgo_alto === undefined
+  ) {
     return jsonResponse({ ok: false, error: "Nada para actualizar" }, 400);
   }
 
@@ -45,6 +50,7 @@ export async function PUT(
       titulo: d.titulo,
       descripcion: d.descripcion,
       estado: d.estado,
+      riesgo_alto: d.riesgo_alto,
     });
   } catch (e) {
     console.error("[PUT /api/casos/[id]/mapa/nodos/[nodoId]] error:", e);

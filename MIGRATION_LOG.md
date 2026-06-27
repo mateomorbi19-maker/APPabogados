@@ -244,3 +244,24 @@ Smoke de retrieval (`match_documents`): "estafa art 172" → art 172 (0.642); "a
 **Fuente de verdad operativa:** a partir de ahora el umbral lo fija la constante TS **`RAG_SIMILARITY_THRESHOLD = 0.5`** en [src/lib/rag/match-documents.ts](src/lib/rag/match-documents.ts), que se pasa como `match_threshold` en la llamada al RPC (`buscarDocumentos`, único call site — lo usan tanto `analizar-caso` como el chat). Recalibrar el umbral = cambiar esa constante, **sin nueva migración SQL**. El `DEFAULT 0.5` del parámetro SQL es solo el fallback si algún caller no lo pasa.
 
 **Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code. Mateo la corre en el SQL Editor de Supabase. Post-aplicación: verificar que "femicidio art 80" ahora devuelva el art. 80 y que no entre ruido evidente por el umbral más bajo.
+
+---
+
+## 2026-06-27 · 01:35:06 — `20260627013506_mapa_riesgo_alto.sql`
+
+**Contexto:** rediseño del Mapa Procesal (primera versión, a validar con experto legal). Se reescribió el template (`plantilla-base.ts`) de tres ramas paralelas a un tronco secuencial con bifurcaciones (vocabulario CPPF), se agregó un sistema de 4 colores por estado del nodo, y se sumó la marca de "riesgo alto".
+
+**Tipo:** migración SQL de schema, **aditiva** (no rompe ni borra nada existente).
+
+**Cambio:**
+
+```sql
+ALTER TABLE mapa_procesal_nodos
+  ADD COLUMN riesgo_alto boolean NOT NULL DEFAULT false;
+```
+
+**Para qué:** marcar nodos de riesgo alto en el mapa (ej.: "Prisión preventiva"), que se renderizan en **rojo** y son toggleables desde el panel de detalle del nodo. `NOT NULL DEFAULT false` → los nodos de mapas viejos quedan en `false` automáticamente, sin migración de datos.
+
+**Mapas existentes:** NO se migran automáticamente (siguen con la estructura vieja). Para ver el flujo nuevo en un caso de prueba: usar el botón **"Reiniciar"** de la toolbar del mapa (borra los nodos del caso y reinstancia el template nuevo) o crear un caso nuevo.
+
+**Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code. Mateo la corre en el SQL Editor de Supabase.

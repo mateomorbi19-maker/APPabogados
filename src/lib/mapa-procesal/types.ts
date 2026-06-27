@@ -14,6 +14,9 @@ export interface NodoProcesalDB {
   padre_id: string | null;
   posicion_x: number;
   posicion_y: number;
+  // Marca de "riesgo alto" (render rojo). Persiste en DB; toggleable desde el
+  // panel de detalle. Default false.
+  riesgo_alto: boolean;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -29,6 +32,7 @@ export interface NodoProcesalInsert {
   tipo: TipoNodo;
   estado: EstadoNodo;
   padre_id: string | null;
+  riesgo_alto: boolean;
 }
 
 // === Validación de input (zod en el borde de las API routes) ===
@@ -44,5 +48,6 @@ export const editarNodoSchema = z.object({
   titulo: z.string().trim().min(1).max(200).optional(),
   descripcion: z.string().trim().max(2000).nullish(),
   estado: z.enum(["ocurrido", "desbloqueado", "bloqueado"]).optional(),
+  riesgo_alto: z.boolean().optional(),
 });
 export type EditarNodoInput = z.infer<typeof editarNodoSchema>;

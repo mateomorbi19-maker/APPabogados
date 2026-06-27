@@ -8,6 +8,12 @@ export type NodoData = {
   titulo: string;
   tipo: TipoNodo;
   estado: EstadoNodo;
+  // Persiste en DB: marca de riesgo alto (render rojo).
+  riesgoAlto: boolean;
+  // DERIVADO acá (no persiste): el nodo tiene >=2 hijos y ninguno está aún en
+  // estado 'ocurrido' → "decisión pendiente" (render amarillo). Se calcula a
+  // partir del set completo de nodos en calcularLayout.
+  decisionPendiente: boolean;
 };
 export type NodoFlow = Node<NodoData, "nodoProcesal">;
 
@@ -56,15 +62,34 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
 
   dagre.layout(g);
 
+  // Índice de hijos por padre, para derivar "decisión pendiente" (>=2 hijos y
+  // ninguno 'ocurrido'). Se computa una vez sobre todo el set de nodos.
+  const hijosPorPadre = new Map<string, NodoProcesalDB[]>();
+  for (const n of nodos) {
+    if (!n.padre_id) continue;
+    const arr = hijosPorPadre.get(n.padre_id) ?? [];
+    arr.push(n);
+    hijosPorPadre.set(n.padre_id, arr);
+  }
+
   const nodes: NodoFlow[] = nodos.map((n) => {
     const s = diametroNodo(n.tipo, n.estado);
     const pos = g.node(n.id) as { x: number; y: number } | undefined;
+    const hijos = hijosPorPadre.get(n.id) ?? [];
+    const decisionPendiente =
+      hijos.length >= 2 && hijos.every((h) => h.estado !== "ocurrido");
     // dagre devuelve el centro; ReactFlow posiciona por la esquina top-left.
     return {
       id: n.id,
       type: "nodoProcesal",
       position: { x: (pos?.x ?? 0) - s / 2, y: (pos?.y ?? 0) - s / 2 },
-      data: { titulo: n.titulo, tipo: n.tipo, estado: n.estado },
+      data: {
+        titulo: n.titulo,
+        tipo: n.tipo,
+        estado: n.estado,
+        riesgoAlto: n.riesgo_alto,
+        decisionPendiente,
+      },
     };
   });
 

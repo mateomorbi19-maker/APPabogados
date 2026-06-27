@@ -59,6 +59,8 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   const [initializing, setInitializing] = useState(false);
   const [selectedNodoId, setSelectedNodoId] = useState<string | null>(null);
   const [crearParaNodoId, setCrearParaNodoId] = useState<string | null>(null);
+  const [reiniciarOpen, setReiniciarOpen] = useState(false);
+  const [reiniciando, setReiniciando] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodoFlow>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<EdgeFlow>([]);
@@ -194,6 +196,31 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     [casoId, cargar],
   );
 
+  // Togglea riesgo_alto (rojo) del nodo. PUT riesgo_alto → recarga.
+  const handleToggleRiesgo = useCallback(
+    async (id: string, value: boolean) => {
+      const res = await fetch(`/api/casos/${casoId}/mapa/nodos/${id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ riesgo_alto: value }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok: true }
+        | { ok: false; error?: string }
+        | null;
+      if (!res.ok || !json || json.ok === false) {
+        toast.error(
+          json && "error" in json && json.error
+            ? json.error
+            : "No se pudo actualizar el riesgo",
+        );
+        return;
+      }
+      await cargar();
+    },
+    [casoId, cargar],
+  );
+
   const handleEliminar = useCallback(
     async (id: string) => {
       const res = await fetch(`/api/casos/${casoId}/mapa/nodos/${id}`, {
@@ -211,6 +238,35 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     },
     [casoId, cargar],
   );
+
+  // Reinicia el mapa: borra los nodos y reinstancia la plantilla nueva. PUT.
+  const handleReiniciar = async () => {
+    if (reiniciando) return;
+    setReiniciando(true);
+    try {
+      const res = await fetch(`/api/casos/${casoId}/mapa`, { method: "PUT" });
+      const json = (await res.json().catch(() => null)) as
+        | { ok: true; nodos: NodoProcesalDB[] }
+        | { ok: false; error?: string }
+        | null;
+      if (!res.ok || !json || json.ok === false) {
+        toast.error(
+          json && "error" in json && json.error
+            ? json.error
+            : "No se pudo reiniciar el mapa",
+        );
+        return;
+      }
+      setSelectedNodoId(null);
+      setEstado({ status: "ready", inicializado: true, nodos: json.nodos });
+      setReiniciarOpen(false);
+      toast.success("Mapa reiniciado con el flujo nuevo");
+    } catch {
+      toast.error("Error de red al reiniciar");
+    } finally {
+      setReiniciando(false);
+    }
+  };
 
   const onNodeClick = useCallback((_: unknown, node: NodoFlow) => {
     if (node.data.estado === "bloqueado") return;
@@ -236,6 +292,12 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         onAgregarEvento={() => {
           if (selectedNodoId) setCrearParaNodoId(selectedNodoId);
         }}
+        // El reinicio solo tiene sentido con un mapa ya inicializado.
+        onReiniciar={
+          estado.status === "ready" && estado.inicializado
+            ? () => setReiniciarOpen(true)
+            : undefined
+        }
       />
 
       <div className="relative flex-1">
@@ -303,6 +365,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
                 onClose={() => setSelectedNodoId(null)}
                 onSelectNodo={(id) => setSelectedNodoId(id)}
                 onMarcarOcurrido={handleMarcarOcurrido}
+                onToggleRiesgo={handleToggleRiesgo}
                 onAgregarHijo={(id) => setCrearParaNodoId(id)}
                 onEditar={editarNodo}
                 onEliminar={handleEliminar}
@@ -322,6 +385,32 @@ function MapaInner({ casoId, casoTitulo }: Props) {
           return ok;
         }}
       />
+
+      <Dialog open={reiniciarOpen} onOpenChange={(v) => !v && !reiniciando && setReiniciarOpen(false)}>
+        <DialogContent className="sm:max-w-md" showCloseButton={!reiniciando}>
+          <DialogHeader>
+            <DialogTitle>Reiniciar mapa procesal</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Esto borra <strong>todo el progreso del mapa</strong> (nodos,
+            estados y nodos agregados a mano) y lo reinstancia desde cero con el
+            flujo procesal actual. No se puede deshacer.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReiniciarOpen(false)}
+              disabled={reiniciando}
+            >
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleReiniciar} disabled={reiniciando}>
+              {reiniciando ? <Loader2 className="size-4 animate-spin" /> : null}
+              {reiniciando ? "Reiniciando..." : "Reiniciar mapa"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Toaster position="top-center" richColors />
     </div>
