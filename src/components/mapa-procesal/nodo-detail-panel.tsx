@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, Loader2, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,12 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { EstadoNodo, NodoProcesalDB, TipoNodo } from "@/lib/mapa-procesal/types";
 
+// Vocabulario alineado al sistema de 4 colores (provisorio). 'desbloqueado' es
+// el estado "Posible" (azul); 'ocurrido' es "Ejecutada" (verde). 'bloqueado'
+// solo aparece en mapas viejos.
 const ESTADO_LABEL: Record<EstadoNodo, string> = {
-  ocurrido: "Ocurrido",
-  desbloqueado: "Desbloqueado",
+  ocurrido: "Ejecutada",
+  desbloqueado: "Posible",
   bloqueado: "Bloqueado",
 };
 const TIPO_LABEL: Record<TipoNodo, string> = {
@@ -20,7 +23,7 @@ const TIPO_LABEL: Record<TipoNodo, string> = {
   prediccion: "Predicción",
 };
 const ESTADO_BADGE: Record<EstadoNodo, string> = {
-  ocurrido: "bg-violet-500/10 text-violet-300 border-violet-500/20",
+  ocurrido: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
   desbloqueado: "bg-blue-500/10 text-blue-300 border-blue-500/20",
   bloqueado: "bg-gray-500/10 text-gray-300 border-gray-500/20",
 };
@@ -31,6 +34,7 @@ type Props = {
   onClose: () => void;
   onSelectNodo: (id: string) => void;
   onMarcarOcurrido: (id: string) => Promise<void>;
+  onToggleRiesgo: (id: string, value: boolean) => Promise<void>;
   onAgregarHijo: (id: string) => void;
   onEditar: (
     id: string,
@@ -45,6 +49,7 @@ export function NodoDetailPanel({
   onClose,
   onSelectNodo,
   onMarcarOcurrido,
+  onToggleRiesgo,
   onAgregarHijo,
   onEditar,
   onEliminar,
@@ -54,6 +59,7 @@ export function NodoDetailPanel({
   const [descripcion, setDescripcion] = useState(nodo.descripcion ?? "");
   const [saving, setSaving] = useState(false);
   const [marking, setMarking] = useState(false);
+  const [togglingRiesgo, setTogglingRiesgo] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -93,6 +99,16 @@ export function NodoDetailPanel({
     }
   };
 
+  const toggleRiesgo = async () => {
+    if (togglingRiesgo) return;
+    setTogglingRiesgo(true);
+    try {
+      await onToggleRiesgo(nodo.id, !nodo.riesgo_alto);
+    } finally {
+      setTogglingRiesgo(false);
+    }
+  };
+
   const eliminar = async () => {
     if (deleting) return;
     setDeleting(true);
@@ -123,6 +139,11 @@ export function NodoDetailPanel({
               {ESTADO_LABEL[nodo.estado]}
             </Badge>
             <Badge variant="outline">{TIPO_LABEL[nodo.tipo]}</Badge>
+            {nodo.riesgo_alto ? (
+              <Badge className="border-red-500/20 bg-red-500/10 text-red-300">
+                <AlertTriangle className="size-3" /> Riesgo alto
+              </Badge>
+            ) : null}
           </div>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Cerrar">
@@ -169,6 +190,27 @@ export function NodoDetailPanel({
             <Check className="size-4" /> Ocurrido
           </div>
         ) : null}
+
+        {/* Toggle de riesgo alto (rojo). Persiste vía PUT riesgo_alto. */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleRiesgo}
+          disabled={togglingRiesgo}
+          className={cn(
+            "w-full",
+            nodo.riesgo_alto
+              ? "border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {togglingRiesgo ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <AlertTriangle className="size-4" />
+          )}
+          {nodo.riesgo_alto ? "Quitar riesgo alto" : "Marcar riesgo alto"}
+        </Button>
 
         <Button
           variant="outline"

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Crosshair, Maximize2, Minimize2, Plus } from "lucide-react";
+import { ArrowLeft, Crosshair, Maximize2, Minimize2, Plus, RotateCcw } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,8 @@ type Props = {
   casoTitulo: string;
   puedeAgregar: boolean; // hay un nodo seleccionado no bloqueado
   onAgregarEvento: () => void;
+  // Reinicia el mapa al flujo nuevo. undefined = ocultar (mapa sin inicializar).
+  onReiniciar?: () => void;
 };
 
 export function MapaToolbar({
@@ -18,6 +20,7 @@ export function MapaToolbar({
   casoTitulo,
   puedeAgregar,
   onAgregarEvento,
+  onReiniciar,
 }: Props) {
   const { fitView } = useReactFlow();
   const [fullscreen, setFullscreen] = useState(false);
@@ -76,6 +79,18 @@ export function MapaToolbar({
           {fullscreen ? "Salir" : "Pantalla completa"}
         </span>
       </Button>
+      {onReiniciar ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReiniciar}
+          className="text-muted-foreground hover:text-foreground"
+          title="Borra el progreso y reinstancia el flujo nuevo"
+        >
+          <RotateCcw className="size-4" />
+          <span className="hidden md:inline">Reiniciar</span>
+        </Button>
+      ) : null}
       <Button size="sm" onClick={onAgregarEvento} disabled={!puedeAgregar}>
         <Plus className="size-4" />
         Agregar evento
