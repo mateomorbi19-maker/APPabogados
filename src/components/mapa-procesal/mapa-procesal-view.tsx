@@ -346,12 +346,18 @@ function MapaInner({ casoId, casoTitulo }: Props) {
               fitViewOptions={{ padding: 0.25 }}
               minZoom={0.2}
               proOptions={{ hideAttribution: true }}
+              // Profundidad de fondo: degradado radial sutil, más claro hacia el
+              // centro y oscureciendo a los bordes, para dar foco.
+              style={{
+                background:
+                  "radial-gradient(120% 120% at 50% 38%, #0d0d14 0%, #08080c 72%)",
+              }}
             >
               <Background
                 variant={BackgroundVariant.Dots}
-                gap={20}
+                gap={22}
                 size={1}
-                color="rgba(148,163,184,0.14)"
+                color="#1a1a24"
               />
               <Controls />
               <MapaMinimap />
