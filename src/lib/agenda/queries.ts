@@ -1,10 +1,10 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
-import type { EventoAgenda, TipoEvento } from "./types";
+import type { ClaseEvento, EventoAgenda, Prioridad, TipoEvento } from "./types";
 
 // Columnas de eventos_agenda (sin el join). nombre_caso se arma aparte.
 const COLS =
-  "id, usuario_id, caso_id, titulo, descripcion, tipo, fecha_inicio, fecha_fin, todo_el_dia, google_calendar_event_id, google_updated, notas, completado, created_at, updated_at";
+  "id, usuario_id, caso_id, titulo, descripcion, tipo, clase, prioridad, fecha_inicio, fecha_fin, todo_el_dia, google_calendar_event_id, google_updated, notas, completado, created_at, updated_at";
 
 // Mismo set + embed del titulo del caso asociado vía la FK caso_id -> casos.id.
 const COLS_CON_CASO = `${COLS}, casos(titulo)`;
@@ -22,6 +22,7 @@ function mapFila(f: FilaConCaso): EventoAgenda {
 
 export type EventoFiltros = {
   caso_id?: string | null;
+  clase?: ClaseEvento | null;
   tipo?: TipoEvento[] | null;
   desde?: string | null; // ISO; filtra fecha_inicio >= desde
   hasta?: string | null; // ISO; filtra fecha_inicio <= hasta
@@ -38,6 +39,7 @@ export async function getEventosByUser(
     .eq("usuario_id", usuarioId);
 
   if (filtros.caso_id) q = q.eq("caso_id", filtros.caso_id);
+  if (filtros.clase) q = q.eq("clase", filtros.clase);
   if (filtros.tipo && filtros.tipo.length > 0) q = q.in("tipo", filtros.tipo);
   if (filtros.desde) q = q.gte("fecha_inicio", filtros.desde);
   if (filtros.hasta) q = q.lte("fecha_inicio", filtros.hasta);
@@ -67,6 +69,8 @@ export type CrearEventoData = {
   titulo: string;
   descripcion: string | null;
   tipo: TipoEvento;
+  clase: ClaseEvento;
+  prioridad: Prioridad;
   fecha_inicio: string;
   fecha_fin: string | null;
   todo_el_dia: boolean;
@@ -94,6 +98,7 @@ export type ActualizarEventoData = Partial<{
   titulo: string;
   descripcion: string | null;
   tipo: TipoEvento;
+  prioridad: Prioridad;
   fecha_inicio: string;
   fecha_fin: string | null;
   todo_el_dia: boolean;
@@ -141,10 +146,12 @@ export async function getEventosSinSincronizar(
   usuarioId: string,
 ): Promise<EventoAgenda[]> {
   const supabase = createServerClient();
+  // Solo EVENTOS: las tareas no se sincronizan con Google Calendar.
   const { data, error } = await supabase
     .from("eventos_agenda")
     .select(COLS_CON_CASO)
     .eq("usuario_id", usuarioId)
+    .eq("clase", "evento")
     .is("google_calendar_event_id", null)
     .order("fecha_inicio", { ascending: true });
   if (error) throw new Error(`getEventosSinSincronizar: ${error.message}`);

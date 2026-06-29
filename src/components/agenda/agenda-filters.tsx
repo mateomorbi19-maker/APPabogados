@@ -9,10 +9,12 @@ import {
 } from "@/lib/agenda/types";
 
 export type Rango = "hoy" | "semana" | "mes" | "todo";
+export type ClaseFiltro = "todos" | "tarea" | "evento";
 
 // `tipos` = tipos que se MUESTRAN (todos tildados por default). Tildar/destildar
 // agrega/quita. Lista vacía = no se muestra ningún tipo (lo maneja agenda-view).
 export type FiltrosUI = {
+  clase: ClaseFiltro;
   tipos: TipoEvento[];
   casoId: string | null;
   rango: Rango;
@@ -23,6 +25,12 @@ const RANGOS: { value: Rango; label: string }[] = [
   { value: "semana", label: "Semana" },
   { value: "mes", label: "Mes" },
   { value: "todo", label: "Todo" },
+];
+
+const CLASES_FILTRO: { value: ClaseFiltro; label: string }[] = [
+  { value: "todos", label: "Todos" },
+  { value: "tarea", label: "Tareas" },
+  { value: "evento", label: "Eventos" },
 ];
 
 const SELECT_CLS =
@@ -55,9 +63,34 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Tipo de evento */}
+      {/* Mostrar: tareas / eventos / todos */}
+      <div className={cn(SECCION_CLS, "space-y-2")}>
+        <p className={TITULO_CLS}>Mostrar</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {CLASES_FILTRO.map((c) => {
+            const active = filtros.clase === c.value;
+            return (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => onChange({ ...filtros, clase: c.value })}
+                className={cn(
+                  "rounded-md px-2 py-1.5 text-xs transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tipo */}
       <div className={cn(SECCION_CLS, "space-y-2.5")}>
-        <p className={TITULO_CLS}>Tipo de evento</p>
+        <p className={TITULO_CLS}>Tipo</p>
         <div className="space-y-2">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox

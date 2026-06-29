@@ -13,7 +13,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { claveDia, etiquetaDiaPartes } from "@/lib/agenda/fechas";
-import { type CasoOption, type EventoAgenda } from "@/lib/agenda/types";
+import {
+  type CasoOption,
+  type ClaseEvento,
+  type EventoAgenda,
+} from "@/lib/agenda/types";
 import { AgendaFilters, type FiltrosUI, type Rango } from "./agenda-filters";
 import { EventoCard } from "./evento-card";
 import { EventoForm } from "./evento-form";
@@ -61,6 +65,7 @@ function rangoABounds(rango: Rango): { desde: string | null; hasta: string | nul
 
 function buildQuery(f: FiltrosUI): string {
   const params = new URLSearchParams();
+  if (f.clase !== "todos") params.set("clase", f.clase);
   for (const t of f.tipos) params.append("tipo", t);
   if (f.casoId) params.set("caso_id", f.casoId);
   const { desde, hasta } = rangoABounds(f.rango);
@@ -98,6 +103,7 @@ function StatCard({
 
 export function AgendaView({ casos }: Props) {
   const [filtros, setFiltros] = useState<FiltrosUI>({
+    clase: "todos",
     tipos: [], // [] = "Todos" (sin filtro de tipo → se muestran todos)
     casoId: null,
     rango: "semana",
@@ -105,6 +111,7 @@ export function AgendaView({ casos }: Props) {
   const [estado, setEstado] = useState<Estado>({ status: "loading" });
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<EventoAgenda | null>(null);
+  const [formClase, setFormClase] = useState<ClaseEvento>("evento");
   const [mobileFiltrosOpen, setMobileFiltrosOpen] = useState(false);
   // Estado de conexión con Google: lo posee la vista porque lo necesitan el
   // badge del header, la stat "Pendientes de sync" y el componente del sidebar.
@@ -216,8 +223,9 @@ export function AgendaView({ casos }: Props) {
     void cargar(filtros);
   }, [cargar, filtros]);
 
-  const abrirNuevo = () => {
+  const abrirNuevo = (clase: ClaseEvento) => {
     setEditando(null);
+    setFormClase(clase);
     setFormOpen(true);
   };
   const abrirEditar = (e: EventoAgenda) => {
@@ -292,14 +300,17 @@ export function AgendaView({ casos }: Props) {
     let semana = 0;
     let venc = 0;
     let pend = 0;
+    let tareasPend = 0;
     for (const e of estado.eventos) {
       const t = new Date(e.fecha_inicio).getTime();
       if (claveDia(e.fecha_inicio) === hoyKey) hoy++;
       if (t >= wk0 && t <= wk1) semana++;
       if (e.tipo === "vencimiento_procesal" && t >= now && t <= in7) venc++;
-      if (!e.google_calendar_event_id) pend++;
+      // "Pendientes de sync" es solo de eventos: las tareas no van a Google.
+      if (e.clase === "evento" && !e.google_calendar_event_id) pend++;
+      if (e.clase === "tarea" && !e.completado) tareasPend++;
     }
-    return { hoy, semana, venc, pend };
+    return { hoy, semana, venc, pend, tareasPend };
   }, [estado]);
 
   // Eventos vienen ASC por fecha_inicio → claves de día y eventos quedan ASC.
@@ -347,9 +358,14 @@ export function AgendaView({ casos }: Props) {
             </span>
           ) : null}
           <div className="flex-1" />
-          <Button onClick={abrirNuevo}>
-            <Plus className="size-4" /> Nuevo evento
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => abrirNuevo("tarea")}>
+              <Plus className="size-4" /> Nueva tarea
+            </Button>
+            <Button onClick={() => abrirNuevo("evento")}>
+              <Plus className="size-4" /> Nuevo evento
+            </Button>
+          </div>
         </div>
 
         {/* Toggle de filtros (solo mobile) */}
@@ -363,9 +379,10 @@ export function AgendaView({ casos }: Props) {
         </Button>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Hoy" value={stats?.hoy ?? "—"} />
           <StatCard label="Esta semana" value={stats?.semana ?? "—"} />
+          <StatCard label="Tareas pendientes" value={stats?.tareasPend ?? "—"} />
           <StatCard
             label="Vencimientos próximos"
             value={stats?.venc ?? "—"}
@@ -391,11 +408,16 @@ export function AgendaView({ casos }: Props) {
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <CalendarX2 className="size-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              No tenés eventos para este período.
+              No tenés tareas ni eventos para este período.
             </p>
-            <Button variant="outline" onClick={abrirNuevo}>
-              <Plus className="size-4" /> Crear evento
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => abrirNuevo("tarea")}>
+                <Plus className="size-4" /> Crear tarea
+              </Button>
+              <Button variant="outline" onClick={() => abrirNuevo("evento")}>
+                <Plus className="size-4" /> Crear evento
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -433,6 +455,7 @@ export function AgendaView({ casos }: Props) {
       <EventoForm
         open={formOpen}
         evento={editando}
+        claseInicial={formClase}
         casos={casos}
         onClose={() => setFormOpen(false)}
         onSaved={refetch}

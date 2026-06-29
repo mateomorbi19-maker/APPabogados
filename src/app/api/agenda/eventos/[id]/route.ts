@@ -56,6 +56,8 @@ export async function PUT(
   if (d.titulo !== undefined) patch.titulo = d.titulo;
   if (d.descripcion !== undefined) patch.descripcion = d.descripcion ?? null;
   if (d.tipo !== undefined) patch.tipo = d.tipo;
+  if (d.prioridad !== undefined) patch.prioridad = d.prioridad;
+  // `clase` es inmutable tras la creación: no se copia al patch a propósito.
   if (d.fecha_inicio !== undefined) patch.fecha_inicio = d.fecha_inicio;
   if (d.fecha_fin !== undefined) patch.fecha_fin = d.fecha_fin ?? null;
   if (d.todo_el_dia !== undefined) patch.todo_el_dia = d.todo_el_dia;

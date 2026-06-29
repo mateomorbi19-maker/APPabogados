@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   crearEventoAgendaSchema,
   TIPOS_EVENTO_VALUES,
+  type ClaseEvento,
   type TipoEvento,
 } from "@/lib/agenda/types";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
@@ -40,6 +41,10 @@ export async function GET(req: NextRequest): Promise<Response> {
       (TIPOS_EVENTO_VALUES as readonly string[]).includes(t),
     );
 
+  const claseRaw = sp.get("clase");
+  const clase: ClaseEvento | null =
+    claseRaw === "tarea" || claseRaw === "evento" ? claseRaw : null;
+
   const desdeRaw = sp.get("desde");
   const desde =
     desdeRaw && isoSchema.safeParse(desdeRaw).success ? desdeRaw : null;
@@ -50,6 +55,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   try {
     const eventos = await getEventosByUser(wl.usuario_id, {
       caso_id,
+      clase,
       tipo: tipos.length ? tipos : null,
       desde,
       hasta,
@@ -107,6 +113,10 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
   }
 
+  // Una tarea es un to-do por fecha: sin hora (todo_el_dia) y sin fin. Lo
+  // normalizamos server-side para no depender solo de que el form mande bien.
+  const esTarea = d.clase === "tarea";
+
   let evento;
   try {
     evento = await createEvento({
@@ -114,11 +124,13 @@ export async function POST(req: NextRequest): Promise<Response> {
       titulo: d.titulo,
       descripcion: d.descripcion ?? null,
       tipo: d.tipo,
+      clase: d.clase,
+      prioridad: d.prioridad,
       fecha_inicio: d.fecha_inicio,
-      fecha_fin: d.fecha_fin ?? null,
-      todo_el_dia: d.todo_el_dia,
+      fecha_fin: esTarea ? null : (d.fecha_fin ?? null),
+      todo_el_dia: esTarea ? true : d.todo_el_dia,
       caso_id: d.caso_id ?? null,
-      notas: d.notas ?? null,
+      notas: esTarea ? null : (d.notas ?? null),
     });
   } catch (e) {
     console.error("[POST /api/agenda/eventos] createEvento:", e);
@@ -140,27 +152,30 @@ export async function POST(req: NextRequest): Promise<Response> {
   // null: de eso ya avisa el banner "Conectá tu Google Calendar".
   let google_synced = false;
   let google_error: string | null = null;
-  try {
-    const token = await getGoogleAccessToken(wl.clerk_user_id);
-    if (token) {
-      const r = await pushEventToGoogle(token, evento);
-      if (r.id) {
-        // Guardamos también r.updated: el control de conflicto del pull lo usa
-        // para no re-aplicar este cambio cuando vuelva desde Google.
-        await updateGoogleEventId(evento.id, wl.usuario_id, r.id, r.updated);
-        evento = {
-          ...evento,
-          google_calendar_event_id: r.id,
-          google_updated: r.updated,
-        };
-        google_synced = true;
-      } else {
-        google_error = r.error;
+  // Solo los EVENTOS se pushean a Google Calendar; las tareas son locales.
+  if (!esTarea) {
+    try {
+      const token = await getGoogleAccessToken(wl.clerk_user_id);
+      if (token) {
+        const r = await pushEventToGoogle(token, evento);
+        if (r.id) {
+          // Guardamos también r.updated: el control de conflicto del pull lo usa
+          // para no re-aplicar este cambio cuando vuelva desde Google.
+          await updateGoogleEventId(evento.id, wl.usuario_id, r.id, r.updated);
+          evento = {
+            ...evento,
+            google_calendar_event_id: r.id,
+            google_updated: r.updated,
+          };
+          google_synced = true;
+        } else {
+          google_error = r.error;
+        }
       }
+    } catch (e) {
+      google_error = e instanceof Error ? e.message : String(e);
+      console.error("[POST /api/agenda/eventos] push google (no bloqueante):", e);
     }
-  } catch (e) {
-    google_error = e instanceof Error ? e.message : String(e);
-    console.error("[POST /api/agenda/eventos] push google (no bloqueante):", e);
   }
 
   return jsonResponse(
