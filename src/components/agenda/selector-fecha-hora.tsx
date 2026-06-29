@@ -293,9 +293,12 @@ type Props = {
   value: ValorFechaHora;
   onChange: (v: ValorFechaHora) => void;
   disabled?: boolean;
+  // Modo tarea: solo fecha (sin hora, sin fin, sin "todo el día"). Emite siempre
+  // { inicioIso: <fecha 00:00 ART>, finIso: null, todoElDia: true }.
+  soloFecha?: boolean;
 };
 
-export function SelectorFechaHora({ value, onChange, disabled }: Props) {
+export function SelectorFechaHora({ value, onChange, disabled, soloFecha }: Props) {
   const { todoElDia } = value;
   const inicio = isoAPartesAR(value.inicioIso);
   const fin = value.finIso ? isoAPartesAR(value.finIso) : null;
@@ -340,6 +343,29 @@ export function SelectorFechaHora({ value, onChange, disabled }: Props) {
     }
     emit(ni, nf, false);
   };
+
+  // Modo tarea: solo el calendario de fecha; hora/fin/todo-el-día no aplican.
+  if (soloFecha) {
+    return (
+      <div className="space-y-1.5">
+        <span className="text-sm text-muted-foreground">Fecha</span>
+        <div>
+          <SelectorFecha
+            valor={inicio}
+            disabled={disabled}
+            ariaLabel="Fecha de la tarea"
+            onPick={(y, mo, d) =>
+              onChange({
+                inicioIso: partesAIsoAR({ y, mo, d, h: 0, mi: 0 }),
+                finIso: null,
+                todoElDia: true,
+              })
+            }
+          />
+        </div>
+      </div>
+    );
+  }
 
   // Duración inicio→fin para el indicador del label.
   const durMin = fin ? partesAMin(fin) - partesAMin(inicio) : null;

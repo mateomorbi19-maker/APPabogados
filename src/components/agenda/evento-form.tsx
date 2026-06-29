@@ -12,11 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
+  PRIORIDADES,
+  PRIORIDADES_VALUES,
   TIPOS_EVENTO,
   TIPOS_EVENTO_VALUES,
   type CasoOption,
+  type ClaseEvento,
   type EventoAgenda,
+  type Prioridad,
   type TipoEvento,
 } from "@/lib/agenda/types";
 import {
@@ -39,19 +44,35 @@ function inicioPorDefecto(): string {
   return partesAIsoAR({ ...n, mi: Math.floor(n.mi / 15) * 15 });
 }
 
+// Fecha por defecto de una tarea nueva: hoy a las 00:00 ART (todo el día).
+function fechaTareaPorDefecto(): string {
+  const n = ahoraPartesAR();
+  return partesAIsoAR({ ...n, h: 0, mi: 0 });
+}
+
 type Props = {
   open: boolean;
   evento: EventoAgenda | null; // null = crear
+  claseInicial?: ClaseEvento; // clase con la que se abre al crear
   casos: CasoOption[];
   onClose: () => void;
   onSaved: () => void; // el parent recarga la lista
 };
 
-export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
+export function EventoForm({
+  open,
+  evento,
+  claseInicial = "evento",
+  casos,
+  onClose,
+  onSaved,
+}: Props) {
   const editando = evento !== null;
 
+  const [clase, setClase] = useState<ClaseEvento>(claseInicial);
   const [titulo, setTitulo] = useState("");
   const [tipo, setTipo] = useState<TipoEvento>("audiencia");
+  const [prioridad, setPrioridad] = useState<Prioridad>("media");
   const [fechaHora, setFechaHora] = useState<ValorFechaHora>(() => ({
     inicioIso: inicioPorDefecto(),
     finIso: null,
@@ -63,6 +84,8 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const esTarea = clase === "tarea";
+
   // (Re)prefill al abrir o al cambiar el evento que se edita. Las fechas se
   // normalizan a ISO con offset -03:00 (hora de pared de Argentina) para el
   // selector; la ida/vuelta de zona horaria la maneja tz-ar.ts.
@@ -70,8 +93,10 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
     if (!open) return;
     setError(null);
     if (evento) {
+      setClase(evento.clase);
       setTitulo(evento.titulo);
       setTipo(evento.tipo);
+      setPrioridad(evento.prioridad);
       setFechaHora({
         inicioIso: partesAIsoAR(isoAPartesAR(evento.fecha_inicio)),
         finIso: evento.fecha_fin
@@ -83,18 +108,43 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
       setDescripcion(evento.descripcion ?? "");
       setNotas(evento.notas ?? "");
     } else {
+      setClase(claseInicial);
       setTitulo("");
-      setTipo("audiencia");
-      setFechaHora({
-        inicioIso: inicioPorDefecto(),
-        finIso: null,
-        todoElDia: false,
-      });
+      setTipo(claseInicial === "tarea" ? "otro" : "audiencia");
+      setPrioridad("media");
+      setFechaHora(
+        claseInicial === "tarea"
+          ? { inicioIso: fechaTareaPorDefecto(), finIso: null, todoElDia: true }
+          : { inicioIso: inicioPorDefecto(), finIso: null, todoElDia: false },
+      );
       setCasoId("");
       setDescripcion("");
       setNotas("");
     }
-  }, [open, evento]);
+  }, [open, evento, claseInicial]);
+
+  // Cambio de clase (solo al crear; al editar la clase es inmutable). Normaliza
+  // la fecha/hora a la forma de la clase destino: tarea → fecha sola a 00:00;
+  // evento → si venía a 00:00 le pone una hora razonable (09:00).
+  const cambiarClase = (c: ClaseEvento) => {
+    if (editando || c === clase) return;
+    setClase(c);
+    const p = isoAPartesAR(fechaHora.inicioIso);
+    if (c === "tarea") {
+      setFechaHora({
+        inicioIso: partesAIsoAR({ ...p, h: 0, mi: 0 }),
+        finIso: null,
+        todoElDia: true,
+      });
+    } else {
+      const conHora = p.h === 0 && p.mi === 0 ? { ...p, h: 9, mi: 0 } : p;
+      setFechaHora({
+        inicioIso: partesAIsoAR(conHora),
+        finIso: null,
+        todoElDia: false,
+      });
+    }
+  };
 
   const tituloTrim = titulo.trim();
   const formOk = tituloTrim.length > 0;
@@ -109,9 +159,13 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
 
     const { inicioIso, finIso, todoElDia } = fechaHora;
 
-    // Validación de fin >= inicio (la misma que el schema; acá es feedback
-    // inmediato antes de pegarle a la API).
-    if (finIso && new Date(finIso).getTime() < new Date(inicioIso).getTime()) {
+    // Validación de fin >= inicio (solo eventos; las tareas no tienen fin). La
+    // misma que el schema; acá es feedback inmediato antes de pegarle a la API.
+    if (
+      !esTarea &&
+      finIso &&
+      new Date(finIso).getTime() < new Date(inicioIso).getTime()
+    ) {
       setError("La fecha de fin no puede ser anterior a la de inicio");
       return;
     }
@@ -122,12 +176,14 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
       const body = {
         titulo: tituloTrim,
         tipo,
-        todo_el_dia: todoElDia,
+        clase,
+        prioridad,
+        todo_el_dia: esTarea ? true : todoElDia,
         fecha_inicio: inicioIso,
-        fecha_fin: finIso,
+        fecha_fin: esTarea ? null : finIso,
         caso_id: casoId || null,
         descripcion: descripcion.trim() || null,
-        notas: notas.trim() || null,
+        notas: esTarea ? null : notas.trim() || null,
       };
       const url = editando
         ? `/api/agenda/eventos/${evento.id}`
@@ -145,7 +201,7 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
         const msg =
           json && "error" in json && typeof json.error === "string"
             ? json.error
-            : `Error guardando evento (HTTP ${res.status})`;
+            : `Error guardando (HTTP ${res.status})`;
         setError(msg);
         setLoading(false);
         return;
@@ -153,8 +209,8 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
       onSaved();
       setLoading(false);
       onClose();
-      // Feedback de la sincronización con Google (best-effort). Si está
-      // desconectado (sin token), no hay google_error y de eso ya avisa el
+      // Feedback de la sincronización con Google (best-effort, solo eventos). Si
+      // está desconectado (sin token), no hay google_error y de eso ya avisa el
       // banner — no molestamos con un toast.
       if (json.google_synced === true) {
         toast.success("Evento guardado y sincronizado con Google Calendar");
@@ -169,6 +225,14 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
     }
   };
 
+  const tituloModal = editando
+    ? esTarea
+      ? "Editar tarea"
+      : "Editar evento"
+    : esTarea
+      ? "Nueva tarea"
+      : "Nuevo evento";
+
   return (
     <Dialog
       open={open}
@@ -181,12 +245,33 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
         showCloseButton={!loading}
       >
         <DialogHeader>
-          <DialogTitle>
-            {editando ? "Editar evento" : "Nuevo evento"}
-          </DialogTitle>
+          <DialogTitle>{tituloModal}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Toggle tarea/evento. Solo al crear: al editar la clase es fija
+              (evita convertir un evento ya sincronizado con Google en tarea). */}
+          {!editando ? (
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-secondary/40 p-1">
+              {(["tarea", "evento"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => cambiarClase(c)}
+                  disabled={loading}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
+                    clase === c
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {c === "tarea" ? "Tarea" : "Evento"}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <div className="space-y-1.5">
             <Label htmlFor="ev-titulo">Título</Label>
             <Input
@@ -195,7 +280,11 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
               onChange={(e) => setTitulo(e.target.value)}
               disabled={loading}
               maxLength={300}
-              placeholder="Ej: Audiencia de formalización"
+              placeholder={
+                esTarea
+                  ? "Ej: Presentar escrito de excarcelación"
+                  : "Ej: Audiencia de formalización"
+              }
               autoFocus
             />
           </div>
@@ -221,6 +310,7 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
             value={fechaHora}
             onChange={setFechaHora}
             disabled={loading}
+            soloFecha={esTarea}
           />
 
           <div className="space-y-1.5">
@@ -253,16 +343,36 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
             />
           </div>
 
+          {/* Notas: solo eventos (la tarea se queda con título + descripción). */}
+          {!esTarea ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="ev-notas">Notas (opcional)</Label>
+              <Textarea
+                id="ev-notas"
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                disabled={loading}
+                rows={2}
+                maxLength={5000}
+              />
+            </div>
+          ) : null}
+
           <div className="space-y-1.5">
-            <Label htmlFor="ev-notas">Notas (opcional)</Label>
-            <Textarea
-              id="ev-notas"
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
+            <Label htmlFor="ev-prioridad">Prioridad</Label>
+            <select
+              id="ev-prioridad"
+              value={prioridad}
+              onChange={(e) => setPrioridad(e.target.value as Prioridad)}
               disabled={loading}
-              rows={2}
-              maxLength={5000}
-            />
+              className={SELECT_CLS}
+            >
+              {PRIORIDADES_VALUES.map((p) => (
+                <option key={p} value={p}>
+                  {PRIORIDADES[p].label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {error ? (
@@ -282,7 +392,9 @@ export function EventoForm({ open, evento, casos, onClose, onSaved }: Props) {
               ? "Guardando..."
               : editando
                 ? "Guardar cambios"
-                : "Crear evento"}
+                : esTarea
+                  ? "Crear tarea"
+                  : "Crear evento"}
           </Button>
         </div>
       </DialogContent>

@@ -16,6 +16,49 @@ export const TIPOS_EVENTO_VALUES = [
 
 export type TipoEvento = (typeof TIPOS_EVENTO_VALUES)[number];
 
+// Discriminador tarea/evento. Un EVENTO es una cita con franja horaria (lo que
+// la tabla modelaba originalmente; sincroniza con Google). Una TAREA es un to-do
+// con fecha pero sin hora (todo_el_dia), con prioridad y sin sync con Google.
+export const CLASES_EVENTO_VALUES = ["evento", "tarea"] as const;
+export type ClaseEvento = (typeof CLASES_EVENTO_VALUES)[number];
+
+// Prioridad de presentación; aplica tanto a tareas como a eventos.
+export const PRIORIDADES_VALUES = ["alta", "media", "baja"] as const;
+export type Prioridad = (typeof PRIORIDADES_VALUES)[number];
+
+export type PrioridadMeta = {
+  label: string;
+  /** Color de texto/ícono del indicador compacto. */
+  text: string;
+  /** Clase de fondo del puntito. */
+  dot: string;
+  /** Clases del badge (bg + text + border). */
+  badge: string;
+};
+
+// Mismo criterio que TIPOS_EVENTO: clases Tailwind literales (no construidas en
+// runtime) y tonos /10 sobre dark. Alta = rose, Media = amber, Baja = slate.
+export const PRIORIDADES: Record<Prioridad, PrioridadMeta> = {
+  alta: {
+    label: "Alta",
+    text: "text-rose-300",
+    dot: "bg-rose-500",
+    badge: "bg-rose-500/10 text-rose-300 border-rose-500/20",
+  },
+  media: {
+    label: "Media",
+    text: "text-amber-300",
+    dot: "bg-amber-500",
+    badge: "bg-amber-500/10 text-amber-300 border-amber-500/20",
+  },
+  baja: {
+    label: "Baja",
+    text: "text-slate-300",
+    dot: "bg-slate-400",
+    badge: "bg-slate-500/10 text-slate-300 border-slate-500/20",
+  },
+};
+
 // Metadata de presentación por tipo. Las clases Tailwind se guardan COMPLETAS
 // (literales) a propósito: Tailwind v4 detecta clases por escaneo de strings en
 // el código fuente, así que `bg-${color}-500/10` construido en runtime NO se
@@ -93,6 +136,8 @@ export type EventoAgenda = {
   titulo: string;
   descripcion: string | null;
   tipo: TipoEvento;
+  clase: ClaseEvento;
+  prioridad: Prioridad;
   fecha_inicio: string; // ISO TIMESTAMPTZ
   fecha_fin: string | null;
   todo_el_dia: boolean;
@@ -110,6 +155,8 @@ export type EventoAgenda = {
 // === Validación de input (zod en el borde de las API routes) ===
 
 export const tipoEventoSchema = z.enum(TIPOS_EVENTO_VALUES);
+export const claseEventoSchema = z.enum(CLASES_EVENTO_VALUES);
+export const prioridadSchema = z.enum(PRIORIDADES_VALUES);
 
 // Base sin defaults: así `.partial()` para el PATCH no reinyecta valores
 // cuando el campo se omite (un default acá pisaría el tipo a 'otro' en cada
@@ -119,6 +166,8 @@ const eventoAgendaBaseSchema = z.object({
   titulo: z.string().trim().min(1, "El título es obligatorio").max(300),
   descripcion: z.string().max(5000).nullish(),
   tipo: tipoEventoSchema,
+  clase: claseEventoSchema,
+  prioridad: prioridadSchema,
   fecha_inicio: z.string().datetime({ offset: true }),
   fecha_fin: z.string().datetime({ offset: true }).nullish(),
   todo_el_dia: z.boolean(),

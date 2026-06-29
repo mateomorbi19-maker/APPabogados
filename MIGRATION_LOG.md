@@ -265,3 +265,33 @@ ALTER TABLE mapa_procesal_nodos
 **Mapas existentes:** NO se migran automáticamente (siguen con la estructura vieja). Para ver el flujo nuevo en un caso de prueba: usar el botón **"Reiniciar"** de la toolbar del mapa (borra los nodos del caso y reinstancia el template nuevo) o crear un caso nuevo.
 
 **Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code. Mateo la corre en el SQL Editor de Supabase.
+
+---
+
+## 2026-06-29 · 12:00:00 UTC — `20260629120000_eventos_agenda_clase_prioridad.sql`
+
+**Contexto:** feature `agenda-tareas`. La agenda pasa de modelar solo EVENTOS (citas con franja horaria) a distinguir además TAREAS (to-do por fecha, sin hora, con prioridad). Decisiones del director: tareas y eventos conviven en `eventos_agenda` con un discriminador (no tabla nueva); son **personales** (sin asignación entre usuarios); se conserva la vista de lista actual (sin calendario mensual nuevo).
+
+**Tipo:** migración SQL de schema, **aditiva** (no rompe ni borra nada existente).
+
+**Cambio:**
+
+```sql
+ALTER TABLE eventos_agenda
+  ADD COLUMN clase TEXT NOT NULL DEFAULT 'evento'
+    CHECK (clase IN ('evento', 'tarea')),
+  ADD COLUMN prioridad TEXT NOT NULL DEFAULT 'media'
+    CHECK (prioridad IN ('alta', 'media', 'baja'));
+```
+
+- `clase`: `evento` (cita con hora, sincroniza con Google Calendar) | `tarea` (to-do por fecha, `todo_el_dia`, **sin** sync). `NOT NULL DEFAULT 'evento'` → las filas existentes quedan como eventos.
+- `prioridad`: `alta | media | baja`, aplica a ambos. `NOT NULL DEFAULT 'media'`.
+- Sin índice nuevo: el listado filtra por `usuario_id` + (opcional) `clase` ordenando por `fecha_inicio`; `idx_eventos_agenda_usuario_fecha` ya cubre ese acceso (clase tiene cardinalidad 2).
+
+**Filas afectadas:** 0 de datos (solo defaults sobre filas existentes → todas quedan `clase='evento'`, `prioridad='media'`).
+
+**Acoplamiento código ↔ migración (IMPORTANTE):** el código nuevo agrega `clase, prioridad` al `SELECT` de [src/lib/agenda/queries.ts](src/lib/agenda/queries.ts) (`COLS`). Si el código corre **antes** de aplicar esta migración, **todos los reads de la agenda dan 500** (columna inexistente — mismo patrón que el caso `riesgo_alto`). Aplicar la migración PRIMERO.
+
+**Sync con Google:** las tareas no se pushean (`getEventosSinSincronizar` ahora filtra `clase='evento'`); el pull es update-only por `google_calendar_event_id`, que las tareas nunca tienen, así que tampoco las toca.
+
+**Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code (el MCP de Supabase apunta a otra cuenta — proyectos `mqmbltvmhriibsabhtze` / `aybwzcuozzhcedfotdrh`, no el `xvdlnevcvcsgxbngwliv` de la app). Mateo la corre en el SQL Editor de Supabase.

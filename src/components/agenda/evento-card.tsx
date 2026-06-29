@@ -4,6 +4,8 @@ import Link from "next/link";
 import {
   Briefcase,
   CalendarCheck2,
+  Flag,
+  ListTodo,
   Loader2,
   Pencil,
   Trash2,
@@ -20,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { TIPOS_EVENTO, type EventoAgenda } from "@/lib/agenda/types";
+import { PRIORIDADES, TIPOS_EVENTO, type EventoAgenda } from "@/lib/agenda/types";
 import { fmtHora } from "@/lib/agenda/fechas";
 
 type Props = {
@@ -74,9 +76,14 @@ export function EventoCard({
           types.ts (fuera de scope de este refactor). */}
       <div className={cn("w-1 shrink-0 self-stretch rounded-none", meta.dot)} aria-hidden />
 
-      {/* Hora / Todo el día */}
+      {/* Hora (evento) · ícono de tarea · "Todo el día" */}
       <div className="w-14 shrink-0 self-center text-center">
-        {evento.todo_el_dia ? (
+        {evento.clase === "tarea" ? (
+          <ListTodo
+            className="mx-auto size-5 text-muted-foreground"
+            aria-label="Tarea"
+          />
+        ) : evento.todo_el_dia ? (
           <span className="text-xs text-muted-foreground">Todo el día</span>
         ) : (
           <span className="text-base font-medium tabular-nums">
@@ -99,6 +106,19 @@ export function EventoCard({
           <Badge className={cn(meta.badge, evento.completado && "opacity-50")}>
             {meta.label}
           </Badge>
+          {/* Prioridad: siempre en tareas; en eventos solo si no es la media. */}
+          {evento.clase === "tarea" || evento.prioridad !== "media" ? (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-xs",
+                PRIORIDADES[evento.prioridad].text,
+                evento.completado && "opacity-50",
+              )}
+            >
+              <Flag className="size-3" />
+              {PRIORIDADES[evento.prioridad].label}
+            </span>
+          ) : null}
           {evento.google_calendar_event_id ? (
             <CalendarCheck2
               className="size-[13px] text-emerald-400"
