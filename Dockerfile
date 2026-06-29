@@ -27,7 +27,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # TypeScript"). 4 GB le da margen sin depender solo del tamaño del default.
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-RUN npm run build
+# --webpack: Next 16 buildea con Turbopack por defecto, y Turbopack REQUIERE el
+# binario nativo de SWC. En esta imagen slim el SWC nativo de Linux no se instala
+# (npm cae al WASM), y Turbopack no corre sobre WASM ("native bindings are not
+# available"). Webpack sí buildea con el SWC WASM (más lento, pero funciona). En
+# local hay binario nativo, así que `next dev`/`next build` siguen con Turbopack.
+RUN npm run build -- --webpack
 
 # ---- Stage 3: runner ----
 FROM node:20-bookworm-slim AS runner
