@@ -9,6 +9,7 @@ import {
   Minimize2,
   Plus,
   RotateCcw,
+  Undo2,
   Wand2,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
@@ -27,6 +28,8 @@ type Props = {
   // Re-corre dagre y persiste el layout. undefined = ocultar.
   onReordenar?: () => void;
   reordenando?: boolean;
+  // Deshacer el último borrado de nodos. undefined = nada para deshacer.
+  onDeshacer?: () => void;
 };
 
 export function MapaToolbar({
@@ -38,6 +41,7 @@ export function MapaToolbar({
   onReiniciar,
   onReordenar,
   reordenando,
+  onDeshacer,
 }: Props) {
   const { fitView } = useReactFlow();
   const [fullscreen, setFullscreen] = useState(false);
@@ -86,6 +90,17 @@ export function MapaToolbar({
         <Crosshair className="size-4" />
         Centrar vista
       </Button>
+      {onDeshacer ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDeshacer}
+          title="Restaura los últimos nodos eliminados"
+        >
+          <Undo2 className="size-4" />
+          <span className="hidden md:inline">Deshacer</span>
+        </Button>
+      ) : null}
       {onReordenar ? (
         <Button
           variant="ghost"

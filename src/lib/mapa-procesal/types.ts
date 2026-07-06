@@ -96,6 +96,30 @@ export const ramasSimuladasSchema = z.object({
 });
 export type RamaSimulada = z.infer<typeof ramasSimuladasSchema>["ramas"][number];
 
+// === Restauración (deshacer borrado) ===
+// El cliente captura el subárbol ANTES de borrar y lo re-inserta con los
+// MISMOS ids (el schema acepta UUIDs provistos — mismo patrón que la
+// plantilla). La raíz jamás se restaura (no se puede borrar).
+export const restaurarNodosSchema = z.object({
+  nodos: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        titulo: z.string().trim().min(1).max(200),
+        descripcion: z.string().max(2000).nullable(),
+        tipo: z.enum(["real", "prediccion"]),
+        estado: z.enum(["ocurrido", "desbloqueado", "bloqueado"]),
+        padre_id: z.string().uuid(),
+        riesgo_alto: z.boolean(),
+        posicion_x: z.number().finite(),
+        posicion_y: z.number().finite(),
+      }),
+    )
+    .min(1)
+    .max(200),
+});
+export type RestaurarNodosInput = z.infer<typeof restaurarNodosSchema>;
+
 // Batch de posiciones: siembra de mapas pre-Fase E y botón "Reordenar".
 export const posicionesBatchSchema = z.object({
   posiciones: z

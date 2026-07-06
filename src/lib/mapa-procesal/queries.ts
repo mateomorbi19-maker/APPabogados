@@ -356,6 +356,60 @@ export async function eliminarNodo(
   return { status: "ok" };
 }
 
+export type RestaurarResult =
+  | { status: "ok"; nodos: NodoProcesalDB[] }
+  | { status: "not_owned" }
+  // Algún padre externo al batch ya no existe en el caso (p. ej. se borró
+  // después): no se puede restaurar sin dejar huérfanos.
+  | { status: "padre_faltante" };
+
+// Re-inserta nodos borrados (deshacer): ids PRESERVADOS para que el subárbol
+// vuelva idéntico (posiciones, estados, jerarquía). Un solo INSERT multi-fila:
+// Postgres valida la self-FK al cierre del statement, así que el orden
+// padre/hijo dentro del batch no importa (mismo patrón que la plantilla).
+export async function restaurarNodos(
+  casoId: string,
+  usuarioId: string,
+  nodos: Array<{
+    id: string;
+    titulo: string;
+    descripcion: string | null;
+    tipo: "real" | "prediccion";
+    estado: EstadoNodo;
+    padre_id: string;
+    riesgo_alto: boolean;
+    posicion_x: number;
+    posicion_y: number;
+  }>,
+): Promise<RestaurarResult> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return { status: "not_owned" };
+  const supabase = createServerClient();
+
+  // Verificar que los padres EXTERNOS al batch sigan existiendo en el caso.
+  const idsBatch = new Set(nodos.map((n) => n.id));
+  const padresExternos = [
+    ...new Set(nodos.map((n) => n.padre_id).filter((p) => !idsBatch.has(p))),
+  ];
+  if (padresExternos.length > 0) {
+    const { data: existentes, error: eErr } = await supabase
+      .from("mapa_procesal_nodos")
+      .select("id")
+      .eq("caso_id", casoId)
+      .in("id", padresExternos);
+    if (eErr) throw new Error(`restaurarNodos padres: ${eErr.message}`);
+    if ((existentes ?? []).length !== padresExternos.length) {
+      return { status: "padre_faltante" };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("mapa_procesal_nodos")
+    .insert(nodos.map((n) => ({ ...n, caso_id: casoId })))
+    .select(COLS);
+  if (error) throw new Error(`restaurarNodos insert: ${error.message}`);
+  return { status: "ok", nodos: (data ?? []) as NodoProcesalDB[] };
+}
+
 export type ReiniciarResult =
   | { status: "ok"; nodos: NodoProcesalDB[]; fuero: Fuero }
   | { status: "not_owned" }

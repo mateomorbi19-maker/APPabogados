@@ -1,17 +1,19 @@
 "use client";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   BackgroundVariant,
   Controls,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   useEdgesState,
   useNodesState,
   useReactFlow,
   type EdgeTypes,
   type NodeTypes,
+  type OnBeforeDelete,
 } from "@xyflow/react";
 import { Loader2, Network } from "lucide-react";
 import { toast } from "sonner";
@@ -95,6 +97,11 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   // selector y marca la card con el badge "Sugerido". El abogado confirma.
   const [fueroSugerido, setFueroSugerido] = useState<Fuero | null>(null);
   const [reordenando, setReordenando] = useState(false);
+  // Pila de deshacer para borrados: cada entrada es el subárbol COMPLETO
+  // capturado antes del DELETE (se restaura con los mismos ids). Vive en un
+  // ref (no re-renderiza); undoDepth solo habilita/deshabilita el botón.
+  const undoStackRef = useRef<Array<{ nodos: NodoProcesalDB[] }>>([]);
+  const [undoDepth, setUndoDepth] = useState(0);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodoFlow>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<EdgeFlow>([]);
@@ -202,41 +209,39 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     [casoId],
   );
 
-  // Auto-guardado al soltar un nodo (memoria del mapa): update optimista del
-  // estado local + PUT en background. Sin recarga completa — el nodo ya está
-  // donde el abogado lo dejó.
+  // Auto-guardado al soltar nodos (memoria del mapa): con multi-selección se
+  // arrastran VARIOS a la vez — persistimos todos en un PATCH batch. Update
+  // optimista local, sin recarga completa.
   const onNodeDragStop = useCallback(
-    (_: unknown, node: NodoFlow) => {
+    (_: unknown, node: NodoFlow, arrastrados: NodoFlow[]) => {
+      const movidos = arrastrados.length > 0 ? arrastrados : [node];
+      const porId = new Map(movidos.map((m) => [m.id, m]));
       setEstado((prev) =>
         prev.status === "ready"
           ? {
               ...prev,
-              nodos: prev.nodos.map((n) =>
-                n.id === node.id
-                  ? {
-                      ...n,
-                      posicion_x: node.position.x,
-                      posicion_y: node.position.y,
-                    }
-                  : n,
-              ),
+              nodos: prev.nodos.map((n) => {
+                const m = porId.get(n.id);
+                return m
+                  ? { ...n, posicion_x: m.position.x, posicion_y: m.position.y }
+                  : n;
+              }),
             }
           : prev,
       );
-      void fetch(`/api/casos/${casoId}/mapa/nodos/${node.id}`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          posicion_x: node.position.x,
-          posicion_y: node.position.y,
-        }),
-      })
-        .then((res) => {
-          if (!res.ok) toast.error("No se pudo guardar la posición del nodo");
+      void persistirPosiciones(
+        movidos.map((m) => ({
+          id: m.id,
+          posicion_x: m.position.x,
+          posicion_y: m.position.y,
+        })),
+      )
+        .then((ok) => {
+          if (!ok) toast.error("No se pudo guardar la posición");
         })
         .catch(() => toast.error("Error de red guardando la posición"));
     },
-    [casoId],
+    [persistirPosiciones],
   );
 
   // "Reordenar": re-corre dagre sobre el árbol completo, persiste y
@@ -300,6 +305,9 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         nodos: json.nodos,
         fuero: json.fuero,
       });
+      // Mapa nuevo: cualquier entrada de deshacer previa quedó huérfana.
+      undoStackRef.current = [];
+      setUndoDepth(0);
     } catch {
       toast.error("Error de red al inicializar");
     } finally {
@@ -433,22 +441,141 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     [casoId, cargar],
   );
 
-  const handleEliminar = useCallback(
-    async (id: string) => {
-      const res = await fetch(`/api/casos/${casoId}/mapa/nodos/${id}`, {
-        method: "DELETE",
+  // Deshacer el último borrado: re-inserta el subárbol capturado (mismos ids,
+  // posiciones y estados). Si el padre externo ya no existe, la entrada se
+  // descarta con error (no hay dónde colgarla).
+  const handleDeshacer = useCallback(async () => {
+    const entry = undoStackRef.current.pop();
+    setUndoDepth(undoStackRef.current.length);
+    if (!entry) return;
+    const payload = entry.nodos.map((n) => ({
+      id: n.id,
+      titulo: n.titulo,
+      descripcion: n.descripcion,
+      tipo: n.tipo as "real" | "prediccion",
+      estado: n.estado,
+      padre_id: n.padre_id as string,
+      riesgo_alto: n.riesgo_alto,
+      posicion_x: n.posicion_x,
+      posicion_y: n.posicion_y,
+    }));
+    try {
+      const res = await fetch(`/api/casos/${casoId}/mapa/nodos/restaurar`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nodos: payload }),
       });
-      if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        toast.error(json?.error ?? `Error eliminando (HTTP ${res.status})`);
+      const json = (await res.json().catch(() => null)) as
+        | { ok: true }
+        | { ok: false; error?: string }
+        | null;
+      if (!res.ok || !json || json.ok === false) {
+        toast.error(
+          json && "error" in json && json.error
+            ? json.error
+            : "No se pudo deshacer el borrado",
+        );
         return;
       }
+      toast.success(
+        `Se ${payload.length === 1 ? "restauró 1 nodo" : `restauraron ${payload.length} nodos`}`,
+      );
+      await cargar();
+    } catch {
+      toast.error("Error de red al deshacer");
+    }
+  }, [casoId, cargar]);
+
+  // Borrado unificado (panel y tecla Supr, uno o varios): captura los
+  // subárboles ANTES de borrar (para Deshacer), deduplica descendientes de
+  // otros seleccionados (el cascade ya los cubre) y protege la raíz.
+  const handleEliminarNodos = useCallback(
+    async (idsRaw: string[]) => {
+      if (estado.status !== "ready") return;
+      const todos = estado.nodos;
+      const porId = new Map(todos.map((n) => [n.id, n]));
+      let ids = idsRaw.filter((id) => porId.has(id));
+      if (ids.some((id) => porId.get(id)!.tipo === "raiz")) {
+        toast.error("El nodo raíz no se puede eliminar");
+        ids = ids.filter((id) => porId.get(id)!.tipo !== "raiz");
+      }
+      if (ids.length === 0) return;
+
+      // Top-level: descartar seleccionados que descienden de otro seleccionado.
+      const sel = new Set(ids);
+      const esTop = (id: string): boolean => {
+        let p = porId.get(id)?.padre_id ?? null;
+        while (p) {
+          if (sel.has(p)) return false;
+          p = porId.get(p)?.padre_id ?? null;
+        }
+        return true;
+      };
+      const tops = ids.filter(esTop);
+
+      // Captura del subárbol completo de cada top (DFS) para el Deshacer.
+      const hijosPor = new Map<string, NodoProcesalDB[]>();
+      for (const n of todos) {
+        if (!n.padre_id) continue;
+        const arr = hijosPor.get(n.padre_id) ?? [];
+        arr.push(n);
+        hijosPor.set(n.padre_id, arr);
+      }
+      const capturados: NodoProcesalDB[] = [];
+      const walk = (id: string) => {
+        const n = porId.get(id);
+        if (!n) return;
+        capturados.push(n);
+        for (const h of hijosPor.get(id) ?? []) walk(h.id);
+      };
+      for (const t of tops) walk(t);
+
+      let fallo = false;
+      for (const id of tops) {
+        const res = await fetch(`/api/casos/${casoId}/mapa/nodos/${id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          fallo = true;
+          const json = (await res.json().catch(() => null)) as
+            | { error?: string }
+            | null;
+          toast.error(json?.error ?? `Error eliminando (HTTP ${res.status})`);
+        }
+      }
       setSelectedNodoId(null);
+
+      if (!fallo) {
+        undoStackRef.current.push({ nodos: capturados });
+        setUndoDepth(undoStackRef.current.length);
+        toast.success(
+          `${capturados.length === 1 ? "1 nodo eliminado" : `${capturados.length} nodos eliminados`}`,
+          { action: { label: "Deshacer", onClick: () => void handleDeshacer() } },
+        );
+      }
       await cargar();
     },
-    [casoId, cargar],
+    [estado, casoId, cargar, handleDeshacer],
+  );
+
+  // Veto de ReactFlow antes de borrar con teclado: nunca dejar caer la raíz.
+  const onBeforeDelete: OnBeforeDelete<NodoFlow, EdgeFlow> = useCallback(
+    async ({ nodes: aBorrar, edges: edgesABorrar }) => {
+      const sinRaiz = aBorrar.filter((n) => n.data.tipo !== "raiz");
+      if (sinRaiz.length === 0) {
+        if (aBorrar.length > 0) toast.error("El nodo raíz no se puede eliminar");
+        return false;
+      }
+      return { nodes: sinRaiz, edges: edgesABorrar };
+    },
+    [],
+  );
+
+  const onNodesDelete = useCallback(
+    (borrados: NodoFlow[]) => {
+      void handleEliminarNodos(borrados.map((n) => n.id));
+    },
+    [handleEliminarNodos],
   );
 
   // Reinicia el mapa: borra los nodos y reinstancia la plantilla del fuero
@@ -481,6 +608,9 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         nodos: json.nodos,
         fuero: json.fuero,
       });
+      // Mapa reinstanciado: la pila de deshacer apunta a nodos que ya no existen.
+      undoStackRef.current = [];
+      setUndoDepth(0);
       setReiniciarOpen(false);
       toast.success("Mapa reiniciado con el flujo nuevo");
     } catch {
@@ -490,10 +620,15 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     }
   };
 
-  const onNodeClick = useCallback((_: unknown, node: NodoFlow) => {
-    if (node.data.estado === "bloqueado") return;
-    setSelectedNodoId(node.id);
-  }, []);
+  const onNodeClick = useCallback(
+    (e: React.MouseEvent, node: NodoFlow) => {
+      // Shift+click = sumar a la multi-selección: no abrir el panel.
+      if (e.shiftKey) return;
+      if (node.data.estado === "bloqueado") return;
+      setSelectedNodoId(node.id);
+    },
+    [],
+  );
 
   const onPaneClick = useCallback(() => setSelectedNodoId(null), []);
 
@@ -535,6 +670,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
             : undefined
         }
         reordenando={reordenando}
+        onDeshacer={undoDepth > 0 ? () => void handleDeshacer() : undefined}
       />
 
       <div className="relative flex-1" style={{ background: FONDO_CANVAS }}>
@@ -590,6 +726,8 @@ function MapaInner({ casoId, casoTitulo }: Props) {
               onNodeClick={onNodeClick}
               onNodeDragStop={onNodeDragStop}
               onPaneClick={onPaneClick}
+              onBeforeDelete={onBeforeDelete}
+              onNodesDelete={onNodesDelete}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               colorMode="dark"
@@ -598,6 +736,17 @@ function MapaInner({ casoId, casoTitulo }: Props) {
               minZoom={0.2}
               proOptions={{ hideAttribution: true }}
               style={{ background: "transparent" }}
+              // === Interacción estilo n8n ===
+              // Click izquierdo + arrastre en el fondo = CAJA DE SELECCIÓN
+              // (parcial: alcanza con tocar el nodo). Pan: Ctrl + arrastre,
+              // o botón del medio / derecho. Shift+click suma a la selección.
+              // Supr/Backspace borra los seleccionados (con Deshacer).
+              selectionOnDrag
+              selectionMode={SelectionMode.Partial}
+              panOnDrag={[1, 2]}
+              panActivationKeyCode="Control"
+              multiSelectionKeyCode="Shift"
+              deleteKeyCode={["Delete", "Backspace"]}
             >
               <Background
                 variant={BackgroundVariant.Dots}
@@ -621,7 +770,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
                 onAgregarHijo={(id) => setCrearParaNodoId(id)}
                 onSimular={handleSimular}
                 onEditar={editarNodo}
-                onEliminar={handleEliminar}
+                onEliminar={(id) => handleEliminarNodos([id])}
               />
             ) : null}
           </>
