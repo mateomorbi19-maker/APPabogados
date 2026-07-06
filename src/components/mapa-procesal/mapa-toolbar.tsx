@@ -1,7 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Crosshair, Maximize2, Minimize2, Plus, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  Crosshair,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Plus,
+  RotateCcw,
+  Undo2,
+  Wand2,
+} from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,18 +19,29 @@ import { cn } from "@/lib/utils";
 type Props = {
   casoId: string;
   casoTitulo: string;
+  // Label del fuero activo (FUERO_LABEL). undefined = mapa sin fuero asignado.
+  fueroLabel?: string;
   puedeAgregar: boolean; // hay un nodo seleccionado no bloqueado
   onAgregarEvento: () => void;
   // Reinicia el mapa al flujo nuevo. undefined = ocultar (mapa sin inicializar).
   onReiniciar?: () => void;
+  // Re-corre dagre y persiste el layout. undefined = ocultar.
+  onReordenar?: () => void;
+  reordenando?: boolean;
+  // Deshacer el último borrado de nodos. undefined = nada para deshacer.
+  onDeshacer?: () => void;
 };
 
 export function MapaToolbar({
   casoId,
   casoTitulo,
+  fueroLabel,
   puedeAgregar,
   onAgregarEvento,
   onReiniciar,
+  onReordenar,
+  reordenando,
+  onDeshacer,
 }: Props) {
   const { fitView } = useReactFlow();
   const [fullscreen, setFullscreen] = useState(false);
@@ -54,6 +75,11 @@ export function MapaToolbar({
           <span className="font-medium">Mapa procesal</span>
           <span className="text-muted-foreground"> · {casoTitulo}</span>
         </p>
+        {fueroLabel ? (
+          <p className="truncate text-[11px] leading-tight text-muted-foreground">
+            {fueroLabel}
+          </p>
+        ) : null}
       </div>
 
       <Button
@@ -64,6 +90,35 @@ export function MapaToolbar({
         <Crosshair className="size-4" />
         Centrar vista
       </Button>
+      {onDeshacer ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDeshacer}
+          title="Restaura los últimos nodos eliminados"
+        >
+          <Undo2 className="size-4" />
+          <span className="hidden md:inline">Deshacer</span>
+        </Button>
+      ) : null}
+      {onReordenar ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReordenar}
+          disabled={reordenando}
+          title="Re-acomoda todos los nodos con el layout automático (se guarda)"
+        >
+          {reordenando ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Wand2 className="size-4" />
+          )}
+          <span className="hidden md:inline">
+            {reordenando ? "Reordenando..." : "Reordenar"}
+          </span>
+        </Button>
+      ) : null}
       <Button
         variant="ghost"
         size="sm"

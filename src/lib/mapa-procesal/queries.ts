@@ -1,7 +1,9 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
+import { NODE_SEP, RANK_SEP } from "./layout";
 import { generarPlantillaBase } from "./plantilla-base";
-import type { EstadoNodo, NodoProcesalDB } from "./types";
+import { sugerirFuero } from "./sugerir-fuero";
+import type { EstadoNodo, Fuero, NodoProcesalDB } from "./types";
 
 const COLS =
   "id, caso_id, titulo, descripcion, tipo, estado, padre_id, posicion_x, posicion_y, riesgo_alto, metadata, created_at, updated_at";
@@ -24,12 +26,47 @@ export async function casoEsDelUsuario(
   return data !== null;
 }
 
-// Devuelve los nodos del caso, o null si el caso no existe / no es del usuario.
+// Trae id + fuero del caso si es del usuario; null si no existe / no es suyo.
+export async function getCasoConFuero(
+  casoId: string,
+  usuarioId: string,
+): Promise<{ id: string; fuero: Fuero | null } | null> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("casos")
+    .select("id, fuero")
+    .eq("id", casoId)
+    .eq("usuario_id", usuarioId)
+    .maybeSingle();
+  if (error) throw new Error(`getCasoConFuero: ${error.message}`);
+  return data ? (data as { id: string; fuero: Fuero | null }) : null;
+}
+
+// Sugiere un fuero para el caso a partir de contexto.jurisdiccion (respuesta
+// del formulario dinámico) o del relato. Solo tiene sentido cuando el caso aún
+// no tiene fuero persistido. El caller ya verificó ownership.
+export async function sugerirFueroDelCaso(casoId: string): Promise<Fuero | null> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("casos")
+    .select("contexto, caso_descripcion")
+    .eq("id", casoId)
+    .maybeSingle();
+  if (error) throw new Error(`sugerirFueroDelCaso: ${error.message}`);
+  if (!data) return null;
+  return sugerirFuero({
+    contexto: data.contexto as Record<string, unknown> | null,
+    descripcion: (data.caso_descripcion as string | null) ?? null,
+  });
+}
+
+// Devuelve los nodos + fuero del caso, o null si no existe / no es del usuario.
 export async function getNodosByCaso(
   casoId: string,
   usuarioId: string,
-): Promise<NodoProcesalDB[] | null> {
-  if (!(await casoEsDelUsuario(casoId, usuarioId))) return null;
+): Promise<{ nodos: NodoProcesalDB[]; fuero: Fuero | null } | null> {
+  const caso = await getCasoConFuero(casoId, usuarioId);
+  if (!caso) return null;
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("mapa_procesal_nodos")
@@ -37,7 +74,7 @@ export async function getNodosByCaso(
     .eq("caso_id", casoId)
     .order("created_at", { ascending: true });
   if (error) throw new Error(`getNodosByCaso: ${error.message}`);
-  return (data ?? []) as NodoProcesalDB[];
+  return { nodos: (data ?? []) as NodoProcesalDB[], fuero: caso.fuero };
 }
 
 export type InicializarResult =
@@ -48,6 +85,7 @@ export type InicializarResult =
 export async function inicializarMapa(
   casoId: string,
   usuarioId: string,
+  fuero: Fuero,
 ): Promise<InicializarResult> {
   if (!(await casoEsDelUsuario(casoId, usuarioId))) return { status: "not_owned" };
   const supabase = createServerClient();
@@ -59,7 +97,16 @@ export async function inicializarMapa(
   if (cErr) throw new Error(`inicializarMapa count: ${cErr.message}`);
   if ((count ?? 0) > 0) return { status: "already" };
 
-  const plantilla = generarPlantillaBase(casoId);
+  // Persistimos el fuero confirmado por el abogado ANTES de insertar: si el
+  // insert falla, el mapa sigue "sin inicializar" y el fuero queda como
+  // default del próximo intento.
+  const { error: fErr } = await supabase
+    .from("casos")
+    .update({ fuero })
+    .eq("id", casoId);
+  if (fErr) throw new Error(`inicializarMapa fuero: ${fErr.message}`);
+
+  const plantilla = generarPlantillaBase(casoId, fuero);
   const { data, error } = await supabase
     .from("mapa_procesal_nodos")
     .insert(plantilla)
@@ -69,7 +116,9 @@ export async function inicializarMapa(
 }
 
 // Crea un nodo hijo (tipo prediccion, estado desbloqueado). Devuelve null si el
-// caso no es del usuario o el padre no existe en ese caso.
+// caso no es del usuario o el padre no existe en ese caso. La posición se
+// siembra debajo del padre, corrida según cuántos hermanos ya tiene (heurística
+// simple; el abogado lo arrastra o usa "Reordenar" si no le gusta).
 export async function crearNodoHijo(
   casoId: string,
   padreId: string,
@@ -81,12 +130,20 @@ export async function crearNodoHijo(
 
   const { data: padre, error: pErr } = await supabase
     .from("mapa_procesal_nodos")
-    .select("id")
+    .select("id, posicion_x, posicion_y")
     .eq("id", padreId)
     .eq("caso_id", casoId)
     .maybeSingle();
   if (pErr) throw new Error(`crearNodoHijo padre: ${pErr.message}`);
   if (!padre) return null;
+  const p = padre as { id: string; posicion_x: number; posicion_y: number };
+
+  const { count: nHermanos, error: hErr } = await supabase
+    .from("mapa_procesal_nodos")
+    .select("id", { count: "exact", head: true })
+    .eq("caso_id", casoId)
+    .eq("padre_id", padreId);
+  if (hErr) throw new Error(`crearNodoHijo hermanos: ${hErr.message}`);
 
   const { data: nodo, error } = await supabase
     .from("mapa_procesal_nodos")
@@ -97,6 +154,8 @@ export async function crearNodoHijo(
       tipo: "prediccion",
       estado: "desbloqueado",
       padre_id: padreId,
+      posicion_x: p.posicion_x + (nHermanos ?? 0) * NODE_SEP,
+      posicion_y: p.posicion_y + RANK_SEP,
     })
     .select(COLS)
     .single();
@@ -104,6 +163,57 @@ export async function crearNodoHijo(
     throw new Error(`crearNodoHijo: ${error?.message ?? "sin fila"}`);
   }
   return nodo as NodoProcesalDB;
+}
+
+// Inserta en batch las ramas propuestas por la simulación IA como hijas del
+// nodo objetivo (tipo prediccion, estado desbloqueado — mismas invariantes que
+// crearNodoHijo). Devuelve null si el caso no es del usuario o el padre no
+// existe. Posiciones: en fila debajo del padre, a continuación de los hermanos
+// existentes ("Reordenar" acomoda la estética).
+export async function crearRamasSimuladas(
+  casoId: string,
+  padreId: string,
+  usuarioId: string,
+  ramas: Array<{ titulo: string; descripcion: string; riesgo_alto: boolean }>,
+): Promise<NodoProcesalDB[] | null> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return null;
+  const supabase = createServerClient();
+
+  const { data: padre, error: pErr } = await supabase
+    .from("mapa_procesal_nodos")
+    .select("id, posicion_x, posicion_y")
+    .eq("id", padreId)
+    .eq("caso_id", casoId)
+    .maybeSingle();
+  if (pErr) throw new Error(`crearRamasSimuladas padre: ${pErr.message}`);
+  if (!padre) return null;
+  const p = padre as { id: string; posicion_x: number; posicion_y: number };
+
+  const { count: nHermanos, error: hErr } = await supabase
+    .from("mapa_procesal_nodos")
+    .select("id", { count: "exact", head: true })
+    .eq("caso_id", casoId)
+    .eq("padre_id", padreId);
+  if (hErr) throw new Error(`crearRamasSimuladas hermanos: ${hErr.message}`);
+
+  const filas = ramas.map((r, i) => ({
+    caso_id: casoId,
+    titulo: r.titulo,
+    descripcion: r.descripcion,
+    tipo: "prediccion" as const,
+    estado: "desbloqueado" as const,
+    padre_id: padreId,
+    riesgo_alto: r.riesgo_alto,
+    posicion_x: p.posicion_x + ((nHermanos ?? 0) + i) * NODE_SEP,
+    posicion_y: p.posicion_y + RANK_SEP,
+  }));
+
+  const { data, error } = await supabase
+    .from("mapa_procesal_nodos")
+    .insert(filas)
+    .select(COLS);
+  if (error) throw new Error(`crearRamasSimuladas: ${error.message}`);
+  return (data ?? []) as NodoProcesalDB[];
 }
 
 // Marca un nodo como ocurrido (tipo real) y desbloquea sus hijos directos
@@ -138,8 +248,9 @@ export async function marcarComoOcurrido(
   return nodo as NodoProcesalDB;
 }
 
-// Edita título/descripción/estado. Si estado === 'ocurrido', delega en
-// marcarComoOcurrido (que además desbloquea hijos). Devuelve null si no aplica.
+// Edita título/descripción/estado/posición. Si estado === 'ocurrido', delega
+// en marcarComoOcurrido (que además desbloquea hijos; en ese caso NO aplica
+// otros campos — la UI nunca los manda juntos). Devuelve null si no aplica.
 export async function actualizarNodo(
   nodoId: string,
   casoId: string,
@@ -149,6 +260,8 @@ export async function actualizarNodo(
     descripcion?: string | null;
     estado?: EstadoNodo;
     riesgo_alto?: boolean;
+    posicion_x?: number;
+    posicion_y?: number;
   },
 ): Promise<NodoProcesalDB | null> {
   if (data.estado === "ocurrido") {
@@ -162,6 +275,8 @@ export async function actualizarNodo(
   if (data.descripcion !== undefined) patch.descripcion = data.descripcion ?? null;
   if (data.estado !== undefined) patch.estado = data.estado;
   if (data.riesgo_alto !== undefined) patch.riesgo_alto = data.riesgo_alto;
+  if (data.posicion_x !== undefined) patch.posicion_x = data.posicion_x;
+  if (data.posicion_y !== undefined) patch.posicion_y = data.posicion_y;
 
   const { data: nodo, error } = await supabase
     .from("mapa_procesal_nodos")
@@ -172,6 +287,38 @@ export async function actualizarNodo(
     .maybeSingle();
   if (error) throw new Error(`actualizarNodo: ${error.message}`);
   return nodo ? (nodo as NodoProcesalDB) : null;
+}
+
+// Actualiza posiciones en batch (siembra de mapas pre-Fase E y "Reordenar").
+// Devuelve false si el caso no es del usuario. Los ids se scopean por caso_id
+// en cada update, así ids ajenos simplemente no matchean fila.
+export async function actualizarPosiciones(
+  casoId: string,
+  usuarioId: string,
+  posiciones: Array<{ id: string; posicion_x: number; posicion_y: number }>,
+): Promise<boolean> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return false;
+  const supabase = createServerClient();
+  const ahora = new Date().toISOString();
+
+  const resultados = await Promise.all(
+    posiciones.map((p) =>
+      supabase
+        .from("mapa_procesal_nodos")
+        .update({
+          posicion_x: p.posicion_x,
+          posicion_y: p.posicion_y,
+          updated_at: ahora,
+        })
+        .eq("id", p.id)
+        .eq("caso_id", casoId),
+    ),
+  );
+  const conError = resultados.find((r) => r.error);
+  if (conError?.error) {
+    throw new Error(`actualizarPosiciones: ${conError.error.message}`);
+  }
+  return true;
 }
 
 export type EliminarResult =
@@ -209,9 +356,66 @@ export async function eliminarNodo(
   return { status: "ok" };
 }
 
-export type ReiniciarResult =
+export type RestaurarResult =
   | { status: "ok"; nodos: NodoProcesalDB[] }
-  | { status: "not_owned" };
+  | { status: "not_owned" }
+  // Algún padre externo al batch ya no existe en el caso (p. ej. se borró
+  // después): no se puede restaurar sin dejar huérfanos.
+  | { status: "padre_faltante" };
+
+// Re-inserta nodos borrados (deshacer): ids PRESERVADOS para que el subárbol
+// vuelva idéntico (posiciones, estados, jerarquía). Un solo INSERT multi-fila:
+// Postgres valida la self-FK al cierre del statement, así que el orden
+// padre/hijo dentro del batch no importa (mismo patrón que la plantilla).
+export async function restaurarNodos(
+  casoId: string,
+  usuarioId: string,
+  nodos: Array<{
+    id: string;
+    titulo: string;
+    descripcion: string | null;
+    tipo: "real" | "prediccion";
+    estado: EstadoNodo;
+    padre_id: string;
+    riesgo_alto: boolean;
+    posicion_x: number;
+    posicion_y: number;
+  }>,
+): Promise<RestaurarResult> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return { status: "not_owned" };
+  const supabase = createServerClient();
+
+  // Verificar que los padres EXTERNOS al batch sigan existiendo en el caso.
+  const idsBatch = new Set(nodos.map((n) => n.id));
+  const padresExternos = [
+    ...new Set(nodos.map((n) => n.padre_id).filter((p) => !idsBatch.has(p))),
+  ];
+  if (padresExternos.length > 0) {
+    const { data: existentes, error: eErr } = await supabase
+      .from("mapa_procesal_nodos")
+      .select("id")
+      .eq("caso_id", casoId)
+      .in("id", padresExternos);
+    if (eErr) throw new Error(`restaurarNodos padres: ${eErr.message}`);
+    if ((existentes ?? []).length !== padresExternos.length) {
+      return { status: "padre_faltante" };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("mapa_procesal_nodos")
+    .insert(nodos.map((n) => ({ ...n, caso_id: casoId })))
+    .select(COLS);
+  if (error) throw new Error(`restaurarNodos insert: ${error.message}`);
+  return { status: "ok", nodos: (data ?? []) as NodoProcesalDB[] };
+}
+
+export type ReiniciarResult =
+  | { status: "ok"; nodos: NodoProcesalDB[]; fuero: Fuero }
+  | { status: "not_owned" }
+  // El caso no tiene fuero guardado (mapa anterior a Fase A) y el PUT no trajo
+  // uno: el caller debe pedir el fuero explícito.
+  | { status: "sin_fuero" };
 
 // Borra TODOS los nodos del caso y reinstancia la plantilla base actual. Sirve
 // para que un mapa viejo (template anterior) pase al flujo nuevo sin crear un
@@ -230,9 +434,23 @@ export type ReiniciarResult =
 export async function reiniciarMapa(
   casoId: string,
   usuarioId: string,
+  // Override opcional: permite reiniciar con OTRO fuero (caso "me equivoqué de
+  // fuero") y resuelve los mapas anteriores a Fase A con casos.fuero NULL.
+  fueroOverride?: Fuero,
 ): Promise<ReiniciarResult> {
-  if (!(await casoEsDelUsuario(casoId, usuarioId))) return { status: "not_owned" };
+  const caso = await getCasoConFuero(casoId, usuarioId);
+  if (!caso) return { status: "not_owned" };
+  const fuero = fueroOverride ?? caso.fuero;
+  if (!fuero) return { status: "sin_fuero" };
   const supabase = createServerClient();
+
+  if (fuero !== caso.fuero) {
+    const { error: fErr } = await supabase
+      .from("casos")
+      .update({ fuero })
+      .eq("id", casoId);
+    if (fErr) throw new Error(`reiniciarMapa fuero: ${fErr.message}`);
+  }
 
   const { error: delErr } = await supabase
     .from("mapa_procesal_nodos")
@@ -240,11 +458,11 @@ export async function reiniciarMapa(
     .eq("caso_id", casoId);
   if (delErr) throw new Error(`reiniciarMapa delete: ${delErr.message}`);
 
-  const plantilla = generarPlantillaBase(casoId);
+  const plantilla = generarPlantillaBase(casoId, fuero);
   const { data, error } = await supabase
     .from("mapa_procesal_nodos")
     .insert(plantilla)
     .select(COLS);
   if (error) throw new Error(`reiniciarMapa insert: ${error.message}`);
-  return { status: "ok", nodos: (data ?? []) as NodoProcesalDB[] };
+  return { status: "ok", nodos: (data ?? []) as NodoProcesalDB[], fuero };
 }

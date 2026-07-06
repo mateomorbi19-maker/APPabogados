@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Loader2, Plus, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Loader2,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -36,6 +44,8 @@ type Props = {
   onMarcarOcurrido: (id: string) => Promise<void>;
   onToggleRiesgo: (id: string, value: boolean) => Promise<void>;
   onAgregarHijo: (id: string) => void;
+  // Simula con IA las ramas hijas más probables de este nodo (Fase C).
+  onSimular: (id: string) => Promise<void>;
   onEditar: (
     id: string,
     data: { titulo?: string; descripcion?: string | null },
@@ -51,6 +61,7 @@ export function NodoDetailPanel({
   onMarcarOcurrido,
   onToggleRiesgo,
   onAgregarHijo,
+  onSimular,
   onEditar,
   onEliminar,
 }: Props) {
@@ -62,6 +73,7 @@ export function NodoDetailPanel({
   const [togglingRiesgo, setTogglingRiesgo] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [simulando, setSimulando] = useState(false);
 
   // Reset al cambiar de nodo.
   useEffect(() => {
@@ -116,6 +128,16 @@ export function NodoDetailPanel({
       await onEliminar(nodo.id);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const simular = async () => {
+    if (simulando) return;
+    setSimulando(true);
+    try {
+      await onSimular(nodo.id);
+    } finally {
+      setSimulando(false);
     }
   };
 
@@ -210,6 +232,22 @@ export function NodoDetailPanel({
             <AlertTriangle className="size-4" />
           )}
           {nodo.riesgo_alto ? "Quitar riesgo alto" : "Marcar riesgo alto"}
+        </Button>
+
+        {/* Simulación IA (Fase C): propone ramas hijas 'predicción' según el
+            fuero y los hechos del caso. Tarda 10-30s (single-shot al modelo). */}
+        <Button
+          size="sm"
+          onClick={simular}
+          disabled={simulando}
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          {simulando ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Sparkles className="size-4" />
+          )}
+          {simulando ? "Simulando..." : "Simular con IA"}
         </Button>
 
         <Button
