@@ -21,10 +21,13 @@ export function MapaMinimap() {
     <MiniMap
       nodeColor={colorNodo}
       nodeStrokeWidth={2}
-      maskColor="rgba(10,14,23,0.65)"
+      // Vidrio oscuro + rect del viewport en violeta (v3).
+      maskColor="rgba(8,8,12,0.6)"
+      maskStrokeColor="#a78bfa"
+      maskStrokeWidth={2}
       pannable
       zoomable
-      className="!rounded-lg !border !border-border !bg-card"
+      className="!rounded-xl !border !border-[var(--el-glass-border)] !bg-[var(--el-glass)] !backdrop-blur-md"
     />
   );
 }

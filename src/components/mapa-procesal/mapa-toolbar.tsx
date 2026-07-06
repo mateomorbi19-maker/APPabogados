@@ -61,7 +61,7 @@ export function MapaToolbar({
   };
 
   return (
-    <header className="flex items-center gap-3 border-b border-border bg-card/80 px-4 py-2 backdrop-blur">
+    <header className="flex items-center gap-3 border-b border-[var(--el-glass-border)] bg-[var(--el-glass)] px-4 py-2 backdrop-blur-xl">
       <Link
         href={`/dashboard/mis-casos/${casoId}`}
         className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}

@@ -110,6 +110,12 @@
   --el-violet-light: #a78bfa; /* links "Ver todos" / "Legal" del logo */
   --el-cta: #7c5cfc; /* card "Analizar un caso nuevo" */
 
+  /* Vidrio (v3 "dossier holográfico") — chrome flotante del mapa: toolbar,
+     controles de zoom, minimap, paneles. */
+  --el-glass: rgba(20, 20, 29, 0.74);
+  --el-glass-border: rgba(255, 255, 255, 0.09);
+  --el-glass-border-hover: rgba(167, 139, 250, 0.35);
+
   /* Mapa procesal — acentos por estado del nodo (rediseño visual jun 2026).
      Centralizados acá para iterar rápido los tonos. Calibrados para contrastar
      sobre el canvas #08080c y convivir con el violeta de marca #a78bfa. La
@@ -121,11 +127,11 @@
   --el-estado-riesgo: #f87171; /* rojo — Riesgo alto */
   /* Color de ícono y label por estado (paleta completa del prototipo v2). El
      relleno/borde/glow de cada orbe vive en las clases .el-orb-* más abajo. */
-  --el-estado-ejecutada-icon: #6ee7b7;
+  --el-estado-ejecutada-icon: #a7f3d0;
   --el-estado-ejecutada-label: #a7f3d0;
   --el-estado-posible-icon: #93b4e8;
   --el-estado-posible-label: #8fa3c4;
-  --el-estado-decision-icon: #fcd34d;
+  --el-estado-decision-icon: #fde68a;
   --el-estado-decision-label: #fcd34d;
   --el-estado-riesgo-icon: #fca5a5;
   --el-estado-riesgo-label: #fca5a5;
@@ -165,62 +171,122 @@
 }
 
 /* ===========================================================================
-   Mapa procesal — tratamiento visual v2 (presencia y vida). Glows intensos y
-   multicapa, pulsos perceptibles en decisión/riesgo, flujo de energía en las
-   conexiones, partículas de fondo. Valores calcados de un prototipo aprobado.
-   Todo centralizado acá (relleno/borde/glow por estado en .el-orb-*; una
-   animación por estado) para ajustar fino. Las animaciones se apagan con
-   prefers-reduced-motion (Fase 6). La selección del nodo usa `outline` (no
-   box-shadow), así no compite con el glow.
+   Mapa procesal — tratamiento visual v3 "dossier holográfico". Orbes
+   DIMENSIONALES (plataforma difuminada debajo + relleno radial con fuente de
+   luz arriba-izq + rim inset + glow) apoyados en una superficie; motion CON
+   significado (pulso solo en decisión/riesgo, energía solo en caminos vivos);
+   chrome (zoom/selección/minimap) a vidrio. El color de ESTADO vive en el orbe;
+   el color de ETAPA se movió a los carriles de fondo (mapa-lanes.tsx). La clase
+   de estado va en el WRAPPER del nodo (.el-node-*) para estilar orbe +
+   plataforma juntos. La derivación estado→categoría y su precedencia NO viven
+   acá (están en layout.ts). La selección del nodo usa `outline` (no box-shadow),
+   así no compite con el glow.
    =========================================================================== */
 
 @layer components {
-  /* Ejecutada — encendida, consolidada. */
-  .el-orb-ejecutada {
-    background: radial-gradient(circle at 50% 38%, #0b5a43 0%, #073d2e 75%);
-    border: 2px solid #34d399;
-    box-shadow:
-      0 0 0 1px rgba(52, 211, 153, 0.4),
-      0 0 22px rgba(52, 211, 153, 0.55),
-      0 0 46px rgba(52, 211, 153, 0.28),
-      inset 0 0 18px rgba(52, 211, 153, 0.25);
+  /* Orbe: transición base. Relleno/borde/glow lo pone la clase de estado. */
+  .el-orb {
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.25s ease,
+      opacity 0.25s ease;
+  }
+  .el-node:hover .el-orb {
+    transform: translateY(-1px) scale(1.04);
   }
 
-  /* Posible — latente, fantasmal (sin halo externo, opacidad baja). */
-  .el-orb-posible {
-    background: radial-gradient(circle at 50% 38%, #1c1c28 0%, #14141c 80%);
-    border: 1.5px solid rgba(96, 165, 250, 0.4);
-    box-shadow: inset 0 0 14px rgba(96, 165, 250, 0.08);
-    opacity: 0.52;
-  }
-  .el-orb-posible:hover {
-    opacity: 0.85;
+  /* Plataforma difuminada bajo el orbe → sensación 3D de "apoyado". El tinte lo
+     pone la clase de estado (.el-node-* .el-platform). */
+  .el-platform {
+    filter: blur(7px);
   }
 
-  /* Decisión pendiente — llama la atención, pulsa (ámbar). El box-shadow base
-     es el estado 0%/100% del pulso (sirve de fallback con reduced-motion). */
-  .el-orb-decision {
-    background: radial-gradient(circle at 50% 38%, #5a4410 0%, #3d2e07 78%);
-    border: 2px solid #fbbf24;
+  /* Highlight glossy arriba-izquierda del orbe. */
+  .el-specular {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(255, 255, 255, 0.4),
+      transparent 70%
+    );
+  }
+
+  /* Codificación redundante (no depender solo del matiz): aro de "encrucijada"
+     (decisión) y retícula rotante (riesgo). */
+  .el-fork-ring {
+    border: 1.5px dashed rgba(251, 191, 36, 0.5);
+  }
+  .el-reticle {
+    border: 1.5px dashed rgba(248, 113, 113, 0.55);
+    animation: el-spin 9s linear infinite;
+  }
+
+  /* ---- EJECUTADA (verde, sólida, estática) ---- */
+  .el-node-ejecutada .el-orb {
+    background: radial-gradient(circle at 34% 28%, #16a578, #0d6b4f 52%, #073d2e);
     box-shadow:
-      0 0 0 1px rgba(251, 191, 36, 0.4),
-      0 0 20px rgba(251, 191, 36, 0.5),
-      0 0 38px rgba(251, 191, 36, 0.25);
+      inset 0 0 0 2px #6ee7b7,
+      0 0 24px rgba(52, 211, 153, 0.5),
+      0 0 54px rgba(52, 211, 153, 0.2);
+  }
+  .el-node-ejecutada .el-platform {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(52, 211, 153, 0.35),
+      transparent 70%
+    );
+  }
+
+  /* ---- POSIBLE (azul latente, fantasmal, estática) ---- */
+  .el-node-posible .el-orb {
+    background: radial-gradient(circle at 34% 28%, #26262f, #1a1a24 55%, #131019);
+    box-shadow: inset 0 0 0 1.5px rgba(96, 165, 250, 0.42);
+    opacity: 0.5;
+  }
+  .el-node-posible:hover .el-orb {
+    opacity: 0.9;
+  }
+  .el-node-posible .el-platform {
+    opacity: 0.18;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(96, 165, 250, 0.28),
+      transparent 70%
+    );
+  }
+
+  /* ---- DECISIÓN (ámbar, pulsa). box-shadow base = fallback reduced-motion ---- */
+  .el-node-decision .el-orb {
+    background: radial-gradient(circle at 34% 28%, #8a6716, #5a4410 55%, #3d2e07);
+    box-shadow:
+      inset 0 0 0 2px #fde68a,
+      0 0 18px rgba(251, 191, 36, 0.32);
     animation: el-pulse-amber 2.1s ease-in-out infinite;
   }
-
-  /* Riesgo alto — alerta (rojo), pulso más rápido. */
-  .el-orb-riesgo {
-    background: radial-gradient(circle at 50% 38%, #5a1818 0%, #3d0e0e 78%);
-    border: 2px solid #f87171;
-    box-shadow:
-      0 0 0 1px rgba(248, 113, 113, 0.45),
-      0 0 20px rgba(248, 113, 113, 0.5),
-      0 0 38px rgba(248, 113, 113, 0.25);
-    animation: el-pulse-red 1.7s ease-in-out infinite;
+  .el-node-decision .el-platform {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(251, 191, 36, 0.3),
+      transparent 70%
+    );
   }
 
-  /* Path de "flujo" de las conexiones: energía bajando por la línea. */
+  /* ---- RIESGO (rojo, pulso más rápido + retícula) ---- */
+  .el-node-riesgo .el-orb {
+    background: radial-gradient(circle at 34% 28%, #8a2626, #5a1818 55%, #3d0e0e);
+    box-shadow:
+      inset 0 0 0 2px #fca5a5,
+      0 0 20px rgba(248, 113, 113, 0.4);
+    animation: el-pulse-red 1.7s ease-in-out infinite;
+  }
+  .el-node-riesgo .el-platform {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(248, 113, 113, 0.4),
+      transparent 70%
+    );
+  }
+
+  /* Path de "flujo" de las conexiones: energía bajando (solo en caminos vivos). */
   .el-edge-flujo {
     animation: el-edge-dash 0.9s linear infinite;
   }
@@ -232,41 +298,42 @@
   }
 }
 
-/* Keyframes fuera de @layer (las animaciones ganan sobre la declaración normal
-   de box-shadow mientras corren, sin importar la capa). */
+/* Keyframes fuera de @layer (ganan sobre la declaración normal de box-shadow
+   mientras corren). */
 @keyframes el-pulse-amber {
   0%,
   100% {
     box-shadow:
-      0 0 0 1px rgba(251, 191, 36, 0.4),
-      0 0 20px rgba(251, 191, 36, 0.5),
-      0 0 38px rgba(251, 191, 36, 0.25);
+      inset 0 0 0 2px #fde68a,
+      0 0 18px rgba(251, 191, 36, 0.32);
   }
   50% {
     box-shadow:
-      0 0 0 1px rgba(251, 191, 36, 0.6),
-      0 0 34px rgba(251, 191, 36, 0.85),
-      0 0 64px rgba(251, 191, 36, 0.45);
+      inset 0 0 0 2px #fde68a,
+      0 0 30px rgba(251, 191, 36, 0.55);
   }
 }
 @keyframes el-pulse-red {
   0%,
   100% {
     box-shadow:
-      0 0 0 1px rgba(248, 113, 113, 0.45),
-      0 0 20px rgba(248, 113, 113, 0.5),
-      0 0 38px rgba(248, 113, 113, 0.25);
+      inset 0 0 0 2px #fca5a5,
+      0 0 20px rgba(248, 113, 113, 0.4);
   }
   50% {
     box-shadow:
-      0 0 0 1px rgba(248, 113, 113, 0.7),
-      0 0 34px rgba(248, 113, 113, 0.9),
-      0 0 66px rgba(248, 113, 113, 0.5);
+      inset 0 0 0 2px #fca5a5,
+      0 0 34px rgba(248, 113, 113, 0.65);
+  }
+}
+@keyframes el-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 @keyframes el-edge-dash {
   to {
-    stroke-dashoffset: -24;
+    stroke-dashoffset: -96;
   }
 }
 @keyframes el-particula-float {
@@ -278,19 +345,57 @@
     opacity: 0.5;
   }
   100% {
-    transform: translateY(-90px);
+    transform: translateY(-100px);
     opacity: 0;
   }
 }
 
+/* Chrome de React Flow re-estilado a vidrio (v3): el default de la librería
+   (Controls, caja de selección) desentonaba. El MiniMap se estila por props en
+   mapa-minimap.tsx. */
+.react-flow__controls {
+  background: var(--el-glass);
+  border: 1px solid var(--el-glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+.react-flow__controls-button {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--el-text-soft);
+}
+.react-flow__controls-button:hover {
+  background: rgba(167, 139, 250, 0.14);
+  color: var(--el-violet-light);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+.react-flow__selection {
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid var(--el-violet-light);
+}
+.react-flow__nodesselection-rect {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid var(--el-violet-light);
+}
+
 /* Fase 6 — accesibilidad de movimiento: apagar TODAS las animaciones del mapa
-   (pulsos de decisión/riesgo, flujo de conexiones, partículas) si se pidió.
-   Los orbes con pulso conservan su box-shadow base (glow estático). */
+   (pulsos, retícula, flujo de conexiones, partículas). Los orbes conservan su
+   box-shadow base (glow estático); el flujo baja su opacidad. */
 @media (prefers-reduced-motion: reduce) {
-  .el-orb-decision,
-  .el-orb-riesgo,
-  .el-edge-flujo,
+  .el-node-decision .el-orb,
+  .el-node-riesgo .el-orb,
+  .el-reticle,
   .el-particula {
     animation: none;
+  }
+  .el-edge-flujo {
+    animation: none;
+    opacity: 0.55;
   }
 }

@@ -1,21 +1,22 @@
 "use client";
 import { type CSSProperties } from "react";
 
-// Overlay de 18 partículas (violeta de marca) flotando hacia arriba con fade,
-// para dar profundidad al fondo del canvas. Va ENTRE el fondo y los nodos
-// (z-0, pointer-events-none). La animación (.el-particula) se apaga con
+// Overlay de 9 partículas (violeta de marca) flotando hacia arriba con fade,
+// para dar profundidad al fondo del canvas — atmósfera, no protagonismo (v3:
+// bajadas de 18 a 9 y más lentas). Va ENTRE el fondo y los nodos (z-0,
+// pointer-events-none). La animación (.el-particula) se apaga con
 // prefers-reduced-motion.
 //
 // Posiciones/duraciones/delays son pseudo-aleatorios DETERMINÍSTICOS (derivados
 // del índice con offsets tipo golden-ratio): se ven dispersos pero son iguales
 // en server y cliente, así que no hace falta useEffect ni hay hydration
 // mismatch (y nada de Math.random en render).
-const PARTICULAS = Array.from({ length: 18 }, (_, i) => ({
+const PARTICULAS = Array.from({ length: 9 }, (_, i) => ({
   id: i,
   left: (i * 61.8 + 9) % 100, // %
   bottom: (i * 38.2 + 13) % 100, // %
-  dur: 5 + (i % 7), // 5–11s
-  delay: ((i * 11) % 80) / 10, // 0–7.9s
+  dur: 6 + (i % 7), // 6–12s
+  delay: ((i * 13) % 80) / 10, // 0–7.9s
 }));
 
 export function ParticlesOverlay() {

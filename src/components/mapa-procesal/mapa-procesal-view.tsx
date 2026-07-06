@@ -34,6 +34,7 @@ import {
   calcularLayout,
   calcularPosiciones,
   type EdgeFlow,
+  type Lane,
   type NodoFlow,
 } from "@/lib/mapa-procesal/layout";
 import {
@@ -46,6 +47,7 @@ import { NodoProcesal } from "./nodo-procesal";
 import { EdgeProcesal } from "./edge-procesal";
 import { MapaToolbar } from "./mapa-toolbar";
 import { MapaMinimap } from "./mapa-minimap";
+import { MapaLanes } from "./mapa-lanes";
 import { NodoDetailPanel } from "./nodo-detail-panel";
 import { ParticlesOverlay } from "./particles-overlay";
 
@@ -53,7 +55,7 @@ import { ParticlesOverlay } from "./particles-overlay";
 // oscureciendo a los bordes). El ReactFlow va transparente por encima, y las
 // partículas quedan ENTRE este fondo y los nodos.
 const FONDO_CANVAS =
-  "radial-gradient(ellipse 70% 55% at 50% 38%, #12121c 0%, #0a0a10 55%, #08080c 100%)";
+  "radial-gradient(ellipse 72% 56% at 50% 34%, #12121c 0%, #0a0a10 55%, #08080c 100%)";
 
 // nodeTypes/edgeTypes a scope de módulo: si se recrean por render, ReactFlow
 // re-monta los componentes (warning + jank).
@@ -105,6 +107,9 @@ function MapaInner({ casoId, casoTitulo }: Props) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodoFlow>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<EdgeFlow>([]);
+  // Carriles de etapa (v3): capa de fondo derivada del layout, sincronizada al
+  // viewport. Se recalcula junto con nodes/edges cuando cambian los nodos.
+  const [lanes, setLanes] = useState<Lane[]>([]);
 
   // === Pan estilo n8n: Ctrl + click izquierdo arrastra el tablero ===
   // xyflow FILTRA ctrl+mousedown en su motor interno de zoom/pan (lo reserva
@@ -250,9 +255,10 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   // Re-layout cuando cambian los nodos de la DB.
   useEffect(() => {
     if (estado.status === "ready") {
-      const { nodes: n, edges: e } = calcularLayout(estado.nodos);
+      const { nodes: n, edges: e, lanes: l } = calcularLayout(estado.nodos);
       setNodes(n);
       setEdges(e);
+      setLanes(l);
     }
   }, [estado, setNodes, setEdges]);
 
@@ -781,9 +787,10 @@ function MapaInner({ casoId, casoTitulo }: Props) {
                 ReactFlow va transparente por encima para dejarlas ver. */}
             <ParticlesOverlay />
             {/* Wrapper del pan Ctrl+arrastre: captura el gesto ANTES de que
-                el pane de ReactFlow abra la caja de selección. */}
+                el pane de ReactFlow abra la caja de selección. `relative` para
+                anclar la capa de carriles (que va detrás del ReactFlow). */}
             <div
-              className="h-full w-full"
+              className="relative h-full w-full"
               style={{
                 cursor: panning ? "grabbing" : ctrlDown ? "grab" : undefined,
               }}
@@ -798,6 +805,9 @@ function MapaInner({ casoId, casoTitulo }: Props) {
               onPointerUp={onPanEnd}
               onPointerCancel={onPanEnd}
             >
+              {/* Carriles de etapa: detrás del ReactFlow (transparente), sobre
+                  el fondo y las partículas. Sincronizados al viewport. */}
+              <MapaLanes lanes={lanes} />
               <ReactFlow<NodoFlow, EdgeFlow>
                 nodes={nodes}
                 edges={edges}
@@ -832,7 +842,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
                   variant={BackgroundVariant.Dots}
                   gap={24}
                   size={1}
-                  color="rgba(255,255,255,0.035)"
+                  color="rgba(255,255,255,0.04)"
                 />
                 <Controls />
                 <MapaMinimap />

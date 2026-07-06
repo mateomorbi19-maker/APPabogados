@@ -1,8 +1,9 @@
 // Fase D: color por ETAPA (las 6 macro-fases del proceso, comunes a los 3
 // fueros). Es un canal visual SEPARADO del color de estado (que sigue mandando
-// en el orbe: ejecutada/riesgo/decisión/posible) — la etapa se muestra como
-// chip numerado. Paleta tomada del HTML federal de referencia, adaptada al
-// tema dark.
+// en el orbe: ejecutada/riesgo/decisión/posible). En la v3 "dossier
+// holográfico" la etapa se muestra como CARRIL de fondo (ver ETAPA_RGB +
+// mapa-lanes.tsx), no como chip sobre el nodo. Paleta de carriles: azul (arriba)
+// a violeta (abajo).
 //
 // La etapa de un nodo NO se persiste: se deriva en el layout. Los títulos
 // "ancla" de abajo (las etapas troncales de FLUJO_POR_FUERO) fijan la fase;
@@ -21,6 +22,20 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
   6: "Ejecución",
 };
 
+// v3 — tinte RGB de cada carril de fondo (banda + chip del label). Gradiente
+// azul→violeta de arriba (fase 1) hacia abajo (fase 6). Se consume como
+// `rgba(${ETAPA_RGB[e]}, ...)` en mapa-lanes.tsx.
+export const ETAPA_RGB: Record<Etapa, string> = {
+  1: "59,74,107", // Inicio del proceso
+  2: "63,106,168", // Investigación
+  3: "91,111,176", // Etapa intermedia
+  4: "115,96,184", // Juicio
+  5: "139,92,246", // Recursos e impugnaciones
+  6: "167,139,250", // Ejecución
+};
+
+// Legacy v2 (chip numerado sobre el nodo). Reemplazado por los carriles en v3;
+// se conserva por si algún consumidor lo necesita.
 export const ETAPA_COLOR: Record<Etapa, string> = {
   1: "#d4553e", // rojo ladrillo
   2: "#4a7fb5", // azul

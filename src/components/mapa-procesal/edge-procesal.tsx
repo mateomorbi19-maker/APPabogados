@@ -2,11 +2,15 @@
 import { getBezierPath, type EdgeProps } from "@xyflow/react";
 import type { Categoria, EdgeFlow } from "@/lib/mapa-procesal/layout";
 
-// Conexión con "energía fluyendo": dos paths sobre el mismo trazado —
+// Conexión con estado (v3): el color es un gradiente userSpaceOnUse del color
+// del estado del nodo ORIGEN al del DESTINO (nunca gris plano). Trazos:
 //   • halo: ancho, translúcido, estático.
-//   • flujo: fino, punteado, con dash animado (energía bajando por la línea).
-// El color es un gradiente userSpaceOnUse del color del estado del nodo ORIGEN
-// al del nodo DESTINO. Hacia nodos bloqueados (mapas viejos): gris punteado.
+//   • core: fino, sólido con el degradé — la línea principal. Entre dos
+//     ejecutadas (el "tronco real recorrido") va un toque más brillante.
+//   • flujo: SOLO en caminos vivos (destino = decisión o riesgo) — punteado con
+//     dash animado (energía bajando). Los caminos hacia posible/ejecutada van
+//     sólidos y quietos: el motion queda reservado para lo que todavía está en
+//     juego. Hacia nodos bloqueados (mapas viejos): gris punteado, sin energía.
 const COLOR_ESTADO: Record<Categoria, string> = {
   ejecutada: "#34d399",
   posible: "#60a5fa",
@@ -51,6 +55,10 @@ export function EdgeProcesal({
   const catTarget: Categoria = data?.categoriaTarget ?? "posible";
   // Gradiente único por edge (id del edge), entre los extremos del trazado.
   const gradId = `el-edge-grad-${id}`;
+  // Energía animada SOLO si el destino sigue "en juego" (decisión o riesgo).
+  const esVivo = catTarget === "decision" || catTarget === "riesgo";
+  // Tronco real recorrido (ejecutada→ejecutada): core más brillante.
+  const esTronco = catSource === "ejecutada" && catTarget === "ejecutada";
 
   return (
     <>
@@ -75,21 +83,33 @@ export function EdgeProcesal({
         stroke={`url(#${gradId})`}
         strokeWidth={6}
         strokeLinecap="round"
-        style={{ opacity: 0.2 }}
+        style={{ opacity: 0.18 }}
       />
 
-      {/* Flujo: fino, punteado, con dash animado (energía bajando). */}
+      {/* Core: la línea principal, sólida con el degradé. Lleva la flecha. */}
       <path
         d={path}
         fill="none"
         stroke={`url(#${gradId})`}
-        strokeWidth={2}
+        strokeWidth={esTronco ? 2.6 : 2}
         strokeLinecap="round"
-        strokeDasharray="5 7"
         markerEnd={markerEnd}
-        className="el-edge-flujo"
-        style={{ opacity: 0.8 }}
+        style={{ opacity: esTronco ? 1 : 0.92 }}
       />
+
+      {/* Flujo: SOLO en caminos vivos — punteado con dash animado (energía). */}
+      {esVivo ? (
+        <path
+          d={path}
+          fill="none"
+          stroke={COLOR_ESTADO[catTarget]}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray="5 7"
+          className="el-edge-flujo"
+          style={{ opacity: 0.85 }}
+        />
+      ) : null}
     </>
   );
 }

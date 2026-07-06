@@ -46,6 +46,75 @@ export type EdgeData = {
 };
 export type EdgeFlow = Edge<EdgeData, "edgeProcesal">;
 
+// v3 — carril de fondo por etapa (macro-fase). Banda horizontal DERIVADA del
+// layout real (no hardcodeada): cubre el rango vertical de los nodos de esa
+// etapa, a lo ancho del grafo. Coordenadas en el espacio del viewport (las
+// mismas que las posiciones de los nodos); mapa-lanes.tsx aplica el transform.
+export type Lane = {
+  etapa: Etapa;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
+const LANE_PAD_Y = 40; // aire vertical arriba/abajo del rango de nodos
+const LANE_PAD_X_LEFT = 220; // margen izquierdo para alojar el label de fase
+const LANE_PAD_X_RIGHT = 120; // margen derecho para el fade del degradé
+
+// Deriva las bandas de etapa a partir de las posiciones ya calculadas. Agrupa
+// por etapa, toma el rango [minY, maxY] de cada grupo (+padding) y clampa
+// solapamientos al punto medio (si un nodo de una fase quedó más abajo que uno
+// de la siguiente). Todas las bandas comparten el ancho del grafo.
+export function calcularLanes(
+  items: Array<{ etapa: Etapa; x: number; y: number; d: number }>,
+): Lane[] {
+  if (items.length === 0) return [];
+
+  const minX = Math.min(...items.map((i) => i.x));
+  const maxX = Math.max(...items.map((i) => i.x + i.d));
+  const left = minX - LANE_PAD_X_LEFT;
+  const width = maxX + LANE_PAD_X_RIGHT - left;
+
+  const porEtapa = new Map<Etapa, { top: number; bottom: number }>();
+  for (const it of items) {
+    const top = it.y;
+    const bottom = it.y + it.d;
+    const cur = porEtapa.get(it.etapa);
+    if (!cur) porEtapa.set(it.etapa, { top, bottom });
+    else {
+      cur.top = Math.min(cur.top, top);
+      cur.bottom = Math.max(cur.bottom, bottom);
+    }
+  }
+
+  const raw = [...porEtapa.entries()]
+    .map(([etapa, r]) => ({
+      etapa,
+      top: r.top - LANE_PAD_Y,
+      bottom: r.bottom + LANE_PAD_Y,
+    }))
+    .sort((a, b) => a.top - b.top);
+
+  // Clamp de solapamientos: si la banda i baja más allá del techo de la i+1,
+  // ambas se encuentran en el punto medio (evita que las bandas se pisen).
+  for (let i = 0; i < raw.length - 1; i++) {
+    if (raw[i].bottom > raw[i + 1].top) {
+      const mid = (raw[i].bottom + raw[i + 1].top) / 2;
+      raw[i].bottom = mid;
+      raw[i + 1].top = mid;
+    }
+  }
+
+  return raw.map((r) => ({
+    etapa: r.etapa,
+    top: r.top,
+    height: r.bottom - r.top,
+    left,
+    width,
+  }));
+}
+
 // Diámetro del nodo según tipo/estado. Compartido entre el layout (alimenta a
 // dagre) y el componente del nodo (tamaño de render) para que coincidan.
 export function diametroNodo(tipo: TipoNodo, estado: EstadoNodo): number {
@@ -100,6 +169,7 @@ export function calcularPosiciones(
 export function calcularLayout(nodos: NodoProcesalDB[]): {
   nodes: NodoFlow[];
   edges: EdgeFlow[];
+  lanes: Lane[];
 } {
   // Posición: la fuente de verdad son posicion_x/posicion_y persistidas
   // ("memoria del mapa" — el mapa queda exactamente como lo dejó el abogado).
@@ -182,9 +252,17 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
     }
   }
 
+  const laneItems: Array<{ etapa: Etapa; x: number; y: number; d: number }> = [];
   const nodes: NodoFlow[] = nodos.map((n) => {
     const position =
       dagrePos?.get(n.id) ?? { x: n.posicion_x, y: n.posicion_y };
+    const etapa = etapaPorId.get(n.id) ?? 1;
+    laneItems.push({
+      etapa,
+      x: position.x,
+      y: position.y,
+      d: diametroNodo(n.tipo, n.estado),
+    });
     return {
       id: n.id,
       type: "nodoProcesal",
@@ -195,10 +273,10 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
         estado: n.estado,
         riesgoAlto: n.riesgo_alto,
         decisionPendiente: decisionPorId.get(n.id) ?? false,
-        etapa: etapaPorId.get(n.id) ?? 1,
+        etapa,
       },
     };
   });
 
-  return { nodes, edges };
+  return { nodes, edges, lanes: calcularLanes(laneItems) };
 }
