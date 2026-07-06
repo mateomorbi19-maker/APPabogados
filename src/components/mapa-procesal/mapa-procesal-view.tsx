@@ -91,6 +91,9 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   const [fueroInit, setFueroInit] = useState<Fuero | null>(null);
   // Fuero del diálogo de reiniciar (default: el fuero actual del caso).
   const [fueroReiniciar, setFueroReiniciar] = useState<Fuero | null>(null);
+  // Sugerencia del server (heurística jurisdicción/relato); pre-carga el
+  // selector y marca la card con el badge "Sugerido". El abogado confirma.
+  const [fueroSugerido, setFueroSugerido] = useState<Fuero | null>(null);
   const [reordenando, setReordenando] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodoFlow>([]);
@@ -105,6 +108,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
             inicializado: boolean;
             nodos: NodoProcesalDB[];
             fuero: Fuero | null;
+            fuero_sugerido: Fuero | null;
           }
         | { ok: false; error?: string }
         | null;
@@ -153,6 +157,15 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         nodos,
         fuero: json.fuero,
       });
+      setFueroSugerido(json.fuero_sugerido ?? null);
+      // Pre-carga del selector de inicialización: fuero guardado > sugerencia.
+      // Functional update para no pisar una elección manual si cargar() se
+      // re-ejecuta (p. ej. tras un error de init).
+      if (!json.inicializado) {
+        setFueroInit(
+          (prev) => prev ?? json.fuero ?? json.fuero_sugerido ?? null,
+        );
+      }
     } catch (e) {
       setEstado({
         status: "error",
@@ -477,7 +490,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         onReiniciar={
           estado.status === "ready" && estado.inicializado
             ? () => {
-                setFueroReiniciar(estado.fuero);
+                setFueroReiniciar(estado.fuero ?? fueroSugerido);
                 setReiniciarOpen(true);
               }
             : undefined
@@ -515,6 +528,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
             <SelectorFuero
               value={fueroInit}
               onChange={setFueroInit}
+              sugerido={fueroSugerido}
               disabled={initializing}
             />
             <Button
@@ -605,6 +619,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
             <SelectorFuero
               value={fueroReiniciar}
               onChange={setFueroReiniciar}
+              sugerido={fueroSugerido}
               disabled={reiniciando}
             />
           </div>
@@ -634,13 +649,16 @@ function MapaInner({ casoId, casoTitulo }: Props) {
 }
 
 // Selector de fuero como cards clickeables (usado en el init y en Reiniciar).
+// `sugerido` marca la opción que la heurística/IA recomendó (badge "Sugerido").
 function SelectorFuero({
   value,
   onChange,
+  sugerido,
   disabled,
 }: {
   value: Fuero | null;
   onChange: (f: Fuero) => void;
+  sugerido?: Fuero | null;
   disabled?: boolean;
 }) {
   return (
@@ -660,13 +678,18 @@ function SelectorFuero({
             disabled={disabled}
             onClick={() => onChange(f)}
             className={cn(
-              "rounded-lg border px-4 py-2.5 text-left text-sm transition-colors disabled:opacity-50",
+              "flex items-center justify-between gap-2 rounded-lg border px-4 py-2.5 text-left text-sm transition-colors disabled:opacity-50",
               selected
                 ? "border-primary bg-primary/10 text-foreground"
                 : "border-border bg-card text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground",
             )}
           >
-            {FUERO_LABEL[f]}
+            <span>{FUERO_LABEL[f]}</span>
+            {sugerido === f ? (
+              <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                Sugerido
+              </span>
+            ) : null}
           </button>
         );
       })}

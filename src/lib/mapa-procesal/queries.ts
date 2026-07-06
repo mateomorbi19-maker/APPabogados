@@ -2,6 +2,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { NODE_SEP, RANK_SEP } from "./layout";
 import { generarPlantillaBase } from "./plantilla-base";
+import { sugerirFuero } from "./sugerir-fuero";
 import type { EstadoNodo, Fuero, NodoProcesalDB } from "./types";
 
 const COLS =
@@ -39,6 +40,24 @@ export async function getCasoConFuero(
     .maybeSingle();
   if (error) throw new Error(`getCasoConFuero: ${error.message}`);
   return data ? (data as { id: string; fuero: Fuero | null }) : null;
+}
+
+// Sugiere un fuero para el caso a partir de contexto.jurisdiccion (respuesta
+// del formulario dinámico) o del relato. Solo tiene sentido cuando el caso aún
+// no tiene fuero persistido. El caller ya verificó ownership.
+export async function sugerirFueroDelCaso(casoId: string): Promise<Fuero | null> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("casos")
+    .select("contexto, caso_descripcion")
+    .eq("id", casoId)
+    .maybeSingle();
+  if (error) throw new Error(`sugerirFueroDelCaso: ${error.message}`);
+  if (!data) return null;
+  return sugerirFuero({
+    contexto: data.contexto as Record<string, unknown> | null,
+    descripcion: (data.caso_descripcion as string | null) ?? null,
+  });
 }
 
 // Devuelve los nodos + fuero del caso, o null si no existe / no es del usuario.

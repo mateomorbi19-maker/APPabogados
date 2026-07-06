@@ -7,6 +7,7 @@ import {
   getNodosByCaso,
   inicializarMapa,
   reiniciarMapa,
+  sugerirFueroDelCaso,
 } from "@/lib/mapa-procesal/queries";
 
 const uuidSchema = z.string().uuid();
@@ -16,7 +17,9 @@ const initBodySchema = z.object({ fuero: fueroSchema });
 const reiniciarBodySchema = z.object({ fuero: fueroSchema.optional() });
 
 // === GET /api/casos/[id]/mapa ===
-// Devuelve los nodos del mapa del caso + flag `inicializado` + `fuero`.
+// Devuelve los nodos del mapa + `inicializado` + `fuero` + `fuero_sugerido`
+// (heurística sobre jurisdicción/relato; solo se calcula si el caso todavía
+// no tiene fuero — es el default del selector, el abogado siempre confirma).
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -29,8 +32,12 @@ export async function GET(
   if (!wl.ok) return jsonResponse({ ok: false, error: wl.message }, wl.status);
 
   let mapa;
+  let fueroSugerido = null;
   try {
     mapa = await getNodosByCaso(id, wl.usuario_id);
+    if (mapa !== null && mapa.fuero === null) {
+      fueroSugerido = await sugerirFueroDelCaso(id);
+    }
   } catch (e) {
     console.error("[GET /api/casos/[id]/mapa] error:", e);
     return jsonResponse(
@@ -51,6 +58,7 @@ export async function GET(
       inicializado: mapa.nodos.length > 0,
       nodos: mapa.nodos,
       fuero: mapa.fuero,
+      fuero_sugerido: fueroSugerido,
     },
     200,
   );
