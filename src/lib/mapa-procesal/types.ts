@@ -73,6 +73,29 @@ export const editarNodoSchema = z.object({
 });
 export type EditarNodoInput = z.infer<typeof editarNodoSchema>;
 
+// === Simulación de ramas con IA (Fase C) ===
+
+// Input del POST /api/casos/[id]/mapa/simular.
+export const simularInputSchema = z.object({
+  nodo_id: z.string().uuid(),
+});
+export type SimularInput = z.infer<typeof simularInputSchema>;
+
+// Output del modelo (validado post-parseo). Entre 2 y 5 ramas hijas.
+export const ramasSimuladasSchema = z.object({
+  ramas: z
+    .array(
+      z.object({
+        titulo: z.string().trim().min(1).max(200),
+        descripcion: z.string().trim().min(1).max(2000),
+        riesgo_alto: z.boolean().default(false),
+      }),
+    )
+    .min(1)
+    .max(5),
+});
+export type RamaSimulada = z.infer<typeof ramasSimuladasSchema>["ramas"][number];
+
 // Batch de posiciones: siembra de mapas pre-Fase E y botón "Reordenar".
 export const posicionesBatchSchema = z.object({
   posiciones: z

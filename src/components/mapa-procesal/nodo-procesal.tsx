@@ -9,7 +9,7 @@ import {
   type Categoria,
   type NodoFlow,
 } from "@/lib/mapa-procesal/layout";
-import { iconoDeNodo } from "@/lib/mapa-procesal/plantilla-base";
+import { iconoDeNodo } from "@/lib/mapa-procesal/iconos";
 
 // ============================================================================
 // TRATAMIENTO VISUAL DEL NODO — v2 (presencia y vida) — ⚠️ PROVISORIO

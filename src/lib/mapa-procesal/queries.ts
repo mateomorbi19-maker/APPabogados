@@ -165,6 +165,57 @@ export async function crearNodoHijo(
   return nodo as NodoProcesalDB;
 }
 
+// Inserta en batch las ramas propuestas por la simulación IA como hijas del
+// nodo objetivo (tipo prediccion, estado desbloqueado — mismas invariantes que
+// crearNodoHijo). Devuelve null si el caso no es del usuario o el padre no
+// existe. Posiciones: en fila debajo del padre, a continuación de los hermanos
+// existentes ("Reordenar" acomoda la estética).
+export async function crearRamasSimuladas(
+  casoId: string,
+  padreId: string,
+  usuarioId: string,
+  ramas: Array<{ titulo: string; descripcion: string; riesgo_alto: boolean }>,
+): Promise<NodoProcesalDB[] | null> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return null;
+  const supabase = createServerClient();
+
+  const { data: padre, error: pErr } = await supabase
+    .from("mapa_procesal_nodos")
+    .select("id, posicion_x, posicion_y")
+    .eq("id", padreId)
+    .eq("caso_id", casoId)
+    .maybeSingle();
+  if (pErr) throw new Error(`crearRamasSimuladas padre: ${pErr.message}`);
+  if (!padre) return null;
+  const p = padre as { id: string; posicion_x: number; posicion_y: number };
+
+  const { count: nHermanos, error: hErr } = await supabase
+    .from("mapa_procesal_nodos")
+    .select("id", { count: "exact", head: true })
+    .eq("caso_id", casoId)
+    .eq("padre_id", padreId);
+  if (hErr) throw new Error(`crearRamasSimuladas hermanos: ${hErr.message}`);
+
+  const filas = ramas.map((r, i) => ({
+    caso_id: casoId,
+    titulo: r.titulo,
+    descripcion: r.descripcion,
+    tipo: "prediccion" as const,
+    estado: "desbloqueado" as const,
+    padre_id: padreId,
+    riesgo_alto: r.riesgo_alto,
+    posicion_x: p.posicion_x + ((nHermanos ?? 0) + i) * NODE_SEP,
+    posicion_y: p.posicion_y + RANK_SEP,
+  }));
+
+  const { data, error } = await supabase
+    .from("mapa_procesal_nodos")
+    .insert(filas)
+    .select(COLS);
+  if (error) throw new Error(`crearRamasSimuladas: ${error.message}`);
+  return (data ?? []) as NodoProcesalDB[];
+}
+
 // Marca un nodo como ocurrido (tipo real) y desbloquea sus hijos directos
 // bloqueados. No toca el nodo raíz (.neq tipo raiz). Devuelve null si no aplica.
 export async function marcarComoOcurrido(

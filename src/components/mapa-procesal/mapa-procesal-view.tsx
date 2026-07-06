@@ -399,6 +399,40 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     [casoId, cargar],
   );
 
+  // Simulación IA (Fase C): POST al endpoint, que llama al modelo y persiste
+  // las ramas como nodos 'prediccion'. La espera se muestra en el botón del
+  // panel (10-30s); al terminar recargamos el mapa completo.
+  const handleSimular = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetch(`/api/casos/${casoId}/mapa/simular`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ nodo_id: id }),
+        });
+        const json = (await res.json().catch(() => null)) as
+          | { ok: true; nodos: NodoProcesalDB[] }
+          | { ok: false; error?: string }
+          | null;
+        if (!res.ok || !json || json.ok === false) {
+          toast.error(
+            json && "error" in json && json.error
+              ? json.error
+              : "No se pudo simular",
+          );
+          return;
+        }
+        toast.success(
+          `La IA propuso ${json.nodos.length} rama${json.nodos.length === 1 ? "" : "s"} posible${json.nodos.length === 1 ? "" : "s"}`,
+        );
+        await cargar();
+      } catch {
+        toast.error("Error de red al simular");
+      }
+    },
+    [casoId, cargar],
+  );
+
   const handleEliminar = useCallback(
     async (id: string) => {
       const res = await fetch(`/api/casos/${casoId}/mapa/nodos/${id}`, {
@@ -585,6 +619,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
                 onMarcarOcurrido={handleMarcarOcurrido}
                 onToggleRiesgo={handleToggleRiesgo}
                 onAgregarHijo={(id) => setCrearParaNodoId(id)}
+                onSimular={handleSimular}
                 onEditar={editarNodo}
                 onEliminar={handleEliminar}
               />
