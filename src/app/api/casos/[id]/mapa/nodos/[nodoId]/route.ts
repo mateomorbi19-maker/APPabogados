@@ -8,7 +8,8 @@ import { actualizarNodo, eliminarNodo } from "@/lib/mapa-procesal/queries";
 const uuidSchema = z.string().uuid();
 
 // === PUT /api/casos/[id]/mapa/nodos/[nodoId] ===
-// Edita título/descripción/estado. estado='ocurrido' desbloquea los hijos.
+// Edita título/descripción/estado/posición. estado='ocurrido' desbloquea los
+// hijos. posicion_x/posicion_y es el auto-guardado del drag (Fase E).
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; nodoId: string }> },
@@ -36,7 +37,9 @@ export async function PUT(
     d.titulo === undefined &&
     d.descripcion === undefined &&
     d.estado === undefined &&
-    d.riesgo_alto === undefined
+    d.riesgo_alto === undefined &&
+    d.posicion_x === undefined &&
+    d.posicion_y === undefined
   ) {
     return jsonResponse({ ok: false, error: "Nada para actualizar" }, 400);
   }
@@ -51,6 +54,8 @@ export async function PUT(
       descripcion: d.descripcion,
       estado: d.estado,
       riesgo_alto: d.riesgo_alto,
+      posicion_x: d.posicion_x,
+      posicion_y: d.posicion_y,
     });
   } catch (e) {
     console.error("[PUT /api/casos/[id]/mapa/nodos/[nodoId]] error:", e);

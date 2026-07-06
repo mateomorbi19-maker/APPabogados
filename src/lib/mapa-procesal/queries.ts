@@ -1,5 +1,6 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
+import { NODE_SEP, RANK_SEP } from "./layout";
 import { generarPlantillaBase } from "./plantilla-base";
 import type { EstadoNodo, Fuero, NodoProcesalDB } from "./types";
 
@@ -96,7 +97,9 @@ export async function inicializarMapa(
 }
 
 // Crea un nodo hijo (tipo prediccion, estado desbloqueado). Devuelve null si el
-// caso no es del usuario o el padre no existe en ese caso.
+// caso no es del usuario o el padre no existe en ese caso. La posición se
+// siembra debajo del padre, corrida según cuántos hermanos ya tiene (heurística
+// simple; el abogado lo arrastra o usa "Reordenar" si no le gusta).
 export async function crearNodoHijo(
   casoId: string,
   padreId: string,
@@ -108,12 +111,20 @@ export async function crearNodoHijo(
 
   const { data: padre, error: pErr } = await supabase
     .from("mapa_procesal_nodos")
-    .select("id")
+    .select("id, posicion_x, posicion_y")
     .eq("id", padreId)
     .eq("caso_id", casoId)
     .maybeSingle();
   if (pErr) throw new Error(`crearNodoHijo padre: ${pErr.message}`);
   if (!padre) return null;
+  const p = padre as { id: string; posicion_x: number; posicion_y: number };
+
+  const { count: nHermanos, error: hErr } = await supabase
+    .from("mapa_procesal_nodos")
+    .select("id", { count: "exact", head: true })
+    .eq("caso_id", casoId)
+    .eq("padre_id", padreId);
+  if (hErr) throw new Error(`crearNodoHijo hermanos: ${hErr.message}`);
 
   const { data: nodo, error } = await supabase
     .from("mapa_procesal_nodos")
@@ -124,6 +135,8 @@ export async function crearNodoHijo(
       tipo: "prediccion",
       estado: "desbloqueado",
       padre_id: padreId,
+      posicion_x: p.posicion_x + (nHermanos ?? 0) * NODE_SEP,
+      posicion_y: p.posicion_y + RANK_SEP,
     })
     .select(COLS)
     .single();
@@ -165,8 +178,9 @@ export async function marcarComoOcurrido(
   return nodo as NodoProcesalDB;
 }
 
-// Edita título/descripción/estado. Si estado === 'ocurrido', delega en
-// marcarComoOcurrido (que además desbloquea hijos). Devuelve null si no aplica.
+// Edita título/descripción/estado/posición. Si estado === 'ocurrido', delega
+// en marcarComoOcurrido (que además desbloquea hijos; en ese caso NO aplica
+// otros campos — la UI nunca los manda juntos). Devuelve null si no aplica.
 export async function actualizarNodo(
   nodoId: string,
   casoId: string,
@@ -176,6 +190,8 @@ export async function actualizarNodo(
     descripcion?: string | null;
     estado?: EstadoNodo;
     riesgo_alto?: boolean;
+    posicion_x?: number;
+    posicion_y?: number;
   },
 ): Promise<NodoProcesalDB | null> {
   if (data.estado === "ocurrido") {
@@ -189,6 +205,8 @@ export async function actualizarNodo(
   if (data.descripcion !== undefined) patch.descripcion = data.descripcion ?? null;
   if (data.estado !== undefined) patch.estado = data.estado;
   if (data.riesgo_alto !== undefined) patch.riesgo_alto = data.riesgo_alto;
+  if (data.posicion_x !== undefined) patch.posicion_x = data.posicion_x;
+  if (data.posicion_y !== undefined) patch.posicion_y = data.posicion_y;
 
   const { data: nodo, error } = await supabase
     .from("mapa_procesal_nodos")
@@ -199,6 +217,38 @@ export async function actualizarNodo(
     .maybeSingle();
   if (error) throw new Error(`actualizarNodo: ${error.message}`);
   return nodo ? (nodo as NodoProcesalDB) : null;
+}
+
+// Actualiza posiciones en batch (siembra de mapas pre-Fase E y "Reordenar").
+// Devuelve false si el caso no es del usuario. Los ids se scopean por caso_id
+// en cada update, así ids ajenos simplemente no matchean fila.
+export async function actualizarPosiciones(
+  casoId: string,
+  usuarioId: string,
+  posiciones: Array<{ id: string; posicion_x: number; posicion_y: number }>,
+): Promise<boolean> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return false;
+  const supabase = createServerClient();
+  const ahora = new Date().toISOString();
+
+  const resultados = await Promise.all(
+    posiciones.map((p) =>
+      supabase
+        .from("mapa_procesal_nodos")
+        .update({
+          posicion_x: p.posicion_x,
+          posicion_y: p.posicion_y,
+          updated_at: ahora,
+        })
+        .eq("id", p.id)
+        .eq("caso_id", casoId),
+    ),
+  );
+  const conError = resultados.find((r) => r.error);
+  if (conError?.error) {
+    throw new Error(`actualizarPosiciones: ${conError.error.message}`);
+  }
+  return true;
 }
 
 export type EliminarResult =

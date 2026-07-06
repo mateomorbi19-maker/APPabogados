@@ -9,6 +9,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type EdgeTypes,
   type NodeTypes,
 } from "@xyflow/react";
@@ -27,7 +28,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { calcularLayout, type EdgeFlow, type NodoFlow } from "@/lib/mapa-procesal/layout";
+import {
+  calcularLayout,
+  calcularPosiciones,
+  type EdgeFlow,
+  type NodoFlow,
+} from "@/lib/mapa-procesal/layout";
 import {
   FUEROS,
   FUERO_LABEL,
@@ -73,6 +79,7 @@ export function MapaProcesalView(props: Props) {
 }
 
 function MapaInner({ casoId, casoTitulo }: Props) {
+  const { fitView } = useReactFlow();
   const [estado, setEstado] = useState<Estado>({ status: "loading" });
   const [initializing, setInitializing] = useState(false);
   const [selectedNodoId, setSelectedNodoId] = useState<string | null>(null);
@@ -84,6 +91,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   const [fueroInit, setFueroInit] = useState<Fuero | null>(null);
   // Fuero del diálogo de reiniciar (default: el fuero actual del caso).
   const [fueroReiniciar, setFueroReiniciar] = useState<Fuero | null>(null);
+  const [reordenando, setReordenando] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodoFlow>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<EdgeFlow>([]);
@@ -110,10 +118,39 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         });
         return;
       }
+      // Auto-siembra de mapas creados antes de Fase E (todas las posiciones en
+      // el default 0,0): corre dagre UNA vez acá, renderiza ya sembrado y
+      // persiste en background. Las cargas siguientes entran por el camino
+      // normal (posiciones de la DB).
+      let nodos = json.nodos;
+      if (
+        nodos.length > 0 &&
+        nodos.every((n) => n.posicion_x === 0 && n.posicion_y === 0)
+      ) {
+        const posiciones = calcularPosiciones(nodos);
+        nodos = nodos.map((n) => {
+          const p = posiciones.get(n.id);
+          return p ? { ...n, posicion_x: p.x, posicion_y: p.y } : n;
+        });
+        void fetch(`/api/casos/${casoId}/mapa/nodos`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            posiciones: nodos.map((n) => ({
+              id: n.id,
+              posicion_x: n.posicion_x,
+              posicion_y: n.posicion_y,
+            })),
+          }),
+        }).catch(() => {
+          // Siembra fallida: el mapa se ve bien igual (dagre local) y se
+          // reintenta sola en la próxima carga.
+        });
+      }
       setEstado({
         status: "ready",
         inicializado: json.inicializado,
-        nodos: json.nodos,
+        nodos,
         fuero: json.fuero,
       });
     } catch (e) {
@@ -136,6 +173,92 @@ function MapaInner({ casoId, casoTitulo }: Props) {
       setEdges(e);
     }
   }, [estado, setNodes, setEdges]);
+
+  // PATCH batch de posiciones (siembra + Reordenar).
+  const persistirPosiciones = useCallback(
+    async (
+      posiciones: Array<{ id: string; posicion_x: number; posicion_y: number }>,
+    ) => {
+      const res = await fetch(`/api/casos/${casoId}/mapa/nodos`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ posiciones }),
+      });
+      return res.ok;
+    },
+    [casoId],
+  );
+
+  // Auto-guardado al soltar un nodo (memoria del mapa): update optimista del
+  // estado local + PUT en background. Sin recarga completa — el nodo ya está
+  // donde el abogado lo dejó.
+  const onNodeDragStop = useCallback(
+    (_: unknown, node: NodoFlow) => {
+      setEstado((prev) =>
+        prev.status === "ready"
+          ? {
+              ...prev,
+              nodos: prev.nodos.map((n) =>
+                n.id === node.id
+                  ? {
+                      ...n,
+                      posicion_x: node.position.x,
+                      posicion_y: node.position.y,
+                    }
+                  : n,
+              ),
+            }
+          : prev,
+      );
+      void fetch(`/api/casos/${casoId}/mapa/nodos/${node.id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          posicion_x: node.position.x,
+          posicion_y: node.position.y,
+        }),
+      })
+        .then((res) => {
+          if (!res.ok) toast.error("No se pudo guardar la posición del nodo");
+        })
+        .catch(() => toast.error("Error de red guardando la posición"));
+    },
+    [casoId],
+  );
+
+  // "Reordenar": re-corre dagre sobre el árbol completo, persiste y
+  // re-encuadra. Escape hatch para cuando el mapa quedó desordenado a mano.
+  const handleReordenar = useCallback(async () => {
+    if (estado.status !== "ready" || reordenando) return;
+    setReordenando(true);
+    try {
+      const posiciones = calcularPosiciones(estado.nodos);
+      const nodosOrdenados = estado.nodos.map((n) => {
+        const p = posiciones.get(n.id);
+        return p ? { ...n, posicion_x: p.x, posicion_y: p.y } : n;
+      });
+      const ok = await persistirPosiciones(
+        nodosOrdenados.map((n) => ({
+          id: n.id,
+          posicion_x: n.posicion_x,
+          posicion_y: n.posicion_y,
+        })),
+      );
+      if (!ok) {
+        toast.error("No se pudo guardar el reordenamiento");
+        return;
+      }
+      setEstado({ ...estado, nodos: nodosOrdenados });
+      window.setTimeout(
+        () => void fitView({ padding: 0.25, duration: 400 }),
+        50,
+      );
+    } catch {
+      toast.error("Error de red al reordenar");
+    } finally {
+      setReordenando(false);
+    }
+  }, [estado, reordenando, persistirPosiciones, fitView]);
 
   const inicializar = async () => {
     if (initializing || fueroInit === null) return;
@@ -359,6 +482,12 @@ function MapaInner({ casoId, casoTitulo }: Props) {
               }
             : undefined
         }
+        onReordenar={
+          estado.status === "ready" && estado.inicializado
+            ? handleReordenar
+            : undefined
+        }
+        reordenando={reordenando}
       />
 
       <div className="relative flex-1" style={{ background: FONDO_CANVAS }}>
@@ -411,6 +540,7 @@ function MapaInner({ casoId, casoTitulo }: Props) {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onNodeClick={onNodeClick}
+              onNodeDragStop={onNodeDragStop}
               onPaneClick={onPaneClick}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}

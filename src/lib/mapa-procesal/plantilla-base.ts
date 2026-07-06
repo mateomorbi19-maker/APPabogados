@@ -44,6 +44,7 @@ import {
   Search,
   Users,
 } from "lucide-react";
+import { calcularPosiciones } from "./layout";
 import type { Fuero, NodoProcesalInsert } from "./types";
 
 type NodoTemplate = {
@@ -401,19 +402,30 @@ export function generarPlantillaBase(
     return id;
   };
 
-  return flujo.map((n) => {
+  const filas = flujo.map((n) => {
     const esRaiz = n.padre === null;
     return {
       id: idDe(n.key),
       caso_id: casoId,
       titulo: n.titulo,
       descripcion: n.descripcion ?? null,
-      tipo: esRaiz ? "raiz" : "prediccion",
+      tipo: (esRaiz ? "raiz" : "prediccion") as "raiz" | "prediccion",
       // Raíz "ocurrido" (ya pasó); el resto "desbloqueado" = "posible" (azul).
-      estado: esRaiz ? "ocurrido" : "desbloqueado",
+      estado: (esRaiz ? "ocurrido" : "desbloqueado") as
+        | "ocurrido"
+        | "desbloqueado",
       padre_id: n.padre ? idDe(n.padre) : null,
       riesgo_alto: n.riesgoAlto ?? false,
     };
+  });
+
+  // Siembra de posiciones (Fase E): dagre corre UNA vez acá y las posiciones
+  // se persisten con el insert; después la fuente de verdad es la DB (el
+  // abogado las mueve a gusto y el mapa queda como lo dejó).
+  const posiciones = calcularPosiciones(filas);
+  return filas.map((f) => {
+    const pos = posiciones.get(f.id);
+    return { ...f, posicion_x: pos?.x ?? 0, posicion_y: pos?.y ?? 0 };
   });
 }
 

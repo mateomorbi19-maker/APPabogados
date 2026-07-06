@@ -39,6 +39,7 @@ export interface NodoProcesalDB {
 
 // Fila para insertar la plantilla base. El id se pre-genera (crypto.randomUUID)
 // para poder cablear padre_id entre nodos del mismo batch antes de insertar.
+// Las posiciones vienen sembradas por dagre (Fase E: "memoria del mapa").
 export interface NodoProcesalInsert {
   id: string;
   caso_id: string;
@@ -48,6 +49,8 @@ export interface NodoProcesalInsert {
   estado: EstadoNodo;
   padre_id: string | null;
   riesgo_alto: boolean;
+  posicion_x: number;
+  posicion_y: number;
 }
 
 // === Validación de input (zod en el borde de las API routes) ===
@@ -64,5 +67,23 @@ export const editarNodoSchema = z.object({
   descripcion: z.string().trim().max(2000).nullish(),
   estado: z.enum(["ocurrido", "desbloqueado", "bloqueado"]).optional(),
   riesgo_alto: z.boolean().optional(),
+  // Posición del nodo en el canvas (auto-guardado al arrastrar, Fase E).
+  posicion_x: z.number().finite().optional(),
+  posicion_y: z.number().finite().optional(),
 });
 export type EditarNodoInput = z.infer<typeof editarNodoSchema>;
+
+// Batch de posiciones: siembra de mapas pre-Fase E y botón "Reordenar".
+export const posicionesBatchSchema = z.object({
+  posiciones: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        posicion_x: z.number().finite(),
+        posicion_y: z.number().finite(),
+      }),
+    )
+    .min(1)
+    .max(200),
+});
+export type PosicionesBatchInput = z.infer<typeof posicionesBatchSchema>;
