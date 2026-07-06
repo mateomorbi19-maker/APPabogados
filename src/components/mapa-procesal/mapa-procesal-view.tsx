@@ -81,7 +81,7 @@ export function MapaProcesalView(props: Props) {
 }
 
 function MapaInner({ casoId, casoTitulo }: Props) {
-  const { fitView } = useReactFlow();
+  const { fitView, getViewport, setViewport } = useReactFlow();
   const [estado, setEstado] = useState<Estado>({ status: "loading" });
   const [initializing, setInitializing] = useState(false);
   const [selectedNodoId, setSelectedNodoId] = useState<string | null>(null);
@@ -105,6 +105,68 @@ function MapaInner({ casoId, casoTitulo }: Props) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodoFlow>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<EdgeFlow>([]);
+
+  // === Pan estilo n8n: Ctrl + click izquierdo arrastra el tablero ===
+  // xyflow FILTRA ctrl+mousedown en su motor interno de zoom/pan (lo reserva
+  // para pinch), así que panActivationKeyCode="Control" NO funciona con esa
+  // tecla. Lo hacemos a mano: interceptamos el gesto en fase CAPTURA (antes de
+  // que el pane abra la caja de selección) y movemos el viewport con panBy.
+  // preventDefault en el pointerdown suprime los mouse events de
+  // compatibilidad → el pane nunca ve el mousedown.
+  const panOrigenRef = useRef<{ x: number; y: number } | null>(null);
+  const [ctrlDown, setCtrlDown] = useState(false);
+  const [panning, setPanning] = useState(false);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "Control") setCtrlDown(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Control") setCtrlDown(false);
+    };
+    const blur = () => setCtrlDown(false);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+    };
+  }, []);
+
+  const onPanStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!(e.ctrlKey && e.button === 0)) return;
+    panOrigenRef.current = { x: e.clientX, y: e.clientY };
+    setPanning(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const onPanMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!panOrigenRef.current) return;
+      const dx = e.clientX - panOrigenRef.current.x;
+      const dy = e.clientY - panOrigenRef.current.y;
+      panOrigenRef.current = { x: e.clientX, y: e.clientY };
+      const v = getViewport();
+      void setViewport({ ...v, x: v.x + dx, y: v.y + dy });
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    [getViewport, setViewport],
+  );
+
+  const onPanEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!panOrigenRef.current) return;
+    panOrigenRef.current = null;
+    setPanning(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    e.stopPropagation();
+  }, []);
 
   const cargar = useCallback(async () => {
     try {
@@ -718,45 +780,64 @@ function MapaInner({ casoId, casoTitulo }: Props) {
             {/* Partículas entre el fondo (degradado del contenedor) y los nodos.
                 ReactFlow va transparente por encima para dejarlas ver. */}
             <ParticlesOverlay />
-            <ReactFlow<NodoFlow, EdgeFlow>
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onNodeClick={onNodeClick}
-              onNodeDragStop={onNodeDragStop}
-              onPaneClick={onPaneClick}
-              onBeforeDelete={onBeforeDelete}
-              onNodesDelete={onNodesDelete}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              colorMode="dark"
-              fitView
-              fitViewOptions={{ padding: 0.25 }}
-              minZoom={0.2}
-              proOptions={{ hideAttribution: true }}
-              style={{ background: "transparent" }}
-              // === Interacción estilo n8n ===
-              // Click izquierdo + arrastre en el fondo = CAJA DE SELECCIÓN
-              // (parcial: alcanza con tocar el nodo). Pan: Ctrl + arrastre,
-              // o botón del medio / derecho. Shift+click suma a la selección.
-              // Supr/Backspace borra los seleccionados (con Deshacer).
-              selectionOnDrag
-              selectionMode={SelectionMode.Partial}
-              panOnDrag={[1, 2]}
-              panActivationKeyCode="Control"
-              multiSelectionKeyCode="Shift"
-              deleteKeyCode={["Delete", "Backspace"]}
+            {/* Wrapper del pan Ctrl+arrastre: captura el gesto ANTES de que
+                el pane de ReactFlow abra la caja de selección. */}
+            <div
+              className="h-full w-full"
+              style={{
+                cursor: panning ? "grabbing" : ctrlDown ? "grab" : undefined,
+              }}
+              onPointerDownCapture={onPanStart}
+              onMouseDownCapture={(e) => {
+                if (e.ctrlKey && e.button === 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              onPointerMove={onPanMove}
+              onPointerUp={onPanEnd}
+              onPointerCancel={onPanEnd}
             >
-              <Background
-                variant={BackgroundVariant.Dots}
-                gap={24}
-                size={1}
-                color="rgba(255,255,255,0.035)"
-              />
-              <Controls />
-              <MapaMinimap />
-            </ReactFlow>
+              <ReactFlow<NodoFlow, EdgeFlow>
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onNodeClick={onNodeClick}
+                onNodeDragStop={onNodeDragStop}
+                onPaneClick={onPaneClick}
+                onBeforeDelete={onBeforeDelete}
+                onNodesDelete={onNodesDelete}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                colorMode="dark"
+                fitView
+                fitViewOptions={{ padding: 0.25 }}
+                minZoom={0.2}
+                proOptions={{ hideAttribution: true }}
+                style={{ background: "transparent" }}
+                // === Interacción estilo n8n ===
+                // Click izquierdo + arrastre en el fondo = CAJA DE SELECCIÓN
+                // (parcial: alcanza con tocar el nodo). Pan: Ctrl + arrastre
+                // (interceptado por el wrapper de arriba), o botón del medio /
+                // derecho. Shift+click suma a la selección. Supr/Backspace
+                // borra los seleccionados (con Deshacer).
+                selectionOnDrag
+                selectionMode={SelectionMode.Partial}
+                panOnDrag={[1, 2]}
+                multiSelectionKeyCode="Shift"
+                deleteKeyCode={["Delete", "Backspace"]}
+              >
+                <Background
+                  variant={BackgroundVariant.Dots}
+                  gap={24}
+                  size={1}
+                  color="rgba(255,255,255,0.035)"
+                />
+                <Controls />
+                <MapaMinimap />
+              </ReactFlow>
+            </div>
 
             {selectedNodo ? (
               <NodoDetailPanel
