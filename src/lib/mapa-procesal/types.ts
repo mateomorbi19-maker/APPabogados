@@ -4,6 +4,21 @@ import { z } from "zod";
 export type TipoNodo = "raiz" | "real" | "prediccion";
 export type EstadoNodo = "ocurrido" | "desbloqueado" | "bloqueado";
 
+// === Fuero (Fase A del rediseño fuero-aware) ===
+// El fuero define qué plantilla procesal instancia el mapa. Se persiste en
+// casos.fuero al inicializar (la IA lo sugiere, el abogado lo confirma).
+export const FUEROS = ["nacion", "pba", "federal"] as const;
+export type Fuero = (typeof FUEROS)[number];
+
+export const FUERO_LABEL: Record<Fuero, string> = {
+  nacion: "Nación (CPPN Ley 23.984)",
+  pba: "Prov. Buenos Aires (CPP Ley 11.922)",
+  federal: "Federal (CPPF Ley 27.063)",
+};
+
+// Reusable en el borde de las API routes.
+export const fueroSchema = z.enum(FUEROS);
+
 export interface NodoProcesalDB {
   id: string;
   caso_id: string;

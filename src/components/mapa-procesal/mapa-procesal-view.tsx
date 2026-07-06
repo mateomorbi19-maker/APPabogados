@@ -26,8 +26,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { calcularLayout, type EdgeFlow, type NodoFlow } from "@/lib/mapa-procesal/layout";
-import type { NodoProcesalDB } from "@/lib/mapa-procesal/types";
+import {
+  FUEROS,
+  FUERO_LABEL,
+  type Fuero,
+  type NodoProcesalDB,
+} from "@/lib/mapa-procesal/types";
 import { NodoProcesal } from "./nodo-procesal";
 import { EdgeProcesal } from "./edge-procesal";
 import { MapaToolbar } from "./mapa-toolbar";
@@ -51,7 +57,12 @@ type Props = { casoId: string; casoTitulo: string };
 type Estado =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; inicializado: boolean; nodos: NodoProcesalDB[] };
+  | {
+      status: "ready";
+      inicializado: boolean;
+      nodos: NodoProcesalDB[];
+      fuero: Fuero | null;
+    };
 
 export function MapaProcesalView(props: Props) {
   return (
@@ -68,6 +79,11 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   const [crearParaNodoId, setCrearParaNodoId] = useState<string | null>(null);
   const [reiniciarOpen, setReiniciarOpen] = useState(false);
   const [reiniciando, setReiniciando] = useState(false);
+  // Fuero elegido en la pantalla de inicialización (Fase B lo pre-carga con la
+  // sugerencia de la IA; por ahora arranca sin selección).
+  const [fueroInit, setFueroInit] = useState<Fuero | null>(null);
+  // Fuero del diálogo de reiniciar (default: el fuero actual del caso).
+  const [fueroReiniciar, setFueroReiniciar] = useState<Fuero | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodoFlow>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<EdgeFlow>([]);
@@ -76,7 +92,12 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     try {
       const res = await fetch(`/api/casos/${casoId}/mapa`);
       const json = (await res.json().catch(() => null)) as
-        | { ok: true; inicializado: boolean; nodos: NodoProcesalDB[] }
+        | {
+            ok: true;
+            inicializado: boolean;
+            nodos: NodoProcesalDB[];
+            fuero: Fuero | null;
+          }
         | { ok: false; error?: string }
         | null;
       if (!res.ok || !json || json.ok === false) {
@@ -89,7 +110,12 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         });
         return;
       }
-      setEstado({ status: "ready", inicializado: json.inicializado, nodos: json.nodos });
+      setEstado({
+        status: "ready",
+        inicializado: json.inicializado,
+        nodos: json.nodos,
+        fuero: json.fuero,
+      });
     } catch (e) {
       setEstado({
         status: "error",
@@ -112,12 +138,16 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   }, [estado, setNodes, setEdges]);
 
   const inicializar = async () => {
-    if (initializing) return;
+    if (initializing || fueroInit === null) return;
     setInitializing(true);
     try {
-      const res = await fetch(`/api/casos/${casoId}/mapa`, { method: "POST" });
+      const res = await fetch(`/api/casos/${casoId}/mapa`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fuero: fueroInit }),
+      });
       const json = (await res.json().catch(() => null)) as
-        | { ok: true; nodos: NodoProcesalDB[] }
+        | { ok: true; nodos: NodoProcesalDB[]; fuero: Fuero }
         | { ok: false; error?: string }
         | null;
       if (!res.ok || !json || json.ok === false) {
@@ -128,7 +158,12 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         );
         return;
       }
-      setEstado({ status: "ready", inicializado: true, nodos: json.nodos });
+      setEstado({
+        status: "ready",
+        inicializado: true,
+        nodos: json.nodos,
+        fuero: json.fuero,
+      });
     } catch {
       toast.error("Error de red al inicializar");
     } finally {
@@ -246,14 +281,19 @@ function MapaInner({ casoId, casoTitulo }: Props) {
     [casoId, cargar],
   );
 
-  // Reinicia el mapa: borra los nodos y reinstancia la plantilla nueva. PUT.
+  // Reinicia el mapa: borra los nodos y reinstancia la plantilla del fuero
+  // elegido en el diálogo (permite cambiar de fuero al reiniciar). PUT.
   const handleReiniciar = async () => {
-    if (reiniciando) return;
+    if (reiniciando || fueroReiniciar === null) return;
     setReiniciando(true);
     try {
-      const res = await fetch(`/api/casos/${casoId}/mapa`, { method: "PUT" });
+      const res = await fetch(`/api/casos/${casoId}/mapa`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fuero: fueroReiniciar }),
+      });
       const json = (await res.json().catch(() => null)) as
-        | { ok: true; nodos: NodoProcesalDB[] }
+        | { ok: true; nodos: NodoProcesalDB[]; fuero: Fuero }
         | { ok: false; error?: string }
         | null;
       if (!res.ok || !json || json.ok === false) {
@@ -265,7 +305,12 @@ function MapaInner({ casoId, casoTitulo }: Props) {
         return;
       }
       setSelectedNodoId(null);
-      setEstado({ status: "ready", inicializado: true, nodos: json.nodos });
+      setEstado({
+        status: "ready",
+        inicializado: true,
+        nodos: json.nodos,
+        fuero: json.fuero,
+      });
       setReiniciarOpen(false);
       toast.success("Mapa reiniciado con el flujo nuevo");
     } catch {
@@ -295,14 +340,23 @@ function MapaInner({ casoId, casoTitulo }: Props) {
       <MapaToolbar
         casoId={casoId}
         casoTitulo={casoTitulo}
+        fueroLabel={
+          estado.status === "ready" && estado.fuero
+            ? FUERO_LABEL[estado.fuero]
+            : undefined
+        }
         puedeAgregar={puedeAgregar}
         onAgregarEvento={() => {
           if (selectedNodoId) setCrearParaNodoId(selectedNodoId);
         }}
-        // El reinicio solo tiene sentido con un mapa ya inicializado.
+        // El reinicio solo tiene sentido con un mapa ya inicializado. Al abrir
+        // el diálogo, el fuero arranca en el actual del caso.
         onReiniciar={
           estado.status === "ready" && estado.inicializado
-            ? () => setReiniciarOpen(true)
+            ? () => {
+                setFueroReiniciar(estado.fuero);
+                setReiniciarOpen(true);
+              }
             : undefined
         }
       />
@@ -319,16 +373,25 @@ function MapaInner({ casoId, casoTitulo }: Props) {
             </div>
           </div>
         ) : !estado.inicializado ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+          <div className="flex h-full flex-col items-center justify-center gap-5 p-6 text-center">
             <Network className="size-12 text-muted-foreground" />
             <div className="space-y-1">
               <p className="text-lg font-medium">Mapa procesal sin inicializar</p>
               <p className="max-w-md text-sm text-muted-foreground">
-                Generá el árbol con las etapas estándar del proceso penal federal
-                (CPPF). Después vas a poder agregar, editar y marcar nodos.
+                Elegí el fuero donde tramita la causa: el mapa se genera con las
+                etapas de su código procesal. Después vas a poder agregar,
+                editar y marcar nodos.
               </p>
             </div>
-            <Button onClick={inicializar} disabled={initializing}>
+            <SelectorFuero
+              value={fueroInit}
+              onChange={setFueroInit}
+              disabled={initializing}
+            />
+            <Button
+              onClick={inicializar}
+              disabled={initializing || fueroInit === null}
+            >
               {initializing ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
@@ -405,8 +468,16 @@ function MapaInner({ casoId, casoTitulo }: Props) {
           <p className="text-sm text-muted-foreground">
             Esto borra <strong>todo el progreso del mapa</strong> (nodos,
             estados y nodos agregados a mano) y lo reinstancia desde cero con el
-            flujo procesal actual. No se puede deshacer.
+            flujo procesal del fuero elegido. No se puede deshacer.
           </p>
+          <div className="space-y-1.5">
+            <Label>Fuero del mapa nuevo</Label>
+            <SelectorFuero
+              value={fueroReiniciar}
+              onChange={setFueroReiniciar}
+              disabled={reiniciando}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -415,7 +486,11 @@ function MapaInner({ casoId, casoTitulo }: Props) {
             >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleReiniciar} disabled={reiniciando}>
+            <Button
+              variant="destructive"
+              onClick={handleReiniciar}
+              disabled={reiniciando || fueroReiniciar === null}
+            >
               {reiniciando ? <Loader2 className="size-4 animate-spin" /> : null}
               {reiniciando ? "Reiniciando..." : "Reiniciar mapa"}
             </Button>
@@ -424,6 +499,47 @@ function MapaInner({ casoId, casoTitulo }: Props) {
       </Dialog>
 
       <Toaster position="top-center" richColors />
+    </div>
+  );
+}
+
+// Selector de fuero como cards clickeables (usado en el init y en Reiniciar).
+function SelectorFuero({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Fuero | null;
+  onChange: (f: Fuero) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Fuero"
+      className="flex w-full max-w-md flex-col gap-2"
+    >
+      {FUEROS.map((f) => {
+        const selected = value === f;
+        return (
+          <button
+            key={f}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            disabled={disabled}
+            onClick={() => onChange(f)}
+            className={cn(
+              "rounded-lg border px-4 py-2.5 text-left text-sm transition-colors disabled:opacity-50",
+              selected
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border bg-card text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground",
+            )}
+          >
+            {FUERO_LABEL[f]}
+          </button>
+        );
+      })}
     </div>
   );
 }

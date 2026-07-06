@@ -187,6 +187,20 @@ Smoke de retrieval (`match_documents`): "estafa art 172" → art 172 (0.642); "a
 
 **Campos por chunk:** `tipo_documento='codigo'` (reusado), `libro`/`titulo`/`capitulo` poblados, `seccion=NULL` (el CP no tiene nivel Sección), `articulo` normalizado ("172", "149 bis", "41 quinquies", "268 (2)"), `pagina=NULL` (HTML sin paginación), `fuente_id=NULL` (consistente con CPPF y manuales). Artículos largos partidos con `splitLargo` + overlap, con marca "(parte i/m)" en el `contenido`.
 
+---
+
+## 2026-07-06 — `20260706120000_casos_fuero.sql` · ✅ APLICADA
+
+**Contexto:** Fase A del mapa procesal fuero-aware (ver `PLAN_MAPA_PROCESAL.md`). El fuero (Nación / PBA / Federal) pasa a ser propiedad del caso: define qué plantilla procesal instancia el mapa y, a futuro, lo consumen análisis y chat.
+
+**Cambios:**
+
+- `casos.fuero TEXT NULL` con `CHECK (fuero IN ('nacion', 'pba', 'federal'))` — nueva columna. Nullable a propósito: se setea recién cuando el abogado confirma el fuero al inicializar (o reiniciar) el mapa.
+
+**Aplicación:** la corrió Mateo a mano vía SQL Editor (el MCP de Supabase de esta sesión no tiene privilegios ni de escritura ni de lectura sobre esos endpoints). Verificada vía REST con service_role: `GET /rest/v1/casos?select=id,fuero` → 200, los 2 casos existentes con `fuero: null`.
+
+**Riesgo:** nulo para los reads existentes — la columna es nullable sin default y ninguna query la SELECTeaba antes del código de Fase A.
+
 **Pendiente (próxima palanca, NO incluida acá):** el threshold **0.55** hardcodeado en el RPC `match_documents` rechaza matches correctos top-ranked. Ej.: "femicidio homicidio agravado art 80" → el art 80 rankea #1 a **0.5466 < 0.55** → la RPC devuelve vacío. Bajar/adaptar el threshold es una migración separada al RPC que afecta a todo el corpus (CP + CPPF + manuales).
 
 **No se tocaron** los corpus `codigo_procesal` (CPPF, 370 chunks) ni `manual` (2974 chunks).

@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 type Props = {
   casoId: string;
   casoTitulo: string;
+  // Label del fuero activo (FUERO_LABEL). undefined = mapa sin fuero asignado.
+  fueroLabel?: string;
   puedeAgregar: boolean; // hay un nodo seleccionado no bloqueado
   onAgregarEvento: () => void;
   // Reinicia el mapa al flujo nuevo. undefined = ocultar (mapa sin inicializar).
@@ -18,6 +20,7 @@ type Props = {
 export function MapaToolbar({
   casoId,
   casoTitulo,
+  fueroLabel,
   puedeAgregar,
   onAgregarEvento,
   onReiniciar,
@@ -54,6 +57,11 @@ export function MapaToolbar({
           <span className="font-medium">Mapa procesal</span>
           <span className="text-muted-foreground"> · {casoTitulo}</span>
         </p>
+        {fueroLabel ? (
+          <p className="truncate text-[11px] leading-tight text-muted-foreground">
+            {fueroLabel}
+          </p>
+        ) : null}
       </div>
 
       <Button
