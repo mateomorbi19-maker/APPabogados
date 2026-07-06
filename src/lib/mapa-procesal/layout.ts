@@ -2,6 +2,7 @@
 // dagre como sembrador inicial + conversión a formato ReactFlow.
 import dagre from "@dagrejs/dagre";
 import type { Edge, Node } from "@xyflow/react";
+import { ETAPA_ANCHOR_POR_TITULO, type Etapa } from "./etapas";
 import type { EstadoNodo, NodoProcesalDB, TipoNodo } from "./types";
 
 // Data que viaja a los componentes custom de nodo/edge.
@@ -15,6 +16,10 @@ export type NodoData = {
   // estado 'ocurrido' → "decisión pendiente" (render amarillo). Se calcula a
   // partir del set completo de nodos en calcularLayout.
   decisionPendiente: boolean;
+  // DERIVADO acá (no persiste): macro-fase del proceso (1-6) para el chip de
+  // color por etapa. Anclas por título de etapa troncal; el resto hereda del
+  // ancestro más cercano (ver etapas.ts).
+  etapa: Etapa;
 };
 export type NodoFlow = Node<NodoData, "nodoProcesal">;
 
@@ -116,6 +121,28 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
     hijosPorPadre.set(n.padre_id, arr);
   }
 
+  // Etapa (1-6) por nodo: ancla por título de etapa troncal, o herencia del
+  // ancestro más cercano. Memoizado; el guard `enCurso` corta ante un ciclo
+  // (imposible por construcción, pero mejor degradar a 1 que colgar el render).
+  const porId = new Map(nodos.map((n) => [n.id, n]));
+  const etapaPorId = new Map<string, Etapa>();
+  const enCurso = new Set<string>();
+  const resolverEtapa = (id: string): Etapa => {
+    const memo = etapaPorId.get(id);
+    if (memo) return memo;
+    if (enCurso.has(id)) return 1;
+    enCurso.add(id);
+    const n = porId.get(id);
+    const etapa: Etapa = !n
+      ? 1
+      : ETAPA_ANCHOR_POR_TITULO[n.titulo] ??
+        (n.padre_id ? resolverEtapa(n.padre_id) : 1);
+    enCurso.delete(id);
+    etapaPorId.set(id, etapa);
+    return etapa;
+  };
+  for (const n of nodos) resolverEtapa(n.id);
+
   // decisión pendiente + categoría por nodo, una sola vez. La categoría se usa
   // tanto en el nodo como en el edge (que toma la de su nodo destino).
   const decisionPorId = new Map<string, boolean>();
@@ -133,6 +160,7 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
         estado: n.estado,
         riesgoAlto: n.riesgo_alto,
         decisionPendiente,
+        etapa: etapaPorId.get(n.id) ?? 1,
       }),
     );
   }
@@ -167,6 +195,7 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
         estado: n.estado,
         riesgoAlto: n.riesgo_alto,
         decisionPendiente: decisionPorId.get(n.id) ?? false,
+        etapa: etapaPorId.get(n.id) ?? 1,
       },
     };
   });

@@ -9,6 +9,7 @@ import {
   type Categoria,
   type NodoFlow,
 } from "@/lib/mapa-procesal/layout";
+import { ETAPA_COLOR, ETAPA_LABEL } from "@/lib/mapa-procesal/etapas";
 import { iconoDeNodo } from "@/lib/mapa-procesal/iconos";
 
 // ============================================================================
@@ -70,6 +71,18 @@ export function NodoProcesal({ data, selected }: NodeProps<NodoFlow>) {
             ? undefined
             : { color: `var(--el-estado-${cat}-icon)` },
         })}
+
+        {/* Chip de ETAPA (1-6) arriba a la izquierda: color por macro-fase del
+            proceso (Fase D). Canal visual separado del estado del orbe. */}
+        {!bloqueado ? (
+          <span
+            className="pointer-events-auto absolute -left-1.5 -top-1.5 flex size-[18px] items-center justify-center rounded-full text-[10px] font-bold leading-none text-[#0b0e14] ring-1 ring-black/50"
+            style={{ background: ETAPA_COLOR[data.etapa] }}
+            title={`Fase ${data.etapa} · ${ETAPA_LABEL[data.etapa]}`}
+          >
+            {data.etapa}
+          </span>
+        ) : null}
 
         {/* Badge de etapa completada (verde) arriba a la derecha. */}
         {ejecutadaNoRaiz ? (
