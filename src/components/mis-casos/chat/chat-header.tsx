@@ -1,10 +1,11 @@
 "use client";
-// Header del chat. Título de la conversación actual + dropdown con
-// archivadas + botón "Nueva conversación" (con modal de confirmación)
-// + botón "Renombrar".
+// Barra superior fija del chat inmersivo. Unifica en una sola fila:
+// volver al caso + título del caso + dropdown de conversaciones +
+// renombrar + badge archivada + "Nueva conversación".
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Conversacion } from "@/lib/types";
 import { ConversacionesDropdown } from "./conversaciones-dropdown";
@@ -13,6 +14,7 @@ import { RenombrarConversacionModal } from "./renombrar-conversacion-modal";
 
 type Props = {
   casoId: string;
+  casoTitulo: string;
   conversacion: Conversacion;
   conversaciones: Conversacion[];
   onTituloRenombrado: (nuevoTitulo: string) => void;
@@ -20,6 +22,7 @@ type Props = {
 
 export function ChatHeader({
   casoId,
+  casoTitulo,
   conversacion,
   conversaciones,
   onTituloRenombrado,
@@ -30,36 +33,54 @@ export function ChatHeader({
   const archivada = conversacion.estado === "archivada";
 
   return (
-    <header className="flex items-center gap-2 flex-wrap rounded-md border border-border bg-card/30 px-3 py-2">
-      <ConversacionesDropdown
-        casoId={casoId}
-        conversacionActual={conversacion}
-        conversaciones={conversaciones}
-      />
-      {archivada ? (
-        <span className="text-[10px] uppercase tracking-wider rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5">
-          Archivada
+    <header className="shrink-0 border-b border-border bg-card/50 backdrop-blur">
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2 md:px-6">
+        <Link
+          href={`/dashboard/mis-casos/${casoId}`}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ArrowLeft className="size-4" />
+          <span className="hidden sm:inline">Volver al caso</span>
+        </Link>
+        <span className="text-muted-foreground shrink-0">·</span>
+        <span
+          className="text-sm font-medium truncate max-w-[180px] md:max-w-[280px]"
+          title={casoTitulo}
+        >
+          {casoTitulo}
         </span>
-      ) : null}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setRenombrarOpen(true)}
-        title="Renombrar conversación"
-        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-        aria-label="Renombrar"
-      >
-        <Pencil className="size-3.5" />
-      </Button>
-      <div className="flex-1" />
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setNuevaOpen(true)}
-      >
-        <Plus className="size-3.5" />
-        Nueva conversación
-      </Button>
+        <span className="text-muted-foreground/50 shrink-0">/</span>
+        <ConversacionesDropdown
+          casoId={casoId}
+          conversacionActual={conversacion}
+          conversaciones={conversaciones}
+        />
+        {archivada ? (
+          <span className="text-[10px] uppercase tracking-wider rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5">
+            Archivada
+          </span>
+        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setRenombrarOpen(true)}
+          title="Renombrar conversación"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+          aria-label="Renombrar"
+        >
+          <Pencil className="size-3.5" />
+        </Button>
+        <div className="flex-1" />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setNuevaOpen(true)}
+        >
+          <Plus className="size-3.5" />
+          <span className="hidden sm:inline">Nueva conversación</span>
+          <span className="sm:hidden">Nueva</span>
+        </Button>
+      </div>
 
       <NuevaConversacionModal
         open={nuevaOpen}

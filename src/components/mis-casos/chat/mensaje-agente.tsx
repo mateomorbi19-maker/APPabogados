@@ -83,7 +83,7 @@ export function MensajeAgente({ mensaje }: Props) {
 
   if (!respuesta) {
     return (
-      <article className="ml-auto max-w-[90%] rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
+      <article className="max-w-[90%] rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
         <p className="text-destructive font-medium mb-1">
           Respuesta del agente no parseable
         </p>
@@ -95,8 +95,11 @@ export function MensajeAgente({ mensaje }: Props) {
     );
   }
 
+  // Burbuja del agente alineada a la IZQUIERDA con superficie neutral
+  // (convención de chat: el interlocutor va a la izquierda; el tinte
+  // violeta queda para los mensajes propios del abogado).
   return (
-    <article className="ml-auto max-w-[90%] rounded-md border border-primary/40 bg-primary/5 px-3 py-3 space-y-3">
+    <article className="max-w-[90%] rounded-md border border-border bg-card/60 px-3 py-3 space-y-3">
       <Header respuesta={respuesta} fecha={mensaje.creado_en} />
 
       {respuesta.modo === "conversacional" ? (

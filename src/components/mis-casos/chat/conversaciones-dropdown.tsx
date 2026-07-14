@@ -51,9 +51,9 @@ export function ConversacionesDropdown({
   const navegarA = (conv: Conversacion) => {
     setOpen(false);
     if (conv.estado === "activa") {
-      router.push(`/dashboard/mis-casos/${casoId}/chat`);
+      router.push(`/dashboard/chat/${casoId}`);
     } else {
-      router.push(`/dashboard/mis-casos/${casoId}/chat?conv=${conv.id}`);
+      router.push(`/dashboard/chat/${casoId}?conv=${conv.id}`);
     }
   };
 

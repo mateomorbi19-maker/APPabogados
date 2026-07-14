@@ -58,7 +58,7 @@ export function NuevaConversacionModal({ open, casoId, onClose }: Props) {
         return;
       }
       // La nueva ya es la activa. Navegamos a /chat plano.
-      router.push(`/dashboard/mis-casos/${casoId}/chat`);
+      router.push(`/dashboard/chat/${casoId}`);
       router.refresh();
       onClose();
     } catch (e) {

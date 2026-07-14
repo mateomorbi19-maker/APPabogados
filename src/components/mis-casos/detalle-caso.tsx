@@ -30,7 +30,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
       <AnalisisOriginalColapsable caso={caso} />
 
       <Link
-        href={`/dashboard/mis-casos/${caso.id}/chat`}
+        href={`/dashboard/chat/${caso.id}`}
         className="block rounded-md border border-primary/30 bg-primary/5 px-4 py-3 hover:bg-primary/10 transition-colors group"
       >
         <div className="flex items-center justify-between gap-3">

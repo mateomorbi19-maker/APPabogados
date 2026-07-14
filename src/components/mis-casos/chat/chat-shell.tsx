@@ -1,8 +1,13 @@
 "use client";
-// Orquestador del chat. Cliente. Mantiene state de mensajes para
-// optimistic insert (mensaje del usuario inmediato + respuesta del
-// agente cuando llega) y maneja el flujo de "nueva conversación" /
-// "renombrar".
+// Orquestador del chat. Cliente. Vista inmersiva full-height (patrón
+// Mapa Procesal): columna de 3 filas acotada al viewport —
+//
+//   1. ChatHeader   (shrink-0, barra superior fija)
+//   2. ListaMensajes (flex-1 min-h-0, ÚNICA zona que scrollea)
+//   3. barra de input (shrink-0, fija abajo)
+//
+// La página lo monta con key={conversacion.id}: cambiar de conversación
+// remonta el shell entero y el state local nunca queda stale.
 
 import { useState } from "react";
 import type { Conversacion, MensajeConversacion } from "@/lib/types";
@@ -12,6 +17,7 @@ import { InputMensaje } from "./input-mensaje";
 
 type Props = {
   casoId: string;
+  casoTitulo: string;
   conversacionInicial: Conversacion;
   mensajesIniciales: MensajeConversacion[];
   conversaciones: Conversacion[];
@@ -19,13 +25,11 @@ type Props = {
 
 export function ChatShell({
   casoId,
+  casoTitulo,
   conversacionInicial,
   mensajesIniciales,
   conversaciones,
 }: Props) {
-  // El state local solo cubre los mensajes de la conversación actual
-  // y su título (renombrable). Cambiar de conversación o crear una
-  // nueva navega a otra URL → server-side reload → state nuevo.
   const [conversacion, setConversacion] = useState(conversacionInicial);
   const [mensajes, setMensajes] = useState(mensajesIniciales);
 
@@ -38,23 +42,27 @@ export function ChatShell({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 gap-3">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <ChatHeader
         casoId={casoId}
+        casoTitulo={casoTitulo}
         conversacion={conversacion}
         conversaciones={conversaciones}
         onTituloRenombrado={onTituloRenombrado}
       />
-      <ListaMensajes
-        casoId={casoId}
-        mensajes={mensajes}
-      />
-      <InputMensaje
-        casoId={casoId}
-        conversacionId={conversacion.id}
-        archivada={conversacion.estado === "archivada"}
-        onMensajesNuevos={onMensajesNuevos}
-      />
+
+      <ListaMensajes casoId={casoId} mensajes={mensajes} />
+
+      <div className="shrink-0 border-t border-border bg-card/40">
+        <div className="mx-auto w-full max-w-4xl px-4 py-3 md:px-6">
+          <InputMensaje
+            casoId={casoId}
+            conversacionId={conversacion.id}
+            archivada={conversacion.estado === "archivada"}
+            onMensajesNuevos={onMensajesNuevos}
+          />
+        </div>
+      </div>
     </div>
   );
 }

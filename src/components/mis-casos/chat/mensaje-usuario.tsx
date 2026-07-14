@@ -8,11 +8,12 @@ type Props = {
   mensaje: MensajeConversacion;
 };
 
-// Mensaje del abogado en el chat. Card alineada izquierda con texto
+// Mensaje del abogado en el chat. Burbuja alineada a la DERECHA con
+// tinte violeta (convención de chat: lo propio va a la derecha) + texto
 // + adjuntos descargables (reusa AdjuntosRender existente).
 export function MensajeUsuario({ casoId, mensaje }: Props) {
   return (
-    <article className="max-w-[85%] rounded-md border border-border bg-card/40 px-3 py-2">
+    <article className="ml-auto max-w-[85%] rounded-md border border-primary/25 bg-primary/10 px-3 py-2">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
         Tu mensaje · {fmtFecha(mensaje.creado_en)}
       </p>

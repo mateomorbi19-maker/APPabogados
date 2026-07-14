@@ -1,6 +1,11 @@
-// Vista del chat continuo con el agente sobre un caso. Server component:
-// valida ownership, resuelve qué conversación mostrar (la activa o la
-// específica del query param `?conv=<uuid>`), y carga sus mensajes.
+// Vista del chat continuo con el agente sobre un caso. Vive FUERA de
+// /dashboard/mis-casos para no heredar su layout (NavShell + sidebar de
+// casos + max-w-6xl): el chat es una vista inmersiva full-height, mismo
+// patrón que el Mapa Procesal.
+//
+// Server component: valida ownership, resuelve qué conversación mostrar
+// (la activa o la específica del query param `?conv=<uuid>`), y carga
+// sus mensajes.
 //
 // Lazy-init: si el caso no tiene conversación activa, creamos una vacía
 // automáticamente con título auto-fecha. Es la primera vez que el
@@ -8,8 +13,6 @@
 // archivadas.
 
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
@@ -144,34 +147,18 @@ export default async function CasoChatPage({
     .order("creado_en", { ascending: true });
   const mensajes = (msgs ?? []) as MensajeConversacion[];
 
+  // key por conversación: fuerza remount del client component al cambiar
+  // de conversación (soft-nav de Next NO remonta client components y el
+  // useState sembrado por props quedaba stale — hallazgo A-7 de la
+  // auditoría: se podía postear al conversacionId viejo).
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border bg-card/50 sticky top-0 z-10 backdrop-blur">
-        <div className="container max-w-5xl mx-auto px-4 py-2 flex items-center gap-3">
-          <Link
-            href={`/dashboard/mis-casos/${casoId}`}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="size-4" />
-            Volver al caso
-          </Link>
-          <span className="text-muted-foreground">·</span>
-          <span className="text-sm font-medium truncate">
-            {(caso as Caso).titulo}
-          </span>
-        </div>
-      </header>
-
-      <main className="flex-1 flex flex-col">
-        <div className="container max-w-5xl mx-auto px-4 py-4 flex-1 flex flex-col w-full">
-          <ChatShell
-            casoId={casoId}
-            conversacionInicial={conversacionActual}
-            mensajesIniciales={mensajes}
-            conversaciones={conversaciones}
-          />
-        </div>
-      </main>
-    </div>
+    <ChatShell
+      key={conversacionActual.id}
+      casoId={casoId}
+      casoTitulo={(caso as Caso).titulo}
+      conversacionInicial={conversacionActual}
+      mensajesIniciales={mensajes}
+      conversaciones={conversaciones}
+    />
   );
 }

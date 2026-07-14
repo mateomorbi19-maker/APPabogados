@@ -212,7 +212,9 @@ export function InputMensaje({
   }
 
   return (
-    <div className="rounded-md border border-border bg-card/40 px-3 py-3 space-y-2">
+    // El chrome de barra inferior (border-t, bg, track centrado) lo pone
+    // el ChatShell; acá solo va el contenido del input.
+    <div className="space-y-2">
       <Textarea
         value={contenido}
         onChange={(e) => setContenido(e.target.value)}
