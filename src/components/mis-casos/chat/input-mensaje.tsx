@@ -3,7 +3,7 @@
 // el flujo POST /mensajes con loading + recovery post-502 (polling al
 // GET /mensajes filtrando por desde > inicio del POST).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,22 @@ const NIVEL_STORAGE_KEY = "chat_nivel_modelo";
 
 function esNivel(v: string | null): v is NivelModelo {
   return v !== null && (NIVELES_MODELO as readonly string[]).includes(v);
+}
+
+// Lectura hydration-safe de localStorage sin setState-en-efecto:
+// useSyncExternalStore renderiza el default en SSR (getServerSnapshot)
+// y el valor guardado en el cliente. subscribe es no-op: acá nadie más
+// escribe la key mientras el componente está montado (la escribe el
+// propio selector, que además setea su state local).
+const noopSubscribe = () => () => {};
+
+function useNivelGuardado(): NivelModelo {
+  const crudo = useSyncExternalStore(
+    noopSubscribe,
+    () => localStorage.getItem(NIVEL_STORAGE_KEY),
+    () => null,
+  );
+  return esNivel(crudo) ? crudo : NIVEL_DEFAULT;
 }
 
 type Props = {
@@ -105,7 +121,11 @@ export function InputMensaje({
 }: Props) {
   const [contenido, setContenido] = useState("");
   const [adjuntos, setAdjuntos] = useState<AdjuntoUI[]>([]);
-  const [nivel, setNivel] = useState<NivelModelo>(NIVEL_DEFAULT);
+  // null = el usuario todavía no eligió en esta sesión → usar el
+  // guardado (o el default). La elección autoritativa viaja per-mensaje.
+  const [nivelElegido, setNivelElegido] = useState<NivelModelo | null>(null);
+  const nivelGuardado = useNivelGuardado();
+  const nivel = nivelElegido ?? nivelGuardado;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -116,16 +136,9 @@ export function InputMensaje({
     };
   }, []);
 
-  // Restaurar la última elección de nivel (en efecto, no en el
-  // useState inicial, para no divergir del HTML del server render).
-  useEffect(() => {
-    const guardado = localStorage.getItem(NIVEL_STORAGE_KEY);
-    if (esNivel(guardado)) setNivel(guardado);
-  }, []);
-
   const onNivelChange = (v: unknown) => {
     if (typeof v === "string" && esNivel(v)) {
-      setNivel(v);
+      setNivelElegido(v);
       localStorage.setItem(NIVEL_STORAGE_KEY, v);
     }
   };
