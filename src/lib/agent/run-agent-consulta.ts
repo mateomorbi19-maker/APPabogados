@@ -39,7 +39,9 @@ export type AdjuntoModelo =
     }
   | {
       kind: "image";
-      mediaType: "image/jpeg" | "image/png";
+      // Solo los mimes que Anthropic acepta como image block. Las HEIC
+      // se convierten a JPEG server-side antes de llegar acá.
+      mediaType: "image/jpeg" | "image/png" | "image/webp";
       filename: string;
       descripcion: string | null;
       base64: string;
@@ -49,6 +51,15 @@ export type AdjuntoModelo =
       filename: string;
       descripcion: string | null;
       texto: string;
+    }
+  | {
+      // Audio: la Messages API no acepta audio como content block, así
+      // que va la TRANSCRIPCIÓN (Whisper) como texto etiquetado.
+      // transcripcion === null significa que la transcripción falló.
+      kind: "audio";
+      filename: string;
+      descripcion: string | null;
+      transcripcion: string | null;
     };
 
 export type RunAgentConsultaInput = {
@@ -120,7 +131,7 @@ function buildPrimerUserContent(
         type: "image";
         source: {
           type: "base64";
-          media_type: "image/jpeg" | "image/png";
+          media_type: "image/jpeg" | "image/png" | "image/webp";
           data: string;
         };
       }
@@ -165,6 +176,16 @@ function buildPrimerUserContent(
         type: "text",
         text: `${orden}: documento Word "${adj.filename}"${desc}. Contenido extraído:\n\n${adj.texto || "(no se pudo extraer texto del archivo)"}`,
       });
+    } else if (adj.kind === "audio") {
+      // Audio: va la transcripción de Whisper como texto etiquetado
+      // (la API no acepta audio nativo).
+      blocks.push({
+        type: "text",
+        text:
+          adj.transcripcion && adj.transcripcion.length > 0
+            ? `${orden}: audio "${adj.filename}"${desc}. Transcripción del audio:\n\n«${adj.transcripcion}»`
+            : `${orden}: audio "${adj.filename}"${desc}. La transcripción automática falló o el audio no tiene voz detectable — pedile al abogado que reenvíe el audio o escriba su contenido si es relevante.`,
+      });
     }
   }
 
@@ -206,15 +227,31 @@ export async function runAgentConsulta(
   const busquedas: Busqueda[] = [];
   let iterations = 0;
 
-  // Primer call. Si falla acá, no hay tokens cobrados — bubblea como
-  // error de infra.
-  let response = await client.messages.create({
-    model: MODEL_ID,
-    max_tokens: 16000,
-    system: input.systemPrompt,
-    tools: [buscarDocumentosTool],
-    messages,
-  });
+  // Primer call. Si falla acá no hay tokens cobrados, pero igual lo
+  // envolvemos en AgentError: antes bubbleaba como 500 crudo y el
+  // cliente no disparaba el recovery-polling ni mostraba un mensaje
+  // accionable (así se gatilló el incidente de la conversación
+  // brickeada del 25/06 — un fallo transitorio en el primer call de un
+  // turno con PDF).
+  let response: Anthropic.Message;
+  try {
+    response = await client.messages.create({
+      model: MODEL_ID,
+      max_tokens: 16000,
+      system: input.systemPrompt,
+      tools: [buscarDocumentosTool],
+      messages,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new AgentError(
+      msg,
+      "API_ERROR",
+      { ...totalUsage },
+      [...busquedas],
+      iterations,
+    );
+  }
   totalUsage.input_tokens += response.usage.input_tokens;
   totalUsage.output_tokens += response.usage.output_tokens;
   totalUsage.cache_creation_input_tokens +=

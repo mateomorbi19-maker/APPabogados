@@ -27,6 +27,7 @@ import {
   Paperclip,
   X,
   AlertCircle,
+  AudioLines,
   FileText,
   Image as ImageIcon,
   FileType,
@@ -34,13 +35,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  esAudio,
+  esImagen,
   esMimePermitido,
   fmtBytes,
   MIME_LABEL,
   MIME_TYPES_PERMITIDOS,
+  resolverMime,
   validarAdjunto,
   type MimeTypePermitido,
 } from "@/lib/casos/adjuntos";
+import { GrabadorAudio } from "@/components/mis-casos/chat/grabador-audio";
 
 const DESCRIPCION_MAX = 200;
 
@@ -79,15 +84,29 @@ type Props = {
   value: AdjuntoUI[];
   onChange: (items: AdjuntoUI[]) => void;
   disabled?: boolean;
+  // Habilita audio: suma los mimes de audio al picker y muestra el botón
+  // de grabar nota de voz. Solo el chat lo usa (los audios se transcriben
+  // con Whisper server-side); en eventos del timeline queda apagado.
+  conAudio?: boolean;
 };
 
-const ACCEPT = MIME_TYPES_PERMITIDOS.join(",");
+// accept combina mimes + extensiones: en Windows el browser reporta
+// file.type = "" para .heic (la validación real usa resolverMime), y
+// las extensiones hacen que el picker los muestre igual.
+const EXT_DOCS = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.docx";
+const EXT_AUDIO = ".webm,.mp3,.m4a,.wav,.ogg,.opus";
+const MIMES_SIN_AUDIO = MIME_TYPES_PERMITIDOS.filter(
+  (m) => !esAudio(m),
+).join(",");
+const ACCEPT_SIN_AUDIO = `${MIMES_SIN_AUDIO},${EXT_DOCS}`;
+const ACCEPT_CON_AUDIO = `${MIME_TYPES_PERMITIDOS.join(",")},${EXT_DOCS},${EXT_AUDIO}`;
 
 export function AdjuntosUploader({
   casoId,
   value,
   onChange,
   disabled = false,
+  conAudio = false,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // AbortControllers por tempId para poder cancelar el upload en curso
@@ -118,27 +137,17 @@ export function AdjuntosUploader({
   };
 
   const subirArchivo = async (file: File) => {
-    const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // randomUUID en vez de Date.now()+Math.random(): mismo propósito
+    // (id local único) sin violar react-hooks/purity.
+    const tempId = crypto.randomUUID();
 
-    if (!esMimePermitido(file.type)) {
-      onChange([
-        ...valueRef.current,
-        {
-          tempId,
-          status: "error",
-          filename: file.name,
-          mime_type: file.type,
-          size_bytes: file.size,
-          descripcion: "",
-          errorMsg: `Tipo no permitido (${file.type || "desconocido"}). Solo PDF, JPG, PNG, DOCX.`,
-        },
-      ]);
-      return;
-    }
+    // Mime efectivo: si el browser no reporta type (típico de .heic en
+    // Windows) o reporta uno raro, resolvemos por extensión.
+    const mimeEfectivo = resolverMime(file.name, file.type);
 
     const v = validarAdjunto({
       filename: file.name,
-      mime_type: file.type,
+      mime_type: mimeEfectivo,
       size_bytes: file.size,
     });
     if (!v.ok) {
@@ -148,7 +157,7 @@ export function AdjuntosUploader({
           tempId,
           status: "error",
           filename: file.name,
-          mime_type: file.type,
+          mime_type: mimeEfectivo,
           size_bytes: file.size,
           descripcion: "",
           errorMsg: v.error,
@@ -158,7 +167,7 @@ export function AdjuntosUploader({
     }
 
     // Insertamos en estado uploading antes de empezar el fetch.
-    const mimeTyped = file.type as MimeTypePermitido;
+    const mimeTyped = mimeEfectivo as MimeTypePermitido;
     const itemUploading: AdjuntoUI = {
       tempId,
       status: "uploading",
@@ -180,7 +189,7 @@ export function AdjuntosUploader({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             filename: file.name,
-            mime_type: file.type,
+            mime_type: mimeTyped,
             size_bytes: file.size,
           }),
           signal: controller.signal,
@@ -207,10 +216,11 @@ export function AdjuntosUploader({
         return;
       }
 
-      // PUT directo al storage. Header content-type matchea el del file.
+      // PUT directo al storage. Header content-type = mime efectivo (el
+      // bucket valida contra su allowlist de mimes).
       const resPut = await fetch(jsonUrl.signed_url, {
         method: "PUT",
-        headers: { "content-type": file.type },
+        headers: { "content-type": mimeTyped },
         body: file,
         signal: controller.signal,
       });
@@ -314,7 +324,7 @@ export function AdjuntosUploader({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button
           type="button"
           variant="outline"
@@ -325,17 +335,24 @@ export function AdjuntosUploader({
           <Paperclip className="size-3.5" />
           Agregar archivo
         </Button>
+        {conAudio ? (
+          <GrabadorAudio
+            disabled={disabled}
+            onAudioListo={(f) => void subirArchivo(f)}
+          />
+        ) : null}
         <input
           ref={fileInputRef}
           type="file"
-          accept={ACCEPT}
+          accept={conAudio ? ACCEPT_CON_AUDIO : ACCEPT_SIN_AUDIO}
           multiple
           onChange={handleFileChange}
           disabled={disabled}
           className="hidden"
         />
         <span className="text-xs text-muted-foreground">
-          PDF (≤10 MB) · JPG/PNG/DOCX (≤5 MB)
+          PDF (≤10 MB) · imágenes/DOCX (≤5 MB)
+          {conAudio ? " · audio (≤10 MB)" : ""}
         </span>
       </div>
 
@@ -358,8 +375,10 @@ export function AdjuntosUploader({
 
 function iconoMime(mime: string) {
   if (mime === "application/pdf") return <FileText className="size-4" />;
-  if (mime === "image/jpeg" || mime === "image/png")
+  if (esImagen(mime))
     return <ImageIcon className="size-4" aria-label="imagen" />;
+  if (esAudio(mime))
+    return <AudioLines className="size-4" aria-label="audio" />;
   if (
     mime ===
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

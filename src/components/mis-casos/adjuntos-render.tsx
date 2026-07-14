@@ -5,9 +5,18 @@
 // firmada → forzar descarga.
 
 import { useState } from "react";
-import { Download, FileText, Image, FileType, Loader2 } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Image,
+  FileType,
+  AudioLines,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  esAudio,
+  esImagen,
   esMimePermitido,
   fmtBytes,
   MIME_LABEL,
@@ -32,14 +41,39 @@ export function AdjuntosRender({ casoId, adjuntos }: Props) {
 
 function iconoMime(mime: string) {
   if (mime === "application/pdf") return <FileText className="size-3.5" />;
-  if (mime === "image/jpeg" || mime === "image/png")
+  if (esImagen(mime))
     return <Image className="size-3.5" aria-label="imagen" />;
+  if (esAudio(mime))
+    return <AudioLines className="size-3.5" aria-label="audio" />;
   if (
     mime ===
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   )
     return <FileType className="size-3.5" />;
   return <FileText className="size-3.5" />;
+}
+
+// Transcripción de un audio (generada por Whisper server-side y
+// persistida en el adjunto). Colapsada por defecto para no inflar la
+// card; el toggle la muestra completa.
+function Transcripcion({ texto }: { texto: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+      >
+        {open ? "Ocultar transcripción" : "Ver transcripción"}
+      </button>
+      {open ? (
+        <p className="text-xs text-muted-foreground italic mt-1 whitespace-pre-wrap">
+          «{texto}»
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function AdjuntoItem({
@@ -106,6 +140,9 @@ function AdjuntoItem({
             <p className="text-xs text-muted-foreground mt-1 italic">
               {adjunto.descripcion}
             </p>
+          ) : null}
+          {adjunto.transcripcion?.trim() ? (
+            <Transcripcion texto={adjunto.transcripcion.trim()} />
           ) : null}
           {error ? (
             <p className="text-[11px] text-destructive mt-1">{error}</p>

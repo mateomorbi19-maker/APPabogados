@@ -42,3 +42,20 @@ export async function extraerTextoDocx(buffer: Buffer): Promise<string> {
     return "";
   }
 }
+
+// Convierte una imagen HEIC/HEIF (fotos de iPhone) a JPEG. Anthropic
+// solo acepta jpeg/png/gif/webp como image blocks, así que las HEIC se
+// convierten server-side antes de mandarlas al modelo.
+//
+// heic-convert es JS puro (libheif via wasm): sin binarios nativos, no
+// complica el Docker build de la Fase 5.4. Import dinámico para no
+// cargar el wasm en rutas que no lo usan.
+export async function convertirHeicAJpeg(buffer: Buffer): Promise<Buffer> {
+  const { default: convert } = await import("heic-convert");
+  const salida = await convert({
+    buffer: new Uint8Array(buffer),
+    format: "JPEG",
+    quality: 0.85,
+  });
+  return Buffer.from(salida);
+}

@@ -323,3 +323,23 @@ ALTER TABLE eventos_agenda
 **Sync con Google:** las tareas no se pushean (`getEventosSinSincronizar` ahora filtra `clase='evento'`); el pull es update-only por `google_calendar_event_id`, que las tareas nunca tienen, así que tampoco las toca.
 
 **Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code (el MCP de Supabase apunta a otra cuenta — proyectos `mqmbltvmhriibsabhtze` / `aybwzcuozzhcedfotdrh`, no el `xvdlnevcvcsgxbngwliv` de la app). Mateo la corre en el SQL Editor de Supabase.
+
+---
+
+## 2026-07-14 — Config del bucket `eventos-caso-adjuntos` (Storage API, no SQL)
+
+**Contexto:** feature `chat: adjuntos + audio`. El chat suma formatos de imagen (WEBP, HEIC/HEIF de iPhone — se convierten a JPEG server-side antes de ir al modelo) y audio (notas de voz grabadas en el browser o archivos; se transcriben con Whisper y el agente lee la transcripción).
+
+**Tipo:** cambio de configuración del bucket vía Storage API (no es migración SQL). **Ya aplicado** el 2026-07-14 con la service_role key (`PUT /storage/v1/bucket/eventos-caso-adjuntos`).
+
+**Cambio:** `allowed_mime_types` pasa de `[pdf, jpeg, png, docx]` a:
+
+```json
+["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic",
+ "image/heif", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+ "audio/webm", "audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/wav", "audio/ogg"]
+```
+
+`file_size_limit` queda en 10485760 (10 MB).
+
+**Acoplamiento código ↔ config (IMPORTANTE):** el allowlist del bucket debe ser superset de `MIME_TYPES_PERMITIDOS` en [src/lib/casos/adjuntos.ts](src/lib/casos/adjuntos.ts). Si se agrega un mime al código sin agregarlo al bucket, el PUT del upload falla con 4xx del storage.

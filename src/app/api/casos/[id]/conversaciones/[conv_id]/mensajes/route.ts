@@ -18,9 +18,12 @@ import {
 } from "@/lib/agent/run-agent-consulta";
 import { AgentError } from "@/lib/agent/run-agent";
 import {
+  convertirHeicAJpeg,
   descargarAdjuntoBytes,
   extraerTextoDocx,
 } from "@/lib/casos/descargar-adjunto";
+import { transcribirAudio } from "@/lib/casos/transcribir-audio";
+import { esAudio } from "@/lib/casos/adjuntos";
 import { buildContextoConversacion } from "@/lib/casos/build-contexto-conversacion";
 
 // Latencia esperada similar al análisis original. 120s da headroom
@@ -52,7 +55,11 @@ async function prepararAdjuntoParaModelo(
     const { base64 } = await descargarAdjuntoBytes(a.storage_path);
     return { kind: "pdf", filename: a.filename, descripcion, base64 };
   }
-  if (a.mime_type === "image/jpeg" || a.mime_type === "image/png") {
+  if (
+    a.mime_type === "image/jpeg" ||
+    a.mime_type === "image/png" ||
+    a.mime_type === "image/webp"
+  ) {
     const { base64 } = await descargarAdjuntoBytes(a.storage_path);
     return {
       kind: "image",
@@ -62,6 +69,19 @@ async function prepararAdjuntoParaModelo(
       base64,
     };
   }
+  if (a.mime_type === "image/heic" || a.mime_type === "image/heif") {
+    // Fotos de iPhone: Anthropic no acepta HEIC — convertimos a JPEG
+    // server-side antes de mandarla como image block.
+    const { buffer } = await descargarAdjuntoBytes(a.storage_path);
+    const jpeg = await convertirHeicAJpeg(buffer);
+    return {
+      kind: "image",
+      mediaType: "image/jpeg",
+      filename: a.filename,
+      descripcion,
+      base64: jpeg.toString("base64"),
+    };
+  }
   if (
     a.mime_type ===
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -69,6 +89,27 @@ async function prepararAdjuntoParaModelo(
     const { buffer } = await descargarAdjuntoBytes(a.storage_path);
     const texto = await extraerTextoDocx(buffer);
     return { kind: "docx", filename: a.filename, descripcion, texto };
+  }
+  if (esAudio(a.mime_type)) {
+    // Audio: el modelo no puede escucharlo — se transcribe con Whisper
+    // y al modelo le llega la transcripción como texto. Si Whisper
+    // falla NO rompemos el turno: va transcripcion=null y el agente
+    // le avisa al abogado.
+    const { buffer } = await descargarAdjuntoBytes(a.storage_path);
+    let transcripcion: string | null = null;
+    try {
+      transcripcion = await transcribirAudio(
+        buffer,
+        a.filename,
+        a.mime_type,
+      );
+    } catch (e) {
+      console.error(
+        `[prepararAdjuntoParaModelo] transcripción falló (${a.filename}):`,
+        e,
+      );
+    }
+    return { kind: "audio", filename: a.filename, descripcion, transcripcion };
   }
   return null;
 }
@@ -262,12 +303,14 @@ export async function POST(
     );
   }
 
-  // 3. Bajar adjuntos del mensaje actual y prepararlos para el modelo.
+  // 3. Bajar adjuntos del mensaje actual y prepararlos para el modelo
+  // (PDF/imagen → base64, HEIC → JPEG, DOCX → texto, audio → Whisper).
   let adjuntosModelo: AdjuntoModelo[];
+  let resultadosPrep: (AdjuntoModelo | null)[];
   try {
     const promesas = adjuntos.map((a) => prepararAdjuntoParaModelo(a));
-    const resultados = await Promise.all(promesas);
-    adjuntosModelo = resultados.filter(
+    resultadosPrep = await Promise.all(promesas);
+    adjuntosModelo = resultadosPrep.filter(
       (r): r is AdjuntoModelo => r !== null,
     );
   } catch (e) {
@@ -281,6 +324,35 @@ export async function POST(
       },
       500,
     );
+  }
+
+  // 3b. Persistir transcripciones de audio en el jsonb `adjuntos` del
+  // mensaje del usuario: (a) la UI las puede mostrar, (b) el historial
+  // las reinyecta en turnos futuros sin re-transcribir. Best-effort:
+  // si el UPDATE falla seguimos igual (la transcripción de ESTE turno
+  // ya viaja al modelo en memoria).
+  const hayTranscripciones = resultadosPrep.some(
+    (r) => r?.kind === "audio" && r.transcripcion,
+  );
+  if (hayTranscripciones) {
+    const adjuntosPersistidos = adjuntos.map((a, i) => {
+      const r = resultadosPrep[i];
+      return r?.kind === "audio" && r.transcripcion
+        ? { ...a, transcripcion: r.transcripcion }
+        : a;
+    });
+    const { error: updErr } = await supabase
+      .from("mensajes_conversacion")
+      .update({ adjuntos: adjuntosPersistidos })
+      .eq("id", msgUsuario.id);
+    if (updErr) {
+      console.error(
+        "[POST mensajes] no se pudo persistir transcripciones:",
+        updErr,
+      );
+    } else {
+      msgUsuario.adjuntos = adjuntosPersistidos;
+    }
   }
 
   // 4. Llamar al agente con history.

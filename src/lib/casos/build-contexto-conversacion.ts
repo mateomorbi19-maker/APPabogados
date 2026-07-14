@@ -68,6 +68,13 @@ function textoMensajeUsuario(msg: MensajeRow): string {
     for (const a of msg.adjuntos) {
       const desc = a.descripcion?.trim() ? ` (${a.descripcion.trim()})` : "";
       partes.push(`  - ${a.filename}${desc}`);
+      // Audios: la transcripción quedó persistida en el adjunto al
+      // momento del envío — la reinyectamos para que el agente conserve
+      // el contenido del audio en turnos futuros (los demás adjuntos
+      // históricos siguen siendo solo referencia por filename).
+      if (a.transcripcion?.trim()) {
+        partes.push(`    Transcripción: «${a.transcripcion.trim()}»`);
+      }
     }
   }
   return partes.join("\n");

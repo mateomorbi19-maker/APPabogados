@@ -19,6 +19,9 @@ type Props = {
 
 const PREGUNTA_MIN = 1;
 const PREGUNTA_MAX = 5000;
+// Límite del server (crearMensajeInputSchema: adjuntos max 20). Validado
+// también acá para que el usuario vea el motivo en vez de un 400 genérico.
+const ADJUNTOS_MAX = 20;
 
 const RECUPERAR_TIMEOUT_MS = 60_000;
 const RECUPERAR_INTERVALO_MS = 5_000;
@@ -95,7 +98,9 @@ export function InputMensaje({
     trim.length >= PREGUNTA_MIN &&
     trim.length <= PREGUNTA_MAX;
   const adjuntosListos = adjuntos.every((a) => a.status === "done");
-  const formOk = ok && adjuntosListos;
+  const demasiadosAdjuntos = adjuntos.length > ADJUNTOS_MAX;
+  const hayAudio = adjuntos.some((a) => a.mime_type.startsWith("audio/"));
+  const formOk = ok && adjuntosListos && !demasiadosAdjuntos;
 
   const enviar = async () => {
     if (loading || !formOk) return;
@@ -228,11 +233,26 @@ export function InputMensaje({
         value={adjuntos}
         onChange={setAdjuntos}
         disabled={loading}
+        conAudio
       />
+
+      {hayAudio ? (
+        <p className="text-xs text-muted-foreground">
+          Los audios se transcriben automáticamente: el agente lee la
+          transcripción, no escucha el audio.
+        </p>
+      ) : null}
 
       {!adjuntosListos ? (
         <p className="text-xs text-amber-500">
           Esperá a que los archivos terminen de subir (o quitá los que fallaron) para enviar.
+        </p>
+      ) : null}
+
+      {demasiadosAdjuntos ? (
+        <p className="text-xs text-amber-500">
+          Máximo {ADJUNTOS_MAX} adjuntos por mensaje. Quitá{" "}
+          {adjuntos.length - ADJUNTOS_MAX} para poder enviar.
         </p>
       ) : null}
 
