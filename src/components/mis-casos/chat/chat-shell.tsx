@@ -34,7 +34,14 @@ export function ChatShell({
   const [mensajes, setMensajes] = useState(mensajesIniciales);
 
   const onMensajesNuevos = (nuevos: MensajeConversacion[]) => {
-    setMensajes((prev) => [...prev, ...nuevos]);
+    // Dedup por id: el recovery-polling post-502 puede devolver mensajes
+    // que ya están en la lista (su ventana "desde" arranca 5s antes del
+    // POST y puede capturar el final del turno anterior). Sin esto se
+    // duplicaban en pantalla con keys de React repetidas.
+    setMensajes((prev) => {
+      const ids = new Set(prev.map((m) => m.id));
+      return [...prev, ...nuevos.filter((m) => !ids.has(m.id))];
+    });
   };
 
   const onTituloRenombrado = (nuevoTitulo: string) => {

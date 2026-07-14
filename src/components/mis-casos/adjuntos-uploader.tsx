@@ -88,6 +88,9 @@ type Props = {
   // de grabar nota de voz. Solo el chat lo usa (los audios se transcriben
   // con Whisper server-side); en eventos del timeline queda apagado.
   conAudio?: boolean;
+  // Notifica al padre cuando hay una grabación de audio en curso (para
+  // bloquear el envío del mensaje mientras tanto).
+  onGrabandoChange?: (grabando: boolean) => void;
 };
 
 // accept combina mimes + extensiones: en Windows el browser reporta
@@ -107,6 +110,7 @@ export function AdjuntosUploader({
   onChange,
   disabled = false,
   conAudio = false,
+  onGrabandoChange,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // AbortControllers por tempId para poder cancelar el upload en curso
@@ -339,6 +343,7 @@ export function AdjuntosUploader({
           <GrabadorAudio
             disabled={disabled}
             onAudioListo={(f) => void subirArchivo(f)}
+            onGrabandoChange={onGrabandoChange}
           />
         ) : null}
         <input

@@ -62,6 +62,16 @@ export type AdjuntoModelo =
       filename: string;
       descripcion: string | null;
       transcripcion: string | null;
+    }
+  | {
+      // Adjunto que no se pudo procesar (descarga fallida, HEIC
+      // corrupto, conversión imposible). Un adjunto malo NO tumba el
+      // turno: se degrada a esta referencia y el agente le avisa al
+      // abogado.
+      kind: "no_procesado";
+      filename: string;
+      descripcion: string | null;
+      motivo: string;
     };
 
 export type RunAgentConsultaInput = {
@@ -192,6 +202,11 @@ function buildPrimerUserContent(
           adj.transcripcion && adj.transcripcion.length > 0
             ? `${orden}: audio "${adj.filename}"${desc}. Transcripción del audio:\n\n«${adj.transcripcion}»`
             : `${orden}: audio "${adj.filename}"${desc}. La transcripción automática falló o el audio no tiene voz detectable — pedile al abogado que reenvíe el audio o escriba su contenido si es relevante.`,
+      });
+    } else if (adj.kind === "no_procesado") {
+      blocks.push({
+        type: "text",
+        text: `${orden}: archivo "${adj.filename}"${desc}. NO se pudo procesar para incluirlo (${adj.motivo}). Avisale al abogado que este adjunto no fue analizado y sugerile reenviarlo en otro formato (por ejemplo JPG, PNG o PDF) si es relevante para la consulta.`,
       });
     }
   }

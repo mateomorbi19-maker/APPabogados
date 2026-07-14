@@ -10,6 +10,13 @@
 //
 // El audio NO va nativo al modelo: el server lo transcribe con Whisper
 // y el agente lee la transcripción (aclarado en la UI del input).
+//
+// Guards de carrera (hallazgo del review adversarial): empezar() es
+// async — sin protección, un doble click o un unmount durante el await
+// de getUserMedia dejaba un MediaStream huérfano con el micrófono
+// abierto para siempre. `iniciandoRef` bloquea la reentrada síncrona y
+// `montadoRef` corta la continuación post-await si el componente ya se
+// desmontó (soltando los tracks recién adquiridos).
 
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square, X } from "lucide-react";
@@ -18,6 +25,10 @@ import { Button } from "@/components/ui/button";
 type Props = {
   disabled?: boolean;
   onAudioListo: (file: File) => void;
+  // El padre puede bloquear el envío mientras hay una grabación en
+  // curso (evita que un audio entregado durante un POST en vuelo se
+  // descarte).
+  onGrabandoChange?: (grabando: boolean) => void;
 };
 
 // Preferencia de formato: webm/opus (Chrome/Firefox/Edge) → mp4 (Safari).
@@ -33,8 +44,13 @@ function fmtSegundos(total: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function GrabadorAudio({ disabled = false, onAudioListo }: Props) {
+export function GrabadorAudio({
+  disabled = false,
+  onAudioListo,
+  onGrabandoChange,
+}: Props) {
   const [grabando, setGrabando] = useState(false);
+  const [iniciando, setIniciando] = useState(false);
   const [segundos, setSegundos] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +59,13 @@ export function GrabadorAudio({ disabled = false, onAudioListo }: Props) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // true = el stop en curso es una cancelación (descartar sin entregar).
   const canceladoRef = useRef(false);
+  // Guards de carrera: reentrada de empezar() y unmount mid-getUserMedia.
+  const iniciandoRef = useRef(false);
+  const montadoRef = useRef(true);
+
+  const notificarGrabando = (v: boolean) => {
+    onGrabandoChange?.(v);
+  };
 
   const limpiar = () => {
     if (timerRef.current) {
@@ -57,11 +80,14 @@ export function GrabadorAudio({ disabled = false, onAudioListo }: Props) {
     chunksRef.current = [];
     setGrabando(false);
     setSegundos(0);
+    notificarGrabando(false);
   };
 
   // Al desmontar (navegación, cambio de conversación) soltamos el mic.
   useEffect(() => {
+    montadoRef.current = true;
     return () => {
+      montadoRef.current = false;
       canceladoRef.current = true;
       recorderRef.current?.stop();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -70,60 +96,80 @@ export function GrabadorAudio({ disabled = false, onAudioListo }: Props) {
   }, []);
 
   const empezar = async () => {
+    // Guard de reentrada: un solo empezar() en vuelo y una sola
+    // grabación a la vez (el doble click era posible porque grabando
+    // recién se setea después del await).
+    if (iniciandoRef.current || recorderRef.current || grabando) return;
+    iniciandoRef.current = true;
+    setIniciando(true);
     setError(null);
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.mediaDevices?.getUserMedia ||
-      typeof MediaRecorder === "undefined"
-    ) {
-      setError("Este navegador no soporta grabación de audio.");
-      return;
-    }
-    let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError(
-        "No se pudo acceder al micrófono. Revisá el permiso del navegador.",
-      );
-      return;
+      if (
+        typeof navigator === "undefined" ||
+        !navigator.mediaDevices?.getUserMedia ||
+        typeof MediaRecorder === "undefined"
+      ) {
+        setError("Este navegador no soporta grabación de audio.");
+        return;
+      }
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch {
+        setError(
+          "No se pudo acceder al micrófono. Revisá el permiso del navegador.",
+        );
+        return;
+      }
+
+      // Post-await: si el componente se desmontó mientras el usuario
+      // decidía el permiso (o apareció otra grabación), soltamos los
+      // tracks recién adquiridos y NO arrancamos nada.
+      if (!montadoRef.current || recorderRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      const formato =
+        MIMES_GRABACION.find((f) => MediaRecorder.isTypeSupported(f.mime)) ??
+        null;
+      const rec = formato
+        ? new MediaRecorder(stream, { mimeType: formato.mime })
+        : new MediaRecorder(stream);
+      // Mime real con el que terminó grabando (sin el sufijo ;codecs=…).
+      const mimeFinal = (formato?.mime ?? rec.mimeType).split(";")[0];
+      const ext = formato?.ext ?? "webm";
+
+      canceladoRef.current = false;
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onstop = () => {
+        const cancelado = canceladoRef.current;
+        const chunks = chunksRef.current;
+        limpiar();
+        if (cancelado || chunks.length === 0) return;
+        const blob = new Blob(chunks, { type: mimeFinal });
+        const id = crypto.randomUUID().slice(0, 8);
+        const file = new File([blob], `nota-de-voz-${id}.${ext}`, {
+          type: mimeFinal,
+        });
+        onAudioListo(file);
+      };
+
+      recorderRef.current = rec;
+      rec.start();
+      setGrabando(true);
+      setSegundos(0);
+      notificarGrabando(true);
+      timerRef.current = setInterval(() => {
+        setSegundos((s) => s + 1);
+      }, 1000);
+    } finally {
+      iniciandoRef.current = false;
+      if (montadoRef.current) setIniciando(false);
     }
-
-    const formato =
-      MIMES_GRABACION.find((f) => MediaRecorder.isTypeSupported(f.mime)) ??
-      null;
-    const rec = formato
-      ? new MediaRecorder(stream, { mimeType: formato.mime })
-      : new MediaRecorder(stream);
-    // Mime real con el que terminó grabando (sin el sufijo ;codecs=…).
-    const mimeFinal = (formato?.mime ?? rec.mimeType).split(";")[0];
-    const ext = formato?.ext ?? "webm";
-
-    canceladoRef.current = false;
-    chunksRef.current = [];
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-    rec.onstop = () => {
-      const cancelado = canceladoRef.current;
-      const chunks = chunksRef.current;
-      limpiar();
-      if (cancelado || chunks.length === 0) return;
-      const blob = new Blob(chunks, { type: mimeFinal });
-      const id = crypto.randomUUID().slice(0, 8);
-      const file = new File([blob], `nota-de-voz-${id}.${ext}`, {
-        type: mimeFinal,
-      });
-      onAudioListo(file);
-    };
-
-    recorderRef.current = rec;
-    rec.start();
-    setGrabando(true);
-    setSegundos(0);
-    timerRef.current = setInterval(() => {
-      setSegundos((s) => s + 1);
-    }, 1000);
   };
 
   const frenar = () => {
@@ -143,11 +189,11 @@ export function GrabadorAudio({ disabled = false, onAudioListo }: Props) {
           variant="outline"
           size="sm"
           onClick={() => void empezar()}
-          disabled={disabled}
+          disabled={disabled || iniciando}
           title="Grabar nota de voz"
         >
           <Mic className="size-3.5" />
-          Grabar audio
+          {iniciando ? "Iniciando…" : "Grabar audio"}
         </Button>
         {error ? (
           <span className="text-xs text-destructive">{error}</span>

@@ -18,13 +18,40 @@ import { getOpenAI } from "@/lib/openai";
 
 export const TRANSCRIPCION_MODEL = "whisper-1" as const;
 
+// Whisper valida el formato por la EXTENSIÓN del filename del multipart
+// (no por el contenido): un .opus de WhatsApp (contenedor Ogg válido)
+// se rechaza con "Invalid file format" aunque el mismo contenido con
+// filename .ogg se transcribe perfecto (hallazgo del review adversarial
+// de la sesión 1). Por eso el filename que viaja a OpenAI se deriva
+// SIEMPRE del mime resuelto por la app, no de la extensión que trajo el
+// archivo del usuario.
+const EXT_POR_MIME: Record<string, string> = {
+  "audio/webm": "webm",
+  "audio/mpeg": "mp3",
+  "audio/mp4": "m4a",
+  "audio/x-m4a": "m4a",
+  "audio/wav": "wav",
+  "audio/ogg": "ogg",
+};
+
+export function filenameParaWhisper(
+  filename: string,
+  mimeType: string,
+): string {
+  const ext = EXT_POR_MIME[mimeType] ?? "mp3";
+  const base = filename.replace(/\.[^.]*$/, "").trim() || "audio";
+  return `${base}.${ext}`;
+}
+
 export async function transcribirAudio(
   buffer: Buffer,
   filename: string,
   mimeType: string,
 ): Promise<string> {
   const openai = getOpenAI();
-  const file = await toFile(buffer, filename, { type: mimeType });
+  const file = await toFile(buffer, filenameParaWhisper(filename, mimeType), {
+    type: mimeType,
+  });
   const result = await openai.audio.transcriptions.create({
     model: TRANSCRIPCION_MODEL,
     file,

@@ -121,6 +121,10 @@ export function InputMensaje({
 }: Props) {
   const [contenido, setContenido] = useState("");
   const [adjuntos, setAdjuntos] = useState<AdjuntoUI[]>([]);
+  // true mientras hay una grabación de nota de voz en curso: bloquea el
+  // envío para que el audio no quede fuera del mensaje (o descartado si
+  // se entregara con un POST en vuelo).
+  const [grabando, setGrabando] = useState(false);
   // null = el usuario todavía no eligió en esta sesión → usar el
   // guardado (o el default). La elección autoritativa viaja per-mensaje.
   const [nivelElegido, setNivelElegido] = useState<NivelModelo | null>(null);
@@ -151,7 +155,7 @@ export function InputMensaje({
   const adjuntosListos = adjuntos.every((a) => a.status === "done");
   const demasiadosAdjuntos = adjuntos.length > ADJUNTOS_MAX;
   const hayAudio = adjuntos.some((a) => a.mime_type.startsWith("audio/"));
-  const formOk = ok && adjuntosListos && !demasiadosAdjuntos;
+  const formOk = ok && adjuntosListos && !demasiadosAdjuntos && !grabando;
 
   const enviar = async () => {
     if (loading || !formOk) return;
@@ -162,15 +166,25 @@ export function InputMensaje({
     abortRef.current = controller;
     const desdeIso = new Date(Date.now() - 5_000).toISOString();
 
-    const adjuntosBody = adjuntos
-      .filter((a) => a.status === "done")
-      .map((a) => ({
-        filename: a.filename,
-        storage_path: a.storage_path,
-        mime_type: a.mime_type,
-        size_bytes: a.size_bytes,
-        descripcion: a.descripcion,
-      }));
+    const enviados = adjuntos.filter(
+      (a): a is Extract<AdjuntoUI, { status: "done" }> =>
+        a.status === "done",
+    );
+    const adjuntosBody = enviados.map((a) => ({
+      filename: a.filename,
+      storage_path: a.storage_path,
+      mime_type: a.mime_type,
+      size_bytes: a.size_bytes,
+      descripcion: a.descripcion,
+    }));
+    // Limpieza QUIRÚRGICA post-envío: solo se sacan los adjuntos que
+    // efectivamente viajaron en este mensaje. Un audio/archivo agregado
+    // mientras el POST estaba en vuelo sobrevive para el próximo mensaje
+    // (antes setAdjuntos([]) lo descartaba en silencio y quedaba
+    // huérfano en storage — hallazgo del review adversarial).
+    const enviadosIds = new Set(enviados.map((a) => a.tempId));
+    const limpiarEnviados = () =>
+      setAdjuntos((prev) => prev.filter((a) => !enviadosIds.has(a.tempId)));
 
     try {
       const res = await fetch(
@@ -190,9 +204,14 @@ export function InputMensaje({
 
       if (controller.signal.aborted) return;
 
-      if (res.status === 502) {
-        // Recovery: polling al GET de mensajes para ver si el server
-        // alcanzó a crear el mensaje del agente.
+      // Recovery-polling SOLO para el 502 de proxy (body no-JSON): es el
+      // único caso en que el server pudo haber terminado OK después del
+      // corte. Un 502 GENUINO del server trae JSON con ok:false — ahí el
+      // mensaje del agente no va a aparecer jamás: pollear 60s era espera
+      // fútil y, peor, la ventana desde-5s podía capturar la respuesta
+      // del turno ANTERIOR y presentarla como si el envío hubiera salido
+      // bien, silenciando el error (hallazgo del review adversarial).
+      if (res.status === 502 && json === null) {
         const recuperados = await intentarRecuperar(
           casoId,
           conversacionId,
@@ -203,23 +222,11 @@ export function InputMensaje({
         if (recuperados) {
           onMensajesNuevos(recuperados);
           setContenido("");
-          setAdjuntos([]);
+          limpiarEnviados();
           setLoading(false);
           return;
         }
-        const msg =
-          json && "error" in json && typeof json.error === "string"
-            ? json.error
-            : "El análisis falló. Probá de nuevo en unos minutos.";
-        // Si el server alcanzó a crear el mensaje del usuario, lo
-        // mostramos igual para que quede en pantalla y el abogado vea
-        // que su mensaje sí llegó (aunque la respuesta no).
-        if (json && "mensaje_usuario" in json && json.mensaje_usuario) {
-          onMensajesNuevos([json.mensaje_usuario]);
-          setContenido("");
-          setAdjuntos([]);
-        }
-        setError(msg);
+        setError("El análisis falló. Probá de nuevo en unos minutos.");
         setLoading(false);
         return;
       }
@@ -229,10 +236,13 @@ export function InputMensaje({
           json && "error" in json && typeof json.error === "string"
             ? json.error
             : `Error enviando mensaje (HTTP ${res.status})`;
+        // Si el server alcanzó a crear el mensaje del usuario, lo
+        // mostramos igual para que quede en pantalla y el abogado vea
+        // que su mensaje sí llegó (aunque la respuesta no).
         if (json && "mensaje_usuario" in json && json.mensaje_usuario) {
           onMensajesNuevos([json.mensaje_usuario]);
           setContenido("");
-          setAdjuntos([]);
+          limpiarEnviados();
         }
         setError(msg);
         setLoading(false);
@@ -247,7 +257,7 @@ export function InputMensaje({
 
       onMensajesNuevos([json.mensaje_usuario, json.mensaje_agente]);
       setContenido("");
-      setAdjuntos([]);
+      limpiarEnviados();
       setLoading(false);
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
@@ -289,7 +299,14 @@ export function InputMensaje({
         onChange={setAdjuntos}
         disabled={loading}
         conAudio
+        onGrabandoChange={setGrabando}
       />
+
+      {grabando ? (
+        <p className="text-xs text-amber-500">
+          Terminá (o cancelá) la grabación para poder enviar el mensaje.
+        </p>
+      ) : null}
 
       {hayAudio ? (
         <p className="text-xs text-muted-foreground">
@@ -329,7 +346,10 @@ export function InputMensaje({
             nunca muestra los nombres oficiales de los modelos. */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground">Nivel:</span>
-          <Select value={nivel} onValueChange={onNivelChange}>
+          {/* items={NIVEL_LABEL}: sin este mapa, el SelectValue de
+              base-ui renderiza el value crudo del enum ("medio") en el
+              trigger en vez del label de producto ("Medio"). */}
+          <Select value={nivel} onValueChange={onNivelChange} items={NIVEL_LABEL}>
             <SelectTrigger
               size="sm"
               disabled={loading}

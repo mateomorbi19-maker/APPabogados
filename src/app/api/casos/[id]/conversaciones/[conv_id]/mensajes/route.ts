@@ -307,11 +307,36 @@ export async function POST(
   }
 
   // 3. Bajar adjuntos del mensaje actual y prepararlos para el modelo
-  // (PDF/imagen → base64, HEIC → JPEG, DOCX → texto, audio → Whisper).
+  // (PDF/imagen → base64, HEIC → JPEG reescalado, DOCX → texto, audio →
+  // Whisper). Cada adjunto se protege POR SEPARADO: un archivo corrupto
+  // o una descarga fallida degradan ESE adjunto a una referencia
+  // "no_procesado" (el agente le avisa al abogado) en vez de tumbar el
+  // turno completo con 500 — hallazgo del review adversarial; mismo
+  // criterio de degradación que ya usaban audio (transcripcion=null) y
+  // DOCX (texto vacío).
   let adjuntosModelo: AdjuntoModelo[];
   let resultadosPrep: (AdjuntoModelo | null)[];
   try {
-    const promesas = adjuntos.map((a) => prepararAdjuntoParaModelo(a));
+    const promesas = adjuntos.map(
+      async (a): Promise<AdjuntoModelo | null> => {
+        try {
+          return await prepararAdjuntoParaModelo(a);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error(
+            `[POST mensajes] adjunto no procesado (${a.filename}):`,
+            msg,
+          );
+          return {
+            kind: "no_procesado",
+            filename: a.filename,
+            descripcion: a.descripcion?.trim() ? a.descripcion.trim() : null,
+            motivo:
+              "no se pudo descargar o convertir el archivo a un formato que el modelo acepte",
+          };
+        }
+      },
+    );
     resultadosPrep = await Promise.all(promesas);
     adjuntosModelo = resultadosPrep.filter(
       (r): r is AdjuntoModelo => r !== null,
