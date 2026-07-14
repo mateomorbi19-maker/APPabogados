@@ -74,11 +74,27 @@ function textoMensajeUsuario(msg: MensajeRow): string {
 }
 
 function textoMensajeAgente(msg: MensajeRow): string {
-  // Solo enviamos analisis + recomendaciones (no búsquedas / ejecucion_id /
+  // Solo enviamos el contenido semántico (no búsquedas / ejecucion_id /
   // degraded_response — son metadata de auditoría, no contenido).
   const fuente = msg.respuesta_estructurada;
   if (fuente && typeof fuente === "object") {
+    // Modo conversacional (y fallback del parser): el contenido real
+    // vive en `respuesta`; analisis/recomendaciones son null. Antes se
+    // reinyectaba {analisis:null,recomendaciones:null} y el modelo
+    // perdía toda su prosa previa en el modo más frecuente (bug A-5
+    // de la auditoría) — encima viendo ejemplos malformados de su
+    // propio formato de salida.
+    if (typeof fuente.respuesta === "string" && fuente.respuesta.trim()) {
+      return JSON.stringify({
+        modo: "conversacional",
+        respuesta: fuente.respuesta,
+        analisis: null,
+        recomendaciones: null,
+      });
+    }
     const obj = {
+      modo: "analisis",
+      respuesta: null,
       analisis: fuente.analisis,
       recomendaciones: fuente.recomendaciones,
     };
@@ -122,23 +138,74 @@ export async function buildContextoConversacion(
     ? todos.filter((m) => m.id !== opciones.excluirMensajeId)
     : todos;
 
-  const mensajesPrevios: Anthropic.MessageParam[] = mensajesFiltrados.map(
-    (m) => {
-      if (m.rol === "usuario") {
-        return {
-          role: "user",
-          content: textoMensajeUsuario(m),
-        };
-      }
-      return {
-        role: "assistant",
-        content: textoMensajeAgente(m),
-      };
-    },
+  // === Garantía del invariante del loop (bug A-1 de la auditoría) ===
+  //
+  // runAgentConsulta exige que mensajesPrevios alterne user/assistant y
+  // termine en assistant (o esté vacío), porque el mensaje nuevo del
+  // usuario se appendea después. Un turno fallido (error de API,
+  // storage, contexto) deja en la DB un mensaje 'usuario' SIN respuesta
+  // del agente; sin este saneo, el próximo turno arma [user, user] →
+  // Anthropic rechaza con 400 → el turno vuelve a fallar → la
+  // conversación queda permanentemente inusable (pasó en prod:
+  // conversación 639abf52).
+  //
+  // Saneo en dos pasos:
+  //   1. Colapsar mensajes consecutivos del mismo rol en uno solo
+  //      (concatenados), para que la secuencia siempre alterne.
+  //   2. Si la secuencia termina en 'user' (huérfano de un turno
+  //      fallido), sacarlo del history y reinyectar su texto como
+  //      sección del contexto markdown — así el modelo no pierde lo
+  //      que el abogado escribió, sin romper la alternancia.
+  type Turno = { role: "user" | "assistant"; text: string };
+  const turnos: Turno[] = mensajesFiltrados.map((m) =>
+    m.rol === "usuario"
+      ? { role: "user", text: textoMensajeUsuario(m) }
+      : { role: "assistant", text: textoMensajeAgente(m) },
   );
+
+  const colapsados: Turno[] = [];
+  for (const t of turnos) {
+    const prev = colapsados[colapsados.length - 1];
+    if (prev && prev.role === t.role) {
+      prev.text = `${prev.text}\n\n${t.text}`;
+    } else {
+      colapsados.push({ ...t });
+    }
+  }
+
+  // Defensivo: la API exige que el primer mensaje sea 'user'. Un
+  // assistant inicial no puede ocurrir por el flujo de la app (el
+  // mensaje del agente siempre se inserta después de uno del usuario),
+  // pero si apareciera lo descartamos antes que romper el turno.
+  while (colapsados.length > 0 && colapsados[0].role === "assistant") {
+    colapsados.shift();
+  }
+
+  let pendienteSinRespuesta: string | null = null;
+  if (
+    colapsados.length > 0 &&
+    colapsados[colapsados.length - 1].role === "user"
+  ) {
+    pendienteSinRespuesta = colapsados.pop()?.text ?? null;
+  }
+
+  const mensajesPrevios: Anthropic.MessageParam[] = colapsados.map((t) => ({
+    role: t.role,
+    content: t.text,
+  }));
+
+  let contextoMarkdown = caso.contextoMarkdown;
+  if (pendienteSinRespuesta) {
+    contextoMarkdown +=
+      `\n\n---\n\n## MENSAJE PREVIO DEL ABOGADO SIN RESPUESTA\n\n` +
+      `El siguiente mensaje fue enviado antes en esta conversación pero ` +
+      `no llegó a ser respondido por un error técnico. Tenelo en cuenta ` +
+      `al responder la pregunta actual:\n\n${pendienteSinRespuesta}`;
+  }
 
   return {
     ...caso,
+    contextoMarkdown,
     mensajesPrevios,
   };
 }
