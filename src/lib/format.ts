@@ -22,12 +22,18 @@ export const fmtFecha = (iso: string): string =>
 const TIPOS: Record<string, string> = {
   analizar_caso: "Análisis",
   pre_analisis: "Pre-análisis",
+  consulta_caso: "Consulta",
 };
 
 export const fmtTipo = (tipo: string): string => TIPOS[tipo] ?? tipo;
 
+// Decisión de producto: la app NUNCA muestra los nombres oficiales de
+// los modelos — se exponen como niveles "Bajo / Medio / Alto" (mapeo en
+// src/lib/agent/modelos.ts). Aplica en consumo, historial y admin.
 const MODELOS: Record<string, string> = {
-  "claude-sonnet-4-5-20250929": "Sonnet 4.5",
+  "claude-haiku-4-5-20251001": "Bajo",
+  "claude-sonnet-4-5-20250929": "Medio",
+  "claude-opus-4-6": "Alto",
 };
 
 export const fmtModelo = (modelo: string): string => MODELOS[modelo] ?? modelo;

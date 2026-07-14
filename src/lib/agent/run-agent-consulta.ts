@@ -1,14 +1,16 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
+import { getAnthropic } from "@/lib/anthropic";
 import {
   buscarDocumentosTool,
   BUSCAR_DOCUMENTOS_TOOL_NAME,
 } from "@/lib/agent/tools";
+import { calcularCosto } from "@/lib/agent/pricing";
 import { embedQuery } from "@/lib/rag/embed";
 import { buscarDocumentos } from "@/lib/rag/match-documents";
 import {
   AgentError,
+  usageDeResponse,
   type Busqueda,
   type RunAgentResult,
   type RunAgentUsage,
@@ -67,6 +69,11 @@ export type RunAgentConsultaInput = {
   contextoCaso: string;
   adjuntos: AdjuntoModelo[];
   systemPrompt: string;
+  // Model ID resuelto SERVER-SIDE desde el nivel elegido por el abogado
+  // (Bajo/Medio/Alto → src/lib/agent/modelos.ts). Nunca viene crudo del
+  // cliente. Debe tener pricing en pricing.ts.
+  modelId: string;
+  maxTokens?: number;
   maxIterations?: number;
   // Historial previo de la conversación. Cada item es un MessageParam
   // ya construido (user/assistant text). El último mensaje del usuario
@@ -204,6 +211,8 @@ export async function runAgentConsulta(
   input: RunAgentConsultaInput,
 ): Promise<RunAgentResult> {
   const maxIterations = input.maxIterations ?? 12;
+  const modelId = input.modelId;
+  const maxTokens = input.maxTokens ?? 16000;
 
   const client = getAnthropic();
   // Mensajes previos del chat (si los hay) + el nuevo mensaje del
@@ -226,6 +235,7 @@ export async function runAgentConsulta(
   };
   const busquedas: Busqueda[] = [];
   let iterations = 0;
+  let costoUsd = 0;
 
   // Primer call. Si falla acá no hay tokens cobrados, pero igual lo
   // envolvemos en AgentError: antes bubbleaba como 500 crudo y el
@@ -236,8 +246,8 @@ export async function runAgentConsulta(
   let response: Anthropic.Message;
   try {
     response = await client.messages.create({
-      model: MODEL_ID,
-      max_tokens: 16000,
+      model: modelId,
+      max_tokens: maxTokens,
       system: input.systemPrompt,
       tools: [buscarDocumentosTool],
       messages,
@@ -248,6 +258,7 @@ export async function runAgentConsulta(
       msg,
       "API_ERROR",
       { ...totalUsage },
+      0,
       [...busquedas],
       iterations,
     );
@@ -258,6 +269,7 @@ export async function runAgentConsulta(
     response.usage.cache_creation_input_tokens ?? 0;
   totalUsage.cache_read_input_tokens +=
     response.usage.cache_read_input_tokens ?? 0;
+  costoUsd += calcularCosto(modelId, usageDeResponse(response));
 
   while (
     response.stop_reason === "tool_use" &&
@@ -334,14 +346,14 @@ export async function runAgentConsulta(
       response = await client.messages.create(
         capAgotado
           ? {
-              model: MODEL_ID,
-              max_tokens: 16000,
+              model: modelId,
+              max_tokens: maxTokens,
               system: input.systemPrompt,
               messages,
             }
           : {
-              model: MODEL_ID,
-              max_tokens: 16000,
+              model: modelId,
+              max_tokens: maxTokens,
               system: input.systemPrompt,
               tools: [buscarDocumentosTool],
               messages,
@@ -353,6 +365,7 @@ export async function runAgentConsulta(
         msg,
         "API_ERROR",
         { ...totalUsage },
+        Number(costoUsd.toFixed(6)),
         [...busquedas],
         iterations,
       );
@@ -363,6 +376,7 @@ export async function runAgentConsulta(
       response.usage.cache_creation_input_tokens ?? 0;
     totalUsage.cache_read_input_tokens +=
       response.usage.cache_read_input_tokens ?? 0;
+    costoUsd += calcularCosto(modelId, usageDeResponse(response));
 
     // Defensivo: con tools removidas en el call anterior el modelo no
     // debería responder con tool_use. Si por alguna razón lo hace,
@@ -372,6 +386,7 @@ export async function runAgentConsulta(
         "CAP_EXCEEDED_NO_SYNTHESIS",
         "CAP_EXCEEDED_NO_SYNTHESIS",
         { ...totalUsage },
+        Number(costoUsd.toFixed(6)),
         [...busquedas],
         iterations,
       );
@@ -383,6 +398,7 @@ export async function runAgentConsulta(
       "MAX_ITERATIONS alcanzado",
       "MAX_ITERATIONS",
       { ...totalUsage },
+      Number(costoUsd.toFixed(6)),
       [...busquedas],
       iterations,
     );
@@ -396,6 +412,7 @@ export async function runAgentConsulta(
   return {
     rawText,
     usage: totalUsage,
+    costo_usd: Number(costoUsd.toFixed(6)),
     busquedas,
     iterations,
     degraded_response: busquedas.length >= HARD_CAP_BUSQUEDAS,

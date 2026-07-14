@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CATEGORIAS_EVENTO } from "@/lib/casos/categorias";
 import { MIME_TYPES_PERMITIDOS } from "@/lib/casos/adjuntos";
+import { NIVELES_MODELO, NIVEL_DEFAULT } from "@/lib/agent/modelos";
 
 export const rolSchema = z.enum(["defensor", "querellante", "ambos"]);
 export type RolInput = z.infer<typeof rolSchema>;
@@ -365,8 +366,13 @@ export type RenombrarConversacionInput = z.infer<
 
 // Mensaje del usuario al agente. El server inserta el mensaje del
 // usuario, llama al agente, y crea el mensaje del agente.
+// `nivel` (Bajo/Medio/Alto) es un enum-allowlist: el cliente NUNCA
+// manda un model ID crudo — el server lo resuelve desde
+// MODELO_POR_NIVEL (src/lib/agent/modelos.ts). Default 'medio'
+// preserva el comportamiento histórico (Sonnet).
 export const crearMensajeInputSchema = z.object({
   contenido: z.string().min(1).max(5000),
   adjuntos: z.array(adjuntoInputSchema).max(20).default([]),
+  nivel: z.enum(NIVELES_MODELO).default(NIVEL_DEFAULT),
 });
 export type CrearMensajeInput = z.infer<typeof crearMensajeInputSchema>;

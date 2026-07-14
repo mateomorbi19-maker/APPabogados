@@ -9,7 +9,6 @@ import {
 } from "@/lib/agent/run-agent";
 import { armarPrompt, SYSTEM_PROMPT } from "@/lib/agent/prompts";
 import { parseWithRecovery } from "@/lib/agent/parse";
-import { calcularCosto } from "@/lib/agent/pricing";
 import { MODEL_ID } from "@/lib/anthropic";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonResponse, isDev } from "@/lib/http";
@@ -110,7 +109,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       modelo: MODEL_ID,
       input_tokens: usage.input_tokens,
       output_tokens: usage.output_tokens,
-      costo_usd: calcularCosto(MODEL_ID, usage),
+      // Costo por-respuesta acumulado en el loop (fix A-3): el tier
+      // long-context se decide por request, no sobre la suma del loop.
+      costo_usd: agentError.partialCostoUsd,
       latencia_ms,
       metadata: {
         caso,
@@ -171,7 +172,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     modelo: MODEL_ID,
     input_tokens: usage.input_tokens,
     output_tokens: usage.output_tokens,
-    costo_usd: calcularCosto(MODEL_ID, usage),
+    // Costo por-respuesta acumulado en el loop (fix A-3).
+    costo_usd: agentResult.costo_usd,
     latencia_ms,
     metadata: {
       caso,

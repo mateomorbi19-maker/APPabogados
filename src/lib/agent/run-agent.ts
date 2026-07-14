@@ -5,8 +5,28 @@ import {
   buscarDocumentosTool,
   BUSCAR_DOCUMENTOS_TOOL_NAME,
 } from "@/lib/agent/tools";
+import { calcularCosto } from "@/lib/agent/pricing";
 import { embedQuery } from "@/lib/rag/embed";
 import { buscarDocumentos } from "@/lib/rag/match-documents";
+
+// Usage de UNA respuesta de la API (no la acumulada del loop). El costo
+// se calcula POR RESPUESTA y se suma: el tier long-context de pricing
+// se decide por request individual (fix del bug A-3 — antes se decidía
+// sobre los tokens sumados de todo el loop y sobreestimaba el costo).
+export function usageDeResponse(response: Anthropic.Message): {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens: number;
+  cache_read_input_tokens: number;
+} {
+  return {
+    input_tokens: response.usage.input_tokens,
+    output_tokens: response.usage.output_tokens,
+    cache_creation_input_tokens:
+      response.usage.cache_creation_input_tokens ?? 0,
+    cache_read_input_tokens: response.usage.cache_read_input_tokens ?? 0,
+  };
+}
 
 export type RunAgentInput = {
   userPrompt: string;
@@ -41,6 +61,9 @@ export type ChunkRecuperado = {
 export type RunAgentResult = {
   rawText: string;
   usage: RunAgentUsage;
+  // Costo USD real de la ejecución: suma de calcularCosto por respuesta
+  // (el tier long-context se decide por request, no sobre la suma).
+  costo_usd: number;
   busquedas: Busqueda[];
   iterations: number;
   // True cuando el agente alcanzó el HARD_CAP_BUSQUEDAS y aun así sintetizó
@@ -66,12 +89,16 @@ export type AgentErrorCode =
 export class AgentError extends Error {
   code: AgentErrorCode;
   partialUsage: RunAgentUsage;
+  // Costo USD de los requests que SÍ se cobraron antes del fallo
+  // (mismo criterio por-respuesta que RunAgentResult.costo_usd).
+  partialCostoUsd: number;
   partialBusquedas: Busqueda[];
   partialIterations: number;
   constructor(
     message: string,
     code: AgentErrorCode,
     partialUsage: RunAgentUsage,
+    partialCostoUsd: number,
     partialBusquedas: Busqueda[],
     partialIterations: number,
   ) {
@@ -79,6 +106,7 @@ export class AgentError extends Error {
     this.name = "AgentError";
     this.code = code;
     this.partialUsage = partialUsage;
+    this.partialCostoUsd = partialCostoUsd;
     this.partialBusquedas = partialBusquedas;
     this.partialIterations = partialIterations;
   }
@@ -165,6 +193,7 @@ export async function runAgent(
   const busquedas: Busqueda[] = [];
   const chunksRecuperados: ChunkRecuperado[] = [];
   let iterations = 0;
+  let costoUsd = 0;
 
   // Primer call: si falla acá no hay tokens cobrados — dejamos bubblear como error de infra.
   // tool_choice fuerza la búsqueda RAG en este primer turno para garantizar
@@ -184,6 +213,7 @@ export async function runAgent(
     response.usage.cache_creation_input_tokens ?? 0;
   totalUsage.cache_read_input_tokens +=
     response.usage.cache_read_input_tokens ?? 0;
+  costoUsd += calcularCosto(MODEL_ID, usageDeResponse(response));
 
   while (
     response.stop_reason === "tool_use" &&
@@ -304,6 +334,7 @@ export async function runAgent(
         msg,
         "API_ERROR",
         { ...totalUsage },
+        Number(costoUsd.toFixed(6)),
         [...busquedas],
         iterations,
       );
@@ -314,6 +345,7 @@ export async function runAgent(
       response.usage.cache_creation_input_tokens ?? 0;
     totalUsage.cache_read_input_tokens +=
       response.usage.cache_read_input_tokens ?? 0;
+    costoUsd += calcularCosto(MODEL_ID, usageDeResponse(response));
 
     // Defensivo: con `tools` removidas en el call anterior, el modelo no
     // debería poder responder con tool_use. Si por algún cambio del SDK o
@@ -323,6 +355,7 @@ export async function runAgent(
         "CAP_EXCEEDED_NO_SYNTHESIS",
         "CAP_EXCEEDED_NO_SYNTHESIS",
         { ...totalUsage },
+        Number(costoUsd.toFixed(6)),
         [...busquedas],
         iterations,
       );
@@ -334,6 +367,7 @@ export async function runAgent(
       "MAX_ITERATIONS alcanzado",
       "MAX_ITERATIONS",
       { ...totalUsage },
+      Number(costoUsd.toFixed(6)),
       [...busquedas],
       iterations,
     );
@@ -347,6 +381,7 @@ export async function runAgent(
   return {
     rawText,
     usage: totalUsage,
+    costo_usd: Number(costoUsd.toFixed(6)),
     busquedas,
     chunks_recuperados: chunksRecuperados,
     iterations,

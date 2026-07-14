@@ -7,8 +7,31 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdjuntosUploader, type AdjuntoUI } from "@/components/mis-casos/adjuntos-uploader";
+import {
+  NIVELES_MODELO,
+  NIVEL_DEFAULT,
+  NIVEL_DESCRIPCION,
+  NIVEL_LABEL,
+  type NivelModelo,
+} from "@/lib/agent/modelos";
 import type { MensajeConversacion } from "@/lib/types";
+
+// La última elección de nivel se recuerda por browser (conveniencia de
+// UX). La elección AUTORITATIVA es per-mensaje: viaja en el body y el
+// server resuelve el modelo — localStorage es solo el default visual.
+const NIVEL_STORAGE_KEY = "chat_nivel_modelo";
+
+function esNivel(v: string | null): v is NivelModelo {
+  return v !== null && (NIVELES_MODELO as readonly string[]).includes(v);
+}
 
 type Props = {
   casoId: string;
@@ -82,6 +105,7 @@ export function InputMensaje({
 }: Props) {
   const [contenido, setContenido] = useState("");
   const [adjuntos, setAdjuntos] = useState<AdjuntoUI[]>([]);
+  const [nivel, setNivel] = useState<NivelModelo>(NIVEL_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -91,6 +115,20 @@ export function InputMensaje({
       abortRef.current?.abort();
     };
   }, []);
+
+  // Restaurar la última elección de nivel (en efecto, no en el
+  // useState inicial, para no divergir del HTML del server render).
+  useEffect(() => {
+    const guardado = localStorage.getItem(NIVEL_STORAGE_KEY);
+    if (esNivel(guardado)) setNivel(guardado);
+  }, []);
+
+  const onNivelChange = (v: unknown) => {
+    if (typeof v === "string" && esNivel(v)) {
+      setNivel(v);
+      localStorage.setItem(NIVEL_STORAGE_KEY, v);
+    }
+  };
 
   const trim = contenido.trim();
   const ok =
@@ -127,7 +165,11 @@ export function InputMensaje({
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ contenido: trim, adjuntos: adjuntosBody }),
+          body: JSON.stringify({
+            contenido: trim,
+            adjuntos: adjuntosBody,
+            nivel,
+          }),
           signal: controller.signal,
         },
       );
@@ -269,7 +311,29 @@ export function InputMensaje({
         </div>
       ) : null}
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-2">
+        {/* Selector de nivel de modelo. Labels Bajo/Medio/Alto — la UI
+            nunca muestra los nombres oficiales de los modelos. */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Nivel:</span>
+          <Select value={nivel} onValueChange={onNivelChange}>
+            <SelectTrigger
+              size="sm"
+              disabled={loading}
+              title={NIVEL_DESCRIPCION[nivel]}
+              aria-label="Nivel de modelo"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="min-w-(--anchor-width) w-fit">
+              {NIVELES_MODELO.map((n) => (
+                <SelectItem key={n} value={n} title={NIVEL_DESCRIPCION[n]}>
+                  {NIVEL_LABEL[n]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button onClick={enviar} disabled={loading || !formOk}>
           {loading ? (
             <Loader2 className="size-4 animate-spin" />

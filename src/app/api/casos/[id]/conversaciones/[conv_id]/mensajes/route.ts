@@ -8,10 +8,9 @@ import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { enforceTokenLimit } from "@/lib/auth/enforce-rate";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonResponse, isDev } from "@/lib/http";
-import { MODEL_ID } from "@/lib/anthropic";
 import { SYSTEM_PROMPT_CONSULTA } from "@/lib/agent/prompts";
 import { parseWithRecovery } from "@/lib/agent/parse";
-import { calcularCosto } from "@/lib/agent/pricing";
+import { MODELO_POR_NIVEL } from "@/lib/agent/modelos";
 import {
   runAgentConsulta,
   type AdjuntoModelo,
@@ -26,9 +25,11 @@ import { transcribirAudio } from "@/lib/casos/transcribir-audio";
 import { esAudio } from "@/lib/casos/adjuntos";
 import { buildContextoConversacion } from "@/lib/casos/build-contexto-conversacion";
 
-// Latencia esperada similar al análisis original. 120s da headroom
-// para el polling de recovery post-502 del cliente.
-export const maxDuration = 120;
+// Latencia esperada similar al análisis original, con headroom extra
+// para el nivel "Alto" (Opus, más lento por token) y la transcripción
+// de audios. En self-hosted (Easypanel) este valor es inerte, pero
+// documenta la intención y aplica si algún día corre en Vercel.
+export const maxDuration = 180;
 
 const uuidSchema = z.string().uuid();
 
@@ -205,7 +206,9 @@ export async function POST(
       400,
     );
   }
-  const { contenido, adjuntos } = parsed.data;
+  const { contenido, adjuntos, nivel } = parsed.data;
+  // Resolución server-side del modelo desde el nivel (allowlist Zod).
+  const { modelId, maxTokens } = MODELO_POR_NIVEL[nivel];
 
   const wl = await requireUsuarioOr403();
   if (!wl.ok) {
@@ -365,6 +368,8 @@ export async function POST(
       contextoCaso: contextoMarkdown,
       adjuntos: adjuntosModelo,
       systemPrompt: SYSTEM_PROMPT_CONSULTA,
+      modelId,
+      maxTokens,
       mensajesPrevios,
     });
   } catch (e) {
@@ -391,15 +396,18 @@ export async function POST(
     await supabase.from("ejecuciones").insert({
       usuario_id: wl.usuario_id,
       tipo: "consulta_caso",
-      modelo: MODEL_ID,
+      modelo: modelId,
       input_tokens: usage.input_tokens,
       output_tokens: usage.output_tokens,
-      costo_usd: calcularCosto(MODEL_ID, usage),
+      // Costo por-respuesta acumulado en el loop (fix A-3): el tier
+      // long-context se decide por request, no sobre la suma.
+      costo_usd: agentError.partialCostoUsd,
       latencia_ms,
       metadata: {
         caso_id: casoId,
         conversacion_id: convId,
         mensaje_usuario_id: msgUsuario.id,
+        nivel,
         pregunta: contenido,
         adjuntos,
         contexto_usado: contextoMarkdown,
@@ -456,15 +464,17 @@ export async function POST(
   const insertEjecPayload = {
     usuario_id: wl.usuario_id,
     tipo: "consulta_caso",
-    modelo: MODEL_ID,
+    modelo: modelId,
     input_tokens: usage.input_tokens,
     output_tokens: usage.output_tokens,
-    costo_usd: calcularCosto(MODEL_ID, usage),
+    // Costo por-respuesta acumulado en el loop (fix A-3).
+    costo_usd: agentResult.costo_usd,
     latencia_ms,
     metadata: {
       caso_id: casoId,
       conversacion_id: convId,
       mensaje_usuario_id: msgUsuario.id,
+      nivel,
       pregunta: contenido,
       adjuntos,
       contexto_usado: contextoMarkdown,
