@@ -32,16 +32,32 @@ export function ChatShell({
 }: Props) {
   const [conversacion, setConversacion] = useState(conversacionInicial);
   const [mensajes, setMensajes] = useState(mensajesIniciales);
+  // true mientras el agente está generando la respuesta: la lista
+  // muestra la burbuja "Pensando…" (UX de chat estándar).
+  const [pensando, setPensando] = useState(false);
 
-  const onMensajesNuevos = (nuevos: MensajeConversacion[]) => {
-    // Dedup por id: el recovery-polling post-502 puede devolver mensajes
-    // que ya están en la lista (su ventana "desde" arranca 5s antes del
-    // POST y puede capturar el final del turno anterior). Sin esto se
-    // duplicaban en pantalla con keys de React repetidas.
+  // Protocolo optimista: al enviar, el mensaje del abogado se agrega a
+  // la lista AL INSTANTE con un id temporal; cuando el server responde,
+  // el temporal se reemplaza por los mensajes reales (o se quita, si el
+  // envío falló antes de persistir).
+  const onEnvioIniciado = (optimista: MensajeConversacion) => {
+    setMensajes((prev) => [...prev, optimista]);
+    setPensando(true);
+  };
+
+  const onEnvioTerminado = (
+    tempId: string,
+    nuevos: MensajeConversacion[],
+  ) => {
+    // Dedup por id además del reemplazo del temporal: el
+    // recovery-polling post-502 puede devolver mensajes que ya están
+    // en la lista (su ventana "desde" arranca 5s antes del POST).
     setMensajes((prev) => {
-      const ids = new Set(prev.map((m) => m.id));
-      return [...prev, ...nuevos.filter((m) => !ids.has(m.id))];
+      const base = prev.filter((m) => m.id !== tempId);
+      const ids = new Set(base.map((m) => m.id));
+      return [...base, ...nuevos.filter((m) => !ids.has(m.id))];
     });
+    setPensando(false);
   };
 
   const onTituloRenombrado = (nuevoTitulo: string) => {
@@ -58,7 +74,7 @@ export function ChatShell({
         onTituloRenombrado={onTituloRenombrado}
       />
 
-      <ListaMensajes casoId={casoId} mensajes={mensajes} />
+      <ListaMensajes casoId={casoId} mensajes={mensajes} pensando={pensando} />
 
       <div className="shrink-0 border-t border-border bg-card/40">
         <div className="mx-auto w-full max-w-4xl px-4 py-3 md:px-6">
@@ -66,7 +82,8 @@ export function ChatShell({
             casoId={casoId}
             conversacionId={conversacion.id}
             archivada={conversacion.estado === "archivada"}
-            onMensajesNuevos={onMensajesNuevos}
+            onEnvioIniciado={onEnvioIniciado}
+            onEnvioTerminado={onEnvioTerminado}
           />
         </div>
       </div>

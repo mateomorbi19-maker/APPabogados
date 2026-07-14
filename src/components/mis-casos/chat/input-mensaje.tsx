@@ -4,7 +4,7 @@
 // GET /mensajes filtrando por desde > inicio del POST).
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -53,7 +53,12 @@ type Props = {
   casoId: string;
   conversacionId: string;
   archivada: boolean;
-  onMensajesNuevos: (nuevos: MensajeConversacion[]) => void;
+  // Protocolo optimista (UX de chat estándar): al enviar, el mensaje del
+  // abogado se agrega YA a la lista con un id temporal y aparece la
+  // burbuja "Pensando…"; al terminar, el temporal se reemplaza por los
+  // mensajes reales (o se quita si el envío falló sin persistir).
+  onEnvioIniciado: (optimista: MensajeConversacion) => void;
+  onEnvioTerminado: (tempId: string, nuevos: MensajeConversacion[]) => void;
 };
 
 const PREGUNTA_MIN = 1;
@@ -117,7 +122,8 @@ export function InputMensaje({
   casoId,
   conversacionId,
   archivada,
-  onMensajesNuevos,
+  onEnvioIniciado,
+  onEnvioTerminado,
 }: Props) {
   const [contenido, setContenido] = useState("");
   const [adjuntos, setAdjuntos] = useState<AdjuntoUI[]>([]);
@@ -186,6 +192,30 @@ export function InputMensaje({
     const limpiarEnviados = () =>
       setAdjuntos((prev) => prev.filter((a) => !enviadosIds.has(a.tempId)));
 
+    // Envío optimista (UX de chat estándar): el mensaje aparece YA en la
+    // lista y el input se limpia de inmediato. Si el envío falla sin que
+    // el server lo haya persistido, se restaura texto y adjuntos para no
+    // perder nada.
+    const tempId = `optimista-${crypto.randomUUID()}`;
+    const optimista: MensajeConversacion = {
+      id: tempId,
+      conversacion_id: conversacionId,
+      rol: "usuario",
+      contenido: trim,
+      adjuntos: adjuntosBody,
+      respuesta_estructurada: null,
+      ejecucion_id: null,
+      creado_en: new Date().toISOString(),
+    };
+    onEnvioIniciado(optimista);
+    setContenido("");
+    limpiarEnviados();
+
+    const restaurar = () => {
+      setContenido(trim);
+      setAdjuntos((prev) => [...enviados, ...prev]);
+    };
+
     try {
       const res = await fetch(
         `/api/casos/${casoId}/conversaciones/${conversacionId}/mensajes`,
@@ -220,12 +250,14 @@ export function InputMensaje({
         );
         if (controller.signal.aborted) return;
         if (recuperados) {
-          onMensajesNuevos(recuperados);
-          setContenido("");
-          limpiarEnviados();
+          onEnvioTerminado(tempId, recuperados);
           setLoading(false);
           return;
         }
+        // No se pudo confirmar nada: quitamos el optimista y devolvemos
+        // el texto al input para que el abogado reintente.
+        onEnvioTerminado(tempId, []);
+        restaurar();
         setError("El análisis falló. Probá de nuevo en unos minutos.");
         setLoading(false);
         return;
@@ -236,13 +268,15 @@ export function InputMensaje({
           json && "error" in json && typeof json.error === "string"
             ? json.error
             : `Error enviando mensaje (HTTP ${res.status})`;
-        // Si el server alcanzó a crear el mensaje del usuario, lo
-        // mostramos igual para que quede en pantalla y el abogado vea
-        // que su mensaje sí llegó (aunque la respuesta no).
         if (json && "mensaje_usuario" in json && json.mensaje_usuario) {
-          onMensajesNuevos([json.mensaje_usuario]);
-          setContenido("");
-          limpiarEnviados();
+          // El mensaje SÍ llegó al server (falló la respuesta del
+          // agente): el optimista se reemplaza por el real y el input
+          // queda limpio.
+          onEnvioTerminado(tempId, [json.mensaje_usuario]);
+        } else {
+          // No se persistió nada: quitar el optimista y restaurar.
+          onEnvioTerminado(tempId, []);
+          restaurar();
         }
         setError(msg);
         setLoading(false);
@@ -250,21 +284,24 @@ export function InputMensaje({
       }
 
       if (!("mensaje_usuario" in json) || !("mensaje_agente" in json)) {
+        onEnvioTerminado(tempId, []);
+        restaurar();
         setError("Respuesta inesperada del servidor");
         setLoading(false);
         return;
       }
 
-      onMensajesNuevos([json.mensaje_usuario, json.mensaje_agente]);
-      setContenido("");
-      limpiarEnviados();
+      onEnvioTerminado(tempId, [json.mensaje_usuario, json.mensaje_agente]);
       setLoading(false);
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
+        onEnvioTerminado(tempId, []);
         setError("Mensaje cancelado.");
         setLoading(false);
         return;
       }
+      onEnvioTerminado(tempId, []);
+      restaurar();
       setError(e instanceof Error ? e.message : "Error de red");
       setLoading(false);
     } finally {
@@ -326,13 +363,6 @@ export function InputMensaje({
           Máximo {ADJUNTOS_MAX} adjuntos por mensaje. Quitá{" "}
           {adjuntos.length - ADJUNTOS_MAX} para poder enviar.
         </p>
-      ) : null}
-
-      {loading ? (
-        <div className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs text-primary flex items-center gap-2">
-          <Sparkles className="size-3.5 animate-pulse" />
-          El agente está analizando tu mensaje. Esto puede tardar entre 30 y 90 segundos.
-        </div>
       ) : null}
 
       {error ? (
