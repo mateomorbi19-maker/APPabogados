@@ -377,3 +377,29 @@ CHECK (tipo IN ('pre_analisis','analizar_caso','consulta_caso','simular_mapa','s
 **Acoplamiento código ↔ migración (IMPORTANTE):** este paso **no** agrega ningún `SELECT` nuevo, así que correr el código sin la migración no rompe nada hoy. En cuanto exista la ruta del simulador, el INSERT en `ejecuciones` con `tipo='simular_audiencia'` **falla con violación de CHECK** si la migración no se corrió antes (mismo patrón que `simular_mapa`). Aplicar la migración PRIMERO.
 
 **Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code (el MCP de Supabase de esta sesión no tiene privilegios sobre el proyecto `xvdlnevcvcsgxbngwliv` — el token está scopeado a otra organización). Mateo la corre en el SQL Editor de Supabase.
+
+---
+
+## 2026-07-21 · 14:00:00 UTC — `20260721140000_simulacion_unica_por_caso.sql` · ⏳ PENDIENTE
+
+**Contexto:** Pasada 1 del **Simulador de Audiencias (THÉMIS)** — motor backend. En la migración de fundación (`20260721120000`) se dejó explícitamente **sin** invariante de unicidad, por ser una decisión de producto no tomada. Ya está tomada: **una sola audiencia en curso por caso**, igual que el chat.
+
+**Tipo:** migración SQL de schema, **aditiva** (un índice). No borra ni migra datos.
+
+**Cambio:**
+
+```sql
+CREATE UNIQUE INDEX uq_simulacion_en_curso_por_caso
+  ON simulaciones_audiencia (caso_id)
+  WHERE estado = 'en_curso';
+```
+
+Calcado de `uq_conversacion_activa_por_caso` (`20260507180000:71-73`).
+
+**Para qué:** refuerza en DB lo que la ruta ya hace en código — `POST /api/casos/[id]/simulacion` marca `abandonada` la sesión en curso antes de insertar la nueva (update primero, insert después). Sin el índice, dos POST concurrentes dejarían dos audiencias abiertas sobre el mismo expediente; con él, el segundo insert falla.
+
+**Riesgo de aplicación:** falla si ya existieran dos filas `en_curso` para un mismo `caso_id`. Con las tablas recién creadas eso es improbable; el `.sql` incluye en un comentario el `UPDATE` correctivo por si pasara.
+
+**Acoplamiento código ↔ migración:** **bajo, pero no nulo.** Las tres rutas del simulador funcionan igual sin el índice (la exclusión mutua ya está en código); lo que se pierde sin él es la protección contra la race de dos requests simultáneos. No hay `SELECT` nuevo de columnas, así que no aplica el patrón "500 en todos los reads" de `riesgo_alto` / `clase`.
+
+**Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code. Mateo la corre en el SQL Editor de Supabase.
