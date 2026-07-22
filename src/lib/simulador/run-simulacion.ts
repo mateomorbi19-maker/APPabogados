@@ -25,9 +25,13 @@ import { debriefingSchema, type Debriefing } from "./schemas";
 const NIVEL_SIMULADOR = "medio" as const;
 export const MODELO_SIMULADOR = MODELO_POR_NIVEL[NIVEL_SIMULADOR].modelId;
 
-// Un turno de audiencia es una intervención, no un dictamen: 2048 alcanza y
-// mantiene el ritmo. El debriefing es un informe estructurado y necesita más.
-const MAX_TOKENS_TURNO = 2048;
+// Mismo techo que usa el chat por caso (16000). NO se copia el 2048 de
+// mapa-procesal/simulacion.ts: allá la salida es un JSON de 2-5 ramas cortas,
+// acá es prosa multi-personaje. La apertura sola tiene que cubrir presentación
+// de sala, verificación de identidad, información de derechos y el alegato
+// completo del fiscal — con 2048 se cortaba a mitad de frase. El cap no se
+// factura: se paga el output real.
+const MAX_TOKENS_TURNO = MODELO_POR_NIVEL[NIVEL_SIMULADOR].maxTokens;
 const MAX_TOKENS_DEBRIEFING = 4096;
 
 // Cue interno que abre la audiencia. NO se persiste como turno (el primer
@@ -68,6 +72,10 @@ export type LlamadaResult = {
   usage: Usage;
   costoUsd: number;
   latenciaMs: number;
+  // true si la API cortó por max_tokens. Se persiste en la metadata del turno:
+  // sin esto la truncación es invisible y el abogado contesta un alegato que
+  // nunca terminó (además de que el debriefing lo evalúa mutilado).
+  truncado: boolean;
 };
 
 export type DebriefingResult = LlamadaResult & {
@@ -145,6 +153,7 @@ async function llamar(input: {
     usage,
     costoUsd: calcularCosto(MODELO_SIMULADOR, usage),
     latenciaMs,
+    truncado: response.stop_reason === "max_tokens",
   };
 }
 
@@ -152,12 +161,12 @@ async function llamar(input: {
 export async function abrirAudiencia(input: {
   system: string;
 }): Promise<LlamadaResult> {
-  const { texto, usage, costoUsd, latenciaMs } = await llamar({
+  const { texto, usage, costoUsd, latenciaMs, truncado } = await llamar({
     system: input.system,
     messages: [{ role: "user", content: CUE_APERTURA }],
     maxTokens: MAX_TOKENS_TURNO,
   });
-  return { texto, usage, costoUsd, latenciaMs };
+  return { texto, usage, costoUsd, latenciaMs, truncado };
 }
 
 // (b) Turno siguiente. `turnos` debe incluir YA el turno nuevo del usuario
@@ -167,12 +176,12 @@ export async function responderTurno(input: {
   system: string;
   turnos: TurnoSimulacion[];
 }): Promise<LlamadaResult> {
-  const { texto, usage, costoUsd, latenciaMs } = await llamar({
+  const { texto, usage, costoUsd, latenciaMs, truncado } = await llamar({
     system: input.system,
     messages: construirMensajes(input.turnos),
     maxTokens: MAX_TOKENS_TURNO,
   });
-  return { texto, usage, costoUsd, latenciaMs };
+  return { texto, usage, costoUsd, latenciaMs, truncado };
 }
 
 // (c) Debriefing. El system es el mismo de la sesión (trae caso + estrategia +
@@ -197,7 +206,7 @@ export async function generarDebriefing(input: {
     messages,
     maxTokens: MAX_TOKENS_DEBRIEFING,
   });
-  const { texto, usage, costoUsd, latenciaMs } = base;
+  const { texto, usage, costoUsd, latenciaMs, truncado } = base;
 
   const parsed = parseWithRecovery(texto);
   if (!parsed.ok) {
@@ -206,6 +215,7 @@ export async function generarDebriefing(input: {
       usage,
       costoUsd,
       latenciaMs,
+      truncado,
       debriefing: null,
       parseoError: parsed.error,
       parseoIntento: null,
@@ -218,6 +228,7 @@ export async function generarDebriefing(input: {
       usage,
       costoUsd,
       latenciaMs,
+      truncado,
       debriefing: null,
       parseoError: `Output con shape inválido: ${validado.error.issues
         .map((i) => `${i.path.join(".")}: ${i.message}`)
@@ -230,6 +241,7 @@ export async function generarDebriefing(input: {
     usage,
     costoUsd,
     latenciaMs,
+    truncado,
     debriefing: validado.data,
     parseoError: null,
     parseoIntento: parsed.parseo_intento,

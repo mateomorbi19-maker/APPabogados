@@ -22,19 +22,21 @@ const COLS_SIM =
 const COLS_TURNO =
   "id, simulacion_id, emisor, emisor_nombre, contenido, metadata, ejecucion_id, creado_en";
 
-export async function casoPerteneceAUsuario(
+// Devuelve el caso solo si es del usuario. Trae `fuero` porque el simulador
+// v1 solo cubre el CPP PBA: la ruta lo valida antes de gastar tokens.
+export async function getCasoParaSimular(
   casoId: string,
   usuarioId: string,
-): Promise<boolean> {
+): Promise<{ id: string; fuero: string | null } | null> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("casos")
-    .select("id")
+    .select("id, fuero")
     .eq("id", casoId)
     .eq("usuario_id", usuarioId)
     .maybeSingle();
-  if (error) throw new Error(`casoPerteneceAUsuario: ${error.message}`);
-  return data !== null;
+  if (error) throw new Error(`getCasoParaSimular: ${error.message}`);
+  return (data as { id: string; fuero: string | null } | null) ?? null;
 }
 
 // Devuelve la simulación solo si pertenece al caso Y el caso al usuario.
@@ -136,16 +138,21 @@ export async function insertarTurno(input: {
 }
 
 // Tracking de tokens. Se llama SIEMPRE que hubo respuesta del SDK, incluso si
-// el parseo posterior falló (mismo criterio que /mapa/simular). Devuelve el id
-// de la ejecución para linkearlo al turno, o null si el insert falló: perder
-// el link no debe tumbar un turno que el abogado ya vio.
+// el parseo posterior falló (mismo criterio que /mapa/simular).
+//
+// TIRA si el insert falla, y el caller responde 500: lo que se pierde no es
+// solo el link con el turno, es la fila entera de tracking de una llamada que
+// YA se pagó. Como v_consumo_mensual se calcula exclusivamente sobre
+// `ejecuciones`, tragarse el error dejaría ese gasto fuera del cupo mensual y
+// fuera de "Mi consumo". Es la misma vara que /mapa/simular:153-163 y que
+// /conversaciones/[conv_id]/mensajes:522-533.
 export async function registrarEjecucion(input: {
   usuarioId: string;
   modelo: string;
   usage: Usage;
   latenciaMs: number;
   metadata: Record<string, unknown>;
-}): Promise<string | null> {
+}): Promise<string> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("ejecuciones")
@@ -165,17 +172,19 @@ export async function registrarEjecucion(input: {
     })
     .select("id")
     .single();
-  if (error) {
-    console.error("[simulador] insert ejecución falló:", error);
-    return null;
-  }
+  if (error) throw new Error(`registrarEjecucion: ${error.message}`);
   return (data as { id: string }).id;
 }
 
+// Cierre condicional: el UPDATE solo matchea si la sesión sigue 'en_curso'.
+// Sin ese guard, dos POST /cerrar concurrentes (o un doble click sobre una
+// operación que tarda decenas de segundos) cobraban dos debriefings y el
+// segundo pisaba el `debriefing` y el `finalizada_en` del primero.
+// Devuelve null cuando no matcheó: el caller responde 409.
 export async function cerrarSimulacion(
   simId: string,
   debriefing: Record<string, unknown>,
-): Promise<SimulacionAudiencia> {
+): Promise<SimulacionAudiencia | null> {
   const supabase = createServerClient();
   const ahora = new Date().toISOString();
   const { data, error } = await supabase
@@ -187,8 +196,9 @@ export async function cerrarSimulacion(
       actualizada_en: ahora,
     })
     .eq("id", simId)
+    .eq("estado", "en_curso")
     .select(COLS_SIM)
-    .single();
+    .maybeSingle();
   if (error) throw new Error(`cerrarSimulacion: ${error.message}`);
-  return data as SimulacionAudiencia;
+  return (data as SimulacionAudiencia | null) ?? null;
 }

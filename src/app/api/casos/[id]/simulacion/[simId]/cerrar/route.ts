@@ -131,22 +131,37 @@ export async function POST(
     );
   }
 
-  // Tracking SIEMPRE (tokens reales del SDK, incluso si el parseo falló).
-  await registrarEjecucion({
-    usuarioId: wl.usuario_id,
-    modelo: MODELO_SIMULADOR,
-    usage: resultado.usage,
-    latenciaMs: resultado.latenciaMs,
-    metadata: {
-      caso_id: casoId,
-      simulacion_id: simId,
-      operacion: "generar_debriefing",
-      turnos_evaluados: turnos.length,
-      resultado: resultado.debriefing,
-      parseo_intento: resultado.parseoIntento,
-      ...(resultado.parseoError ? { parseo_error: resultado.parseoError } : {}),
-    },
-  });
+  // Tracking SIEMPRE (tokens reales del SDK, incluso si el parseo falló). Si
+  // el insert falla se corta con 500: sin la fila, el gasto queda fuera del
+  // cupo mensual.
+  try {
+    await registrarEjecucion({
+      usuarioId: wl.usuario_id,
+      modelo: MODELO_SIMULADOR,
+      usage: resultado.usage,
+      latenciaMs: resultado.latenciaMs,
+      metadata: {
+        caso_id: casoId,
+        simulacion_id: simId,
+        operacion: "generar_debriefing",
+        turnos_evaluados: turnos.length,
+        resultado: resultado.debriefing,
+        parseo_intento: resultado.parseoIntento,
+        ...(resultado.parseoError ? { parseo_error: resultado.parseoError } : {}),
+        ...(resultado.truncado ? { truncado: true } : {}),
+      },
+    });
+  } catch (e) {
+    console.error("[POST /simulacion/cerrar] insert ejecución falló:", e);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error persistiendo ejecución",
+        ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
+      },
+      500,
+    );
+  }
 
   if (!resultado.debriefing) {
     // La sesión queda 'en_curso' a propósito: el abogado puede reintentar el
@@ -178,6 +193,14 @@ export async function POST(
         ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
       },
       500,
+    );
+  }
+  // El UPDATE es condicional a estado='en_curso': null = otro request cerró la
+  // audiencia mientras se generaba este informe. No se pisa el ya guardado.
+  if (!simulacionCerrada) {
+    return jsonResponse(
+      { ok: false, error: "La audiencia ya fue cerrada por otra operación." },
+      409,
     );
   }
 

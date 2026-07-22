@@ -175,21 +175,62 @@ export async function POST(
     );
   }
 
-  const ejecucionId = await registrarEjecucion({
-    usuarioId: wl.usuario_id,
-    modelo: MODELO_SIMULADOR,
-    usage: respuesta.usage,
-    latenciaMs: respuesta.latenciaMs,
-    metadata: {
-      caso_id: casoId,
-      simulacion_id: simId,
-      operacion: "responder_turno",
-      turno_numero: turnos.length,
-      rol_usuario: simulacion.rol_usuario,
-      dificultad: simulacion.dificultad,
-      magistrado_perfil: simulacion.magistrado_perfil,
-    },
-  });
+  // Corta con 500 si el tracking no se pudo persistir: sin esa fila el gasto
+  // real queda fuera de v_consumo_mensual y del cupo mensual.
+  let ejecucionId: string;
+  try {
+    ejecucionId = await registrarEjecucion({
+      usuarioId: wl.usuario_id,
+      modelo: MODELO_SIMULADOR,
+      usage: respuesta.usage,
+      latenciaMs: respuesta.latenciaMs,
+      metadata: {
+        caso_id: casoId,
+        simulacion_id: simId,
+        operacion: "responder_turno",
+        turno_numero: turnos.length,
+        rol_usuario: simulacion.rol_usuario,
+        dificultad: simulacion.dificultad,
+        magistrado_perfil: simulacion.magistrado_perfil,
+        ...(respuesta.truncado ? { truncado: true } : {}),
+      },
+    });
+  } catch (e) {
+    console.error("[POST /simulacion/turno] insert ejecución falló:", e);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error persistiendo ejecución",
+        turno_usuario: turnoUsuario,
+        ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
+      },
+      500,
+    );
+  }
+
+  // Revalidación del estado: entre el chequeo inicial y acá pasaron los
+  // decenas de segundos que tarda el modelo, y en esa ventana un POST /cerrar
+  // pudo haber finalizado la audiencia. Sin esto se insertan turnos en una
+  // sesión ya cerrada y el debriefing queda describiendo un transcript que ya
+  // no es el guardado.
+  let sigueEnCurso = false;
+  try {
+    const simAhora = await getSimulacionOwned(casoId, simId, wl.usuario_id);
+    sigueEnCurso = simAhora?.estado === "en_curso";
+  } catch (e) {
+    console.error("[POST /simulacion/turno] revalidación de estado falló:", e);
+  }
+  if (!sigueEnCurso) {
+    return jsonResponse(
+      {
+        ok: false,
+        error:
+          "La audiencia se cerró mientras se generaba la respuesta. Tu intervención quedó guardada.",
+        turno_usuario: turnoUsuario,
+      },
+      409,
+    );
+  }
 
   let turnoSistema;
   try {
@@ -197,7 +238,10 @@ export async function POST(
       simulacionId: simId,
       emisor: "sistema",
       contenido: respuesta.texto,
-      metadata: { operacion: "responder_turno" },
+      metadata: {
+        operacion: "responder_turno",
+        ...(respuesta.truncado ? { truncado: true } : {}),
+      },
       ejecucionId,
     });
   } catch (e) {

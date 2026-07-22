@@ -11,13 +11,19 @@ import {
 } from "@/lib/simulador/run-simulacion";
 import {
   abandonarEnCurso,
-  casoPerteneceAUsuario,
   crearSimulacion,
+  getCasoParaSimular,
   insertarTurno,
   registrarEjecucion,
 } from "@/lib/simulador/queries";
 
 const uuidSchema = z.string().uuid();
+
+// El guion v1 es exclusivamente CPP PBA (Ley 11.922) y trae una allowlist
+// cerrada de artículos de ese código. Simular un caso de Nación o Federal con
+// ese guion produciría una audiencia con el procedimiento y los artículos
+// equivocados, que es peor que no tenerla.
+const FUERO_SOPORTADO = "pba";
 
 // Single-shot sin tools ni RAG, pero con un system grande (guion + contexto
 // del caso + estrategia). Margen sobre la latencia de /mapa/simular.
@@ -62,10 +68,9 @@ export async function POST(
   if (!wl.ok) return jsonResponse({ ok: false, error: wl.message }, wl.status);
 
   // Ownership: 404 (no 403) para no revelar existencia.
+  let caso;
   try {
-    if (!(await casoPerteneceAUsuario(casoId, wl.usuario_id))) {
-      return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
-    }
+    caso = await getCasoParaSimular(casoId, wl.usuario_id);
   } catch (e) {
     console.error("[POST /simulacion] error validando caso:", e);
     return jsonResponse(
@@ -75,6 +80,25 @@ export async function POST(
         ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
       },
       500,
+    );
+  }
+  if (!caso) {
+    return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
+  }
+  // Antes del rate limit y de armar el system: rechazar acá evita cobrarle al
+  // abogado una audiencia que iba a salir con el código procesal equivocado.
+  if (caso.fuero !== FUERO_SOPORTADO) {
+    return jsonResponse(
+      {
+        ok: false,
+        error:
+          caso.fuero === null
+            ? "El caso todavía no tiene fuero asignado. Confirmalo en el mapa procesal antes de simular."
+            : "El simulador v1 solo cubre la audiencia de prisión preventiva del CPP de Buenos Aires (Ley 11.922).",
+        fuero_caso: caso.fuero,
+        fuero_soportado: FUERO_SOPORTADO,
+      },
+      400,
     );
   }
 
@@ -124,20 +148,37 @@ export async function POST(
   // Tokens gastados: se trackean antes que nada, para que un fallo de DB más
   // abajo no los deje sin registrar. La ejecución todavía no conoce el id de
   // la simulación; el link inverso lo aporta turnos_simulacion.ejecucion_id.
-  const ejecucionId = await registrarEjecucion({
-    usuarioId: wl.usuario_id,
-    modelo: MODELO_SIMULADOR,
-    usage: apertura.usage,
-    latenciaMs: apertura.latenciaMs,
-    metadata: {
-      caso_id: casoId,
-      operacion: "abrir_audiencia",
-      tipo_audiencia: "prision_preventiva",
-      rol_usuario: config.rol_usuario,
-      dificultad: config.dificultad,
-      magistrado_perfil: config.magistrado_perfil,
-    },
-  });
+  //
+  // Si el insert falla se corta acá con 500: sin esa fila el gasto queda fuera
+  // de v_consumo_mensual y del cupo, igual que en /mapa/simular.
+  let ejecucionId: string;
+  try {
+    ejecucionId = await registrarEjecucion({
+      usuarioId: wl.usuario_id,
+      modelo: MODELO_SIMULADOR,
+      usage: apertura.usage,
+      latenciaMs: apertura.latenciaMs,
+      metadata: {
+        caso_id: casoId,
+        operacion: "abrir_audiencia",
+        tipo_audiencia: "prision_preventiva",
+        rol_usuario: config.rol_usuario,
+        dificultad: config.dificultad,
+        magistrado_perfil: config.magistrado_perfil,
+        ...(apertura.truncado ? { truncado: true } : {}),
+      },
+    });
+  } catch (e) {
+    console.error("[POST /simulacion] insert ejecución falló:", e);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Error persistiendo ejecución",
+        ...(isDev() && e instanceof Error ? { detail: e.message } : {}),
+      },
+      500,
+    );
+  }
 
   let simulacion;
   let turno;
@@ -148,7 +189,10 @@ export async function POST(
       simulacionId: simulacion.id,
       emisor: "sistema",
       contenido: apertura.texto,
-      metadata: { operacion: "abrir_audiencia" },
+      metadata: {
+        operacion: "abrir_audiencia",
+        ...(apertura.truncado ? { truncado: true } : {}),
+      },
       ejecucionId,
     });
   } catch (e) {
