@@ -346,7 +346,7 @@ ALTER TABLE eventos_agenda
 
 ---
 
-## 2026-07-21 · 12:00:00 UTC — `20260721120000_simulador_audiencia_fundacion.sql` · ⏳ PENDIENTE
+## 2026-07-21 · 12:00:00 UTC — `20260721120000_simulador_audiencia_fundacion.sql` · ✅ APLICADA
 
 **Contexto:** Paso 1 del **Simulador de Audiencias (HearSim)** — fundación de datos. La auditoría previa (`AUDIT-HEARSIM.md`) confirmó que el chat persistente no tiene modelo de sesión reusable: `conversaciones_caso` tiene un único campo de estado (`activa|archivada`) y ninguna columna jsonb, así que el rol asumido, el tipo de audiencia, la dificultad y el estado de turno no tienen dónde vivir. Este paso crea el modelo propio. **Sin ruta API ni UI todavía.**
 
@@ -376,11 +376,13 @@ CHECK (tipo IN ('pre_analisis','analizar_caso','consulta_caso','simular_mapa','s
 
 **Acoplamiento código ↔ migración (IMPORTANTE):** este paso **no** agrega ningún `SELECT` nuevo, así que correr el código sin la migración no rompe nada hoy. En cuanto exista la ruta del simulador, el INSERT en `ejecuciones` con `tipo='simular_audiencia'` **falla con violación de CHECK** si la migración no se corrió antes (mismo patrón que `simular_mapa`). Aplicar la migración PRIMERO.
 
-**Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code (el MCP de Supabase de esta sesión no tiene privilegios sobre el proyecto `xvdlnevcvcsgxbngwliv` — el token está scopeado a otra organización). Mateo la corre en el SQL Editor de Supabase.
+**Aplicación:** la corrió Mateo a mano vía SQL Editor el **2026-07-22** (Claude Code no la ejecutó: el MCP de Supabase de esa sesión no tenía privilegios sobre el proyecto `xvdlnevcvcsgxbngwliv` — el token estaba scopeado a otra organización).
+
+**Nota de cronología:** entre la creación del archivo y su aplicación mediaron dos sesiones. La pasada del motor (`feat/simulador-motor`) arrancó bajo la premisa de que esta migración ya estaba aplicada, y no lo estaba — se detectó con el sondeo `information_schema.tables`, que devolvió 0 para ambas tablas. Se corrigió antes de cualquier prueba. Moraleja registrada: **verificar contra la DB, no contra el archivo en el repo** (el drift repo↔DB corta para los dos lados).
 
 ---
 
-## 2026-07-21 · 14:00:00 UTC — `20260721140000_simulacion_unica_por_caso.sql` · ⏳ PENDIENTE
+## 2026-07-21 · 14:00:00 UTC — `20260721140000_simulacion_unica_por_caso.sql` · ✅ APLICADA
 
 **Contexto:** Pasada 1 del **Simulador de Audiencias (THÉMIS)** — motor backend. En la migración de fundación (`20260721120000`) se dejó explícitamente **sin** invariante de unicidad, por ser una decisión de producto no tomada. Ya está tomada: **una sola audiencia en curso por caso**, igual que el chat.
 
@@ -402,4 +404,4 @@ Calcado de `uq_conversacion_activa_por_caso` (`20260507180000:71-73`).
 
 **Acoplamiento código ↔ migración:** **bajo, pero no nulo.** Las tres rutas del simulador funcionan igual sin el índice (la exclusión mutua ya está en código); lo que se pierde sin él es la protección contra la race de dos requests simultáneos. No hay `SELECT` nuevo de columnas, así que no aplica el patrón "500 en todos los reads" de `riesgo_alto` / `clase`.
 
-**Pendiente — aplicación manual:** esta migración **NO fue ejecutada** por Claude Code. Mateo la corre en el SQL Editor de Supabase.
+**Aplicación:** la corrió Mateo a mano vía SQL Editor el **2026-07-22**, inmediatamente después de `20260721120000` (el índice referencia la tabla que crea aquella, así que el orden es obligatorio).
