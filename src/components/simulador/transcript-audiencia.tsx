@@ -21,14 +21,22 @@ type Props = {
   simulacion: SimulacionAudiencia;
   turnos: TurnoSimulacion[];
   esperando: boolean;
+  // Alternar escena/texto cambia el alto disponible del transcript: sin esto,
+  // al prender la sala el último turno quedaba fuera de vista abajo.
+  vistaSala?: boolean;
 };
 
-export function TranscriptAudiencia({ simulacion, turnos, esperando }: Props) {
+export function TranscriptAudiencia({
+  simulacion,
+  turnos,
+  esperando,
+  vistaSala = false,
+}: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turnos.length, esperando, simulacion.estado]);
+  }, [turnos.length, esperando, simulacion.estado, vistaSala]);
 
   // El debriefing es jsonb sin validar al escribir: se valida al leer, igual
   // que el resto del repo hace con estrategia_snapshot.

@@ -11,7 +11,15 @@ import type {
   EstadoSimulacion,
   MagistradoPerfil,
   RolUsuarioSimulacion,
+  TipoAudiencia,
 } from "@/lib/types";
+
+// Pie del encabezado de la escena. El fuero es fijo mientras el guion sea solo
+// CPP PBA (ver FUERO_SOPORTADO en la página del simulador).
+export const TIPO_AUDIENCIA_LABEL: Record<TipoAudiencia, string> = {
+  prision_preventiva:
+    "Audiencia de prisión preventiva · CPP Buenos Aires (Ley 11.922)",
+};
 
 export type OpcionConfig<T extends string> = {
   value: T;

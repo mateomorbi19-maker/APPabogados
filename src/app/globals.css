@@ -135,6 +135,21 @@
   --el-estado-decision-label: #fcd34d;
   --el-estado-riesgo-icon: #fca5a5;
   --el-estado-riesgo-label: #fca5a5;
+
+  /* Simulador — Vista de sala. Un color por rol procesal, usado en el anillo
+     del asiento, la placa de nombre y (M4) el borde de la burbuja del
+     transcript. Paleta del mockup lexstrategy_sala.html: el VIOLETA queda
+     reservado para el rol que ocupa el usuario, coherente con --primary y con
+     las burbujas propias. Los tres últimos no están en el mockup (no tienen
+     asiento fijo) y se agregaron para cubrir el elenco completo del guion. */
+  --el-sala-juez: #e6b23e; /* ámbar — preside */
+  --el-sala-secretario: #8aa0b6; /* slate — fedatario */
+  --el-sala-fiscal: #f2555f; /* rojo — acusación pública */
+  --el-sala-defensa: #8b7cf6; /* violeta — vos, por defecto */
+  --el-sala-imputado: #22c3a6; /* teal */
+  --el-sala-querellante: #e8739f; /* rosa — acusación privada */
+  --el-sala-testigo: #7aa5e0; /* azul */
+  --el-sala-perito: #56b8c9; /* cyan */
 }
 
 @layer base {
@@ -397,5 +412,135 @@
   .el-edge-flujo {
     animation: none;
     opacity: 0.55;
+  }
+}
+
+/* ===========================================================================
+   Simulador — Vista de sala. Cada asiento se centra sobre su coordenada (%) y
+   consume `--el-c`, la custom property que setea el componente con el color de
+   su rol. Se resuelve en CSS y no en Tailwind porque el color es dinámico y
+   porque el anillo + glow + elevación tienen que animar juntos.
+
+   `activo` (habla) y `esTuTurno` (te ceden la palabra) NO son excluyentes: al
+   final del turno de la sala el juez queda iluminado y tu asiento pulsa.
+   =========================================================================== */
+
+@layer components {
+  /* Escenario. El ancho es el eje que manda y la altura sale del aspect-ratio:
+     al revés (cap por max-height) la caja deja de respetar 1000/300, el SVG
+     letterboxea con preserveAspectRatio y los asientos —que se posicionan en %
+     sobre el ancho COMPLETO— se despegan del mobiliario. 833px = 250 * 1000/300
+     es el ancho al que el escenario mide 250px de alto, o sea el tope real que
+     tenía el mockup. El tercer término lo achica en viewports bajos para no
+     comerse el transcript ni empujar la barra de intervención fuera del
+     h-dvh del shell (26dvh de alto → 26dvh * 10/3 de ancho). */
+  .el-stage-wrap {
+    margin-inline: auto;
+    width: min(100%, 833px, calc(26dvh * 10 / 3));
+  }
+  .el-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1000 / 300;
+  }
+
+  .el-seat {
+    transform: translate(-50%, -50%);
+    transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  /* Reposo del marco. Va acá y NO como utilities en el componente: Tailwind v4
+     emite `@layer theme, base, components, utilities`, así que una utility
+     border-[…]/shadow-[…] le gana a .el-seat-active .el-seat-frame por CAPA,
+     sin importar la especificidad — y el anillo y el glow quedaban muertos.
+     Con ambos estados en la misma capa decide la especificidad, que es lo que
+     queremos (0,2,0 del estado activo sobre 0,1,0 del reposo). */
+  .el-seat-frame {
+    border-color: var(--el-border);
+    box-shadow: 0 6px 16px rgb(0 0 0 / 0.4);
+    transition:
+      box-shadow 0.3s ease,
+      border-color 0.3s ease;
+  }
+
+  /* Hablando: se adelanta un paso y se enciende en su color. */
+  .el-seat-active {
+    transform: translate(-50%, calc(-50% - 6px));
+  }
+  .el-seat-active .el-seat-frame {
+    border-color: var(--el-c);
+    box-shadow:
+      0 0 0 2px var(--el-c),
+      0 0 26px -2px var(--el-c);
+  }
+  .el-seat-active .el-seat-name {
+    color: var(--el-c);
+  }
+
+  /* Tu turno: mismo encendido, más el badge. Si además está `activo`, las dos
+     reglas coinciden en el mismo color y no compiten. */
+  .el-seat-turn .el-seat-frame {
+    border-color: var(--el-c);
+    box-shadow:
+      0 0 0 2px var(--el-c),
+      0 0 26px -2px var(--el-c);
+  }
+  .el-turnpill {
+    background: var(--el-c);
+    color: var(--el-canvas);
+    box-shadow: 0 0 16px -2px var(--el-c);
+    animation: el-pulse-turno 1.4s ease-in-out infinite;
+  }
+
+  /* Ecualizador: barritas que suben y bajan mientras habla. Es la señal
+     redundante que permite identificar al hablante sin depender del color. */
+  .el-eq span {
+    width: 3px;
+    border-radius: 2px;
+    background: var(--el-c);
+    animation: el-eq 0.9s ease-in-out infinite;
+  }
+  .el-eq span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .el-eq span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+  .el-eq span:nth-child(4) {
+    animation-delay: 0.45s;
+  }
+}
+
+@keyframes el-eq {
+  0%,
+  100% {
+    height: 4px;
+  }
+  50% {
+    height: 14px;
+  }
+}
+@keyframes el-pulse-turno {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Sin movimiento: el ecualizador queda a media altura (sigue distinguiendo al
+   hablante, ya no anima) y el badge deja de latir. Los glows son estáticos. */
+@media (prefers-reduced-motion: reduce) {
+  .el-seat,
+  .el-seat-frame {
+    transition: none;
+  }
+  .el-eq span {
+    animation: none;
+    height: 9px;
+  }
+  .el-turnpill {
+    animation: none;
   }
 }
