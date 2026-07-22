@@ -36,7 +36,22 @@ export function InputIntervencion({
   const [contenido, setContenido] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // El envío quedó en estado indeterminado (corte de proxy / red): NO sabemos
+  // si el server persistió. Bloquea el input para que un reintento a ciegas no
+  // duplique el turno y no cobre otra llamada al modelo.
+  const [sinConfirmar, setSinConfirmar] = useState(false);
   const contadorRef = useRef(0);
+
+  // Conserva la burbuja optimista (el shell la re-agrega porque su id ya no
+  // está en la lista base), no devuelve el texto al input y bloquea el envío.
+  const indeterminado = (tempId: string, optimista: TurnoSimulacion) => {
+    onEnvioTerminado(tempId, [optimista]);
+    setSinConfirmar(true);
+    setError(
+      "No pudimos confirmar si tu intervención llegó. Recargá la página para ver el estado real de la audiencia antes de seguir.",
+    );
+    setLoading(false);
+  };
 
   const enviar = async () => {
     const texto = contenido.trim();
@@ -72,16 +87,33 @@ export function InputIntervencion({
         | { ok: false; error: string; turno_usuario?: TurnoSimulacion }
         | null;
 
-      if (!res.ok || !json || json.ok === false) {
+      // Body ilegible (típico: el proxy cortó y devolvió HTML). El server
+      // persiste el turno del usuario ANTES de llamar al modelo, así que en
+      // este caso lo más probable es que SÍ haya quedado guardado — junto con
+      // la respuesta de la sala. Borrar el optimista y devolver el texto haría
+      // que el abogado reenvíe y duplique intervención y cobro.
+      if (!json) {
+        indeterminado(tempId, optimista);
+        return;
+      }
+
+      if (!res.ok || json.ok === false) {
+        // 409 = la audiencia ya no está en curso (se cerró desde otra pestaña
+        // o se inició otra). La vista local quedó vieja y no hay GET para
+        // resincronizar: recargar es la única forma de ver la verdad.
+        if (res.status === 409) {
+          window.location.reload();
+          return;
+        }
         const msg =
-          json && "error" in json && typeof json.error === "string"
+          "error" in json && typeof json.error === "string"
             ? json.error
             : `Error enviando la intervención (HTTP ${res.status})`;
-        if (json && "turno_usuario" in json && json.turno_usuario) {
+        if ("turno_usuario" in json && json.turno_usuario) {
           // La intervención quedó guardada; falló la respuesta de la sala.
           onEnvioTerminado(tempId, [json.turno_usuario]);
         } else {
-          // No se persistió nada: sacamos el optimista y devolvemos el texto.
+          // Error con body JSON: el server garantiza que no persistió nada.
           onEnvioTerminado(tempId, []);
           setContenido(texto);
         }
@@ -92,15 +124,14 @@ export function InputIntervencion({
 
       onEnvioTerminado(tempId, json.turnos);
       setLoading(false);
-    } catch (e) {
-      onEnvioTerminado(tempId, []);
-      setContenido(texto);
-      setError(e instanceof Error ? e.message : "Error de red");
-      setLoading(false);
+    } catch {
+      // Error de red: mismo razonamiento que el body ilegible. El request pudo
+      // haber llegado y completado del lado del server.
+      indeterminado(tempId, optimista);
     }
   };
 
-  const bloqueado = loading || deshabilitado;
+  const bloqueado = loading || deshabilitado || sinConfirmar;
 
   return (
     <div className="space-y-2">
@@ -121,7 +152,18 @@ export function InputIntervencion({
       />
 
       {error ? (
-        <p className="text-xs text-destructive">{error}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs text-destructive">{error}</p>
+          {sinConfirmar ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+            >
+              Recargar
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="flex items-center justify-between gap-3">

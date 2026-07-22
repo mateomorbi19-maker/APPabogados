@@ -14,21 +14,59 @@ import type { TurnoSimulacion } from "@/lib/types";
 
 type Intervencion = { orador: string | null; texto: string };
 
-// Un rótulo es una línea que arranca en mayúscula y termina en ":" —
-// "JUEZ:", "AGENTE FISCAL:", "SECRETARIO / OGA:". Se acota a 45 caracteres
-// para no confundir una oración entera que contenga dos puntos.
-const RE_ORADOR = /^([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ0-9 .·/()-]{1,44}):\s*(.*)$/;
+// Elenco de la sala, según el guion (guion-pp.md, sección "Roles") y el CHECK
+// de turnos_simulacion.emisor. Sirve de DOBLE propósito: acento visual y
+// allowlist del parser — un rótulo que no matchea ninguno de estos NO se
+// trata como orador.
+const ACENTOS: ReadonlyArray<{ test: RegExp; clases: string; label: string }> = [
+  { test: /^juez|^jueza|^tribunal|^magistrad/i, clases: "border-violet-500/40", label: "text-violet-300" },
+  { test: /^secretari|^oga\b|^oficina/i, clases: "border-slate-500/40", label: "text-slate-300" },
+  { test: /^fiscal|^agente fiscal|^mpf\b|^ministerio/i, clases: "border-rose-500/40", label: "text-rose-300" },
+  { test: /^querell|^particular|^victima|^víctima/i, clases: "border-amber-500/40", label: "text-amber-300" },
+  { test: /^defens/i, clases: "border-emerald-500/40", label: "text-emerald-300" },
+  { test: /^imputad|^acusad/i, clases: "border-sky-500/40", label: "text-sky-300" },
+  { test: /^testigo|^perito/i, clases: "border-teal-500/40", label: "text-teal-300" },
+];
+
+function acentoDe(orador: string | null) {
+  if (!orador) return { clases: "border-border", label: "text-muted-foreground" };
+  const hit = ACENTOS.find((a) => a.test.test(orador));
+  return hit ?? { clases: "border-border", label: "text-muted-foreground" };
+}
+
+const esOradorConocido = (s: string): boolean =>
+  ACENTOS.some((a) => a.test.test(s));
+
+// Rótulo = línea que arranca en mayúscula y termina en ":". Tolera un
+// paréntesis aclaratorio del propio rótulo ("IMPUTADO (asistido por su
+// defensor):"), que si no rompía el match y la intervención terminaba
+// atribuida al orador anterior.
+const RE_ORADOR =
+  /^([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ0-9 .·/-]{0,44}?(?:\s*\([^)\n]{1,60}\))?)\s*:\s*(.*)$/;
+
+// Saca viñeta, indentación y negritas de markdown antes de matchear: el
+// modelo a veces emite "- **JUEZ:**".
+const normalizarLinea = (l: string): string =>
+  l.replace(/^\s*(?:[-*•]\s+)?/, "").replace(/\*\*/g, "").trimEnd();
 
 export function parsearIntervenciones(texto: string): Intervencion[] {
   const out: Intervencion[] = [];
   let actual: Intervencion | null = null;
 
   for (const linea of texto.split("\n")) {
-    const m = linea.match(RE_ORADOR);
-    if (m) {
+    const m = normalizarLinea(linea).match(RE_ORADOR);
+    const candidato = m ? m[1].trim() : null;
+
+    // Solo abre bloque si el rótulo es alguien del elenco. Así "RESUELVO:" o
+    // "IMPORTANTE:" quedan como texto del orador que venía hablando, en vez
+    // de inventar un interviniente que no existe — en un transcript forense
+    // la atribución es el dato central.
+    if (m && candidato && esOradorConocido(candidato)) {
       if (actual) out.push(actual);
-      actual = { orador: m[1].trim(), texto: m[2] ?? "" };
-    } else if (actual) {
+      actual = { orador: candidato, texto: m[2] ?? "" };
+      continue;
+    }
+    if (actual) {
       actual.texto += `\n${linea}`;
     } else {
       actual = { orador: null, texto: linea };
@@ -39,24 +77,6 @@ export function parsearIntervenciones(texto: string): Intervencion[] {
   return out
     .map((i) => ({ orador: i.orador, texto: i.texto.trim() }))
     .filter((i) => i.texto.length > 0 || i.orador !== null);
-}
-
-// Acento por orador. Se matchea por prefijo normalizado para tolerar
-// variantes ("JUEZ DE GARANTÍAS", "AGENTE FISCAL", "FISCAL").
-const ACENTOS: ReadonlyArray<{ test: RegExp; clases: string; label: string }> = [
-  { test: /^juez|^jueza|^tribunal/i, clases: "border-violet-500/40 text-violet-300", label: "text-violet-300" },
-  { test: /^secretari|^oga|^oficina/i, clases: "border-slate-500/40 text-slate-300", label: "text-slate-300" },
-  { test: /^fiscal|^agente fiscal|^mpf/i, clases: "border-rose-500/40 text-rose-300", label: "text-rose-300" },
-  { test: /^querell|^particular/i, clases: "border-amber-500/40 text-amber-300", label: "text-amber-300" },
-  { test: /^defens/i, clases: "border-emerald-500/40 text-emerald-300", label: "text-emerald-300" },
-  { test: /^imputad|^acusad/i, clases: "border-sky-500/40 text-sky-300", label: "text-sky-300" },
-  { test: /^testigo|^perito/i, clases: "border-teal-500/40 text-teal-300", label: "text-teal-300" },
-];
-
-function acentoDe(orador: string | null) {
-  if (!orador) return { clases: "border-border", label: "text-muted-foreground" };
-  const hit = ACENTOS.find((a) => a.test.test(orador));
-  return hit ?? { clases: "border-border", label: "text-muted-foreground" };
 }
 
 export function TurnoSala({ turno }: { turno: TurnoSimulacion }) {
