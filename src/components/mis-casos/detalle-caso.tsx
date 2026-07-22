@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowRight, Network } from "lucide-react";
+import { Sparkles, ArrowRight, Network, Gavel } from "lucide-react";
 import type { Caso, EventoCaso } from "@/lib/types";
 import { HeaderCaso } from "./header-caso";
 import { AnalisisOriginalColapsable } from "./analisis-original-colapsable";
@@ -69,6 +69,34 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
           </div>
           <span className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
             Abrir mapa
+            <ArrowRight className="size-4" />
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href={`/dashboard/simulador/${caso.id}`}
+        className="block rounded-md border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start gap-2 min-w-0">
+            <Gavel className="size-4 text-primary mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                Simulador de audiencias
+                <span className="ml-2 text-[10px] uppercase tracking-wider rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 align-middle">
+                  Beta
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Practicá la audiencia de prisión preventiva sobre este caso, con
+                juez y fiscal que reaccionan a cómo litigás. Al cerrar te devuelve
+                un informe de desempeño.
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
+            Abrir simulador
             <ArrowRight className="size-4" />
           </span>
         </div>
