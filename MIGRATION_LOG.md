@@ -343,3 +343,65 @@ ALTER TABLE eventos_agenda
 `file_size_limit` queda en 10485760 (10 MB).
 
 **Acoplamiento código ↔ config (IMPORTANTE):** el allowlist del bucket debe ser superset de `MIME_TYPES_PERMITIDOS` en [src/lib/casos/adjuntos.ts](src/lib/casos/adjuntos.ts). Si se agrega un mime al código sin agregarlo al bucket, el PUT del upload falla con 4xx del storage.
+
+---
+
+## 2026-07-21 · 12:00:00 UTC — `20260721120000_simulador_audiencia_fundacion.sql` · ✅ APLICADA
+
+**Contexto:** Paso 1 del **Simulador de Audiencias (HearSim)** — fundación de datos. La auditoría previa (`AUDIT-HEARSIM.md`) confirmó que el chat persistente no tiene modelo de sesión reusable: `conversaciones_caso` tiene un único campo de estado (`activa|archivada`) y ninguna columna jsonb, así que el rol asumido, el tipo de audiencia, la dificultad y el estado de turno no tienen dónde vivir. Este paso crea el modelo propio. **Sin ruta API ni UI todavía.**
+
+**Tipo:** migración SQL de schema, **aditiva** (2 tablas nuevas + recreación de un CHECK existente como superset). No borra ni migra datos.
+
+**Cambios:**
+
+1. **`ejecuciones.tipo` — nuevo valor `'simular_audiencia'`.** Mismo patrón defensivo que `20260706190000`: un `DO` block dropea el CHECK vigente buscándolo **por definición** (no por nombre, por el drift repo↔DB) y lo recrea con el set completo:
+
+```sql
+CHECK (tipo IN ('pre_analisis','analizar_caso','consulta_caso','simular_mapa','simular_audiencia'))
+```
+
+2. **`simulaciones_audiencia`** — la sesión. `caso_id` FK a `casos` ON DELETE CASCADE; `tipo_audiencia` (allowlist que arranca con `prision_preventiva`), `rol_usuario` (`defensa|fiscal|querellante`), `dificultad` (`a_guiada|b_estandar|c_adversarial`), `magistrado_perfil` (`garantista|restrictivo|neutro`), `estado` (`en_curso|finalizada|abandonada`), `debriefing jsonb NULL`, timestamps. Índice `idx_simulaciones_caso (caso_id, creada_en DESC)`.
+
+3. **`turnos_simulacion`** — el transcript. `simulacion_id` FK CASCADE, `emisor` (10 valores: `usuario` + 8 personajes + `sistema`), `emisor_nombre` nullable, `contenido`, **`metadata jsonb NOT NULL DEFAULT '{}'`**, `ejecucion_id` FK nullable ON DELETE SET NULL. Índice `idx_turnos_simulacion (simulacion_id, creado_en)`.
+
+4. **Trigger `turnos_bump_sim`** — réplica de `trg_mensajes_bump_conv_actualizada`: cualquier INSERT/UPDATE/DELETE de turnos bumpea `simulaciones_audiencia.actualizada_en`.
+
+5. **RLS deny-by-default** en ambas tablas (habilitada sin policies), consistente con `eventos_agenda` y `mapa_procesal_nodos`.
+
+**Decisión — `metadata` en el transcript:** `mensajes_conversacion` **no** tiene columna `metadata`, y eso obligó a meter toda la metadata de cada corrida en `ejecuciones.metadata`, dejando al mensaje sin lugar propio para datos del turno. `turnos_simulacion` la incluye desde el día uno (fase de la audiencia, objeciones, scoring parcial).
+
+**Decisión — ownership sin denormalizar:** ninguna de las dos tablas tiene `usuario_id`. La pertenencia se resuelve por join `turnos_simulacion → simulaciones_audiencia → casos.usuario_id`, igual que el par `conversaciones_caso` / `mensajes_conversacion`. (Contraste: `eventos_agenda` **sí** denormaliza `usuario_id`, porque su dueño es el abogado y el `caso_id` es opcional.)
+
+**Sin invariante de "1 sesión en curso por caso":** a diferencia de `uq_conversacion_activa_por_caso`, **no** se agregó un partial unique index. Es una decisión de producto todavía no tomada; agregarlo después es una migración de una línea.
+
+**Acoplamiento código ↔ migración (IMPORTANTE):** este paso **no** agrega ningún `SELECT` nuevo, así que correr el código sin la migración no rompe nada hoy. En cuanto exista la ruta del simulador, el INSERT en `ejecuciones` con `tipo='simular_audiencia'` **falla con violación de CHECK** si la migración no se corrió antes (mismo patrón que `simular_mapa`). Aplicar la migración PRIMERO.
+
+**Aplicación:** la corrió Mateo a mano vía SQL Editor el **2026-07-22** (Claude Code no la ejecutó: el MCP de Supabase de esa sesión no tenía privilegios sobre el proyecto `xvdlnevcvcsgxbngwliv` — el token estaba scopeado a otra organización).
+
+**Nota de cronología:** entre la creación del archivo y su aplicación mediaron dos sesiones. La pasada del motor (`feat/simulador-motor`) arrancó bajo la premisa de que esta migración ya estaba aplicada, y no lo estaba — se detectó con el sondeo `information_schema.tables`, que devolvió 0 para ambas tablas. Se corrigió antes de cualquier prueba. Moraleja registrada: **verificar contra la DB, no contra el archivo en el repo** (el drift repo↔DB corta para los dos lados).
+
+---
+
+## 2026-07-21 · 14:00:00 UTC — `20260721140000_simulacion_unica_por_caso.sql` · ✅ APLICADA
+
+**Contexto:** Pasada 1 del **Simulador de Audiencias (THÉMIS)** — motor backend. En la migración de fundación (`20260721120000`) se dejó explícitamente **sin** invariante de unicidad, por ser una decisión de producto no tomada. Ya está tomada: **una sola audiencia en curso por caso**, igual que el chat.
+
+**Tipo:** migración SQL de schema, **aditiva** (un índice). No borra ni migra datos.
+
+**Cambio:**
+
+```sql
+CREATE UNIQUE INDEX uq_simulacion_en_curso_por_caso
+  ON simulaciones_audiencia (caso_id)
+  WHERE estado = 'en_curso';
+```
+
+Calcado de `uq_conversacion_activa_por_caso` (`20260507180000:71-73`).
+
+**Para qué:** refuerza en DB lo que la ruta ya hace en código — `POST /api/casos/[id]/simulacion` marca `abandonada` la sesión en curso antes de insertar la nueva (update primero, insert después). Sin el índice, dos POST concurrentes dejarían dos audiencias abiertas sobre el mismo expediente; con él, el segundo insert falla.
+
+**Riesgo de aplicación:** falla si ya existieran dos filas `en_curso` para un mismo `caso_id`. Con las tablas recién creadas eso es improbable; el `.sql` incluye en un comentario el `UPDATE` correctivo por si pasara.
+
+**Acoplamiento código ↔ migración:** **bajo, pero no nulo.** Las tres rutas del simulador funcionan igual sin el índice (la exclusión mutua ya está en código); lo que se pierde sin él es la protección contra la race de dos requests simultáneos. No hay `SELECT` nuevo de columnas, así que no aplica el patrón "500 en todos los reads" de `riesgo_alto` / `clase`.
+
+**Aplicación:** la corrió Mateo a mano vía SQL Editor el **2026-07-22**, inmediatamente después de `20260721120000` (el índice referencia la tabla que crea aquella, así que el orden es obligatorio).

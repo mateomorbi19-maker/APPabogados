@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // El guion del Simulador de Audiencias se lee con fs.readFileSync en runtime
+  // (src/lib/simulador/contexto.ts). Next no puede trazar una lectura dinámica,
+  // así que en `output: 'standalone'` el .md no se copiaría y el endpoint
+  // tiraría ENOENT en el deploy. Con esto se incluye en el bundle.
+  //
+  // La clave es un GLOB, no una ruta literal: usar "/api/casos/[id]/..." NO
+  // funcionaría porque `[id]` se interpreta como clase de caracteres. Por eso
+  // se cubre todo /api — el archivo pesa ~7 KB, el costo es despreciable.
+  outputFileTracingIncludes: {
+    "/api/**": ["./src/lib/simulador/guion-pp.md"],
+  },
   turbopack: {
     // process.cwd() en vez de __dirname: en el build de Docker el config se
     // compila a ESM (fallback a SWC WASM, sin binario nativo de Linux) y

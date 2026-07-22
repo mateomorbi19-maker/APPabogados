@@ -1,0 +1,86 @@
+// Vista del Simulador de Audiencias sobre un caso. Vive FUERA de
+// /dashboard/mis-casos para no heredar su layout (NavShell + sidebar +
+// max-w-6xl): es una vista inmersiva full-height, mismo patrón que el Chat y
+// el Mapa Procesal.
+//
+// Server component: valida ownership, verifica que el fuero del caso esté
+// soportado, y carga la simulación más reciente con sus turnos. NO hace
+// lazy-init como el chat: abrir una audiencia gasta tokens, así que arranca
+// solo cuando el abogado la configura y la inicia explícitamente.
+
+import { notFound } from "next/navigation";
+import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
+import { createServerClient } from "@/lib/supabase/server";
+import { SimuladorShell } from "@/components/simulador/simulador-shell";
+import type { SimulacionAudiencia, TurnoSimulacion } from "@/lib/types";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Debe coincidir con FUERO_SOPORTADO de la ruta POST /simulacion. El guion v1
+// es exclusivamente CPP PBA (Ley 11.922).
+const FUERO_SOPORTADO = "pba";
+
+export default async function SimuladorPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: casoId } = await params;
+  if (!UUID_RE.test(casoId)) notFound();
+
+  const auth = await requireUsuarioOr403();
+  if (!auth.ok) notFound();
+
+  const supabase = createServerClient();
+
+  const { data: caso, error: casoErr } = await supabase
+    .from("casos")
+    .select("id, titulo, fuero")
+    .eq("id", casoId)
+    .eq("usuario_id", auth.usuario_id)
+    .maybeSingle();
+  if (casoErr || !caso) notFound();
+
+  const casoTipado = caso as { id: string; titulo: string; fuero: string | null };
+
+  // Simulación más reciente del caso (en curso, finalizada o abandonada).
+  // Si es la primera vez, no hay ninguna y el shell muestra la pantalla de
+  // configuración.
+  const { data: sims } = await supabase
+    .from("simulaciones_audiencia")
+    .select(
+      "id, caso_id, tipo_audiencia, rol_usuario, dificultad, magistrado_perfil, estado, debriefing, creada_en, actualizada_en, finalizada_en",
+    )
+    .eq("caso_id", casoId)
+    .order("creada_en", { ascending: false })
+    .limit(1);
+  const simulacion = ((sims ?? [])[0] ?? null) as SimulacionAudiencia | null;
+
+  let turnos: TurnoSimulacion[] = [];
+  if (simulacion) {
+    const { data: ts } = await supabase
+      .from("turnos_simulacion")
+      .select(
+        "id, simulacion_id, emisor, emisor_nombre, contenido, metadata, ejecucion_id, creado_en",
+      )
+      .eq("simulacion_id", simulacion.id)
+      .order("creado_en", { ascending: true });
+    turnos = (ts ?? []) as TurnoSimulacion[];
+  }
+
+  // key por simulación: fuerza remount del client component al cambiar de
+  // audiencia, para que el state sembrado por props nunca quede stale (mismo
+  // motivo que en la página del chat).
+  return (
+    <SimuladorShell
+      key={simulacion?.id ?? "sin-simulacion"}
+      casoId={casoId}
+      casoTitulo={casoTipado.titulo}
+      fueroSoportado={casoTipado.fuero === FUERO_SOPORTADO}
+      fueroCaso={casoTipado.fuero}
+      simulacionInicial={simulacion}
+      turnosIniciales={turnos}
+    />
+  );
+}
