@@ -14,11 +14,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SimulacionAudiencia, TurnoSimulacion } from "@/lib/types";
+import { TIPO_AUDIENCIA_LABEL } from "@/lib/simulador/labels";
 import { SimuladorHeader } from "./simulador-header";
 import { ConfigAudiencia } from "./config-audiencia";
 import { TranscriptAudiencia } from "./transcript-audiencia";
 import { InputIntervencion } from "./input-intervencion";
 import { FueroNoSoportado } from "./fuero-no-soportado";
+import { EscenaSala } from "./sala/escena-sala";
 
 type Props = {
   casoId: string;
@@ -27,6 +29,9 @@ type Props = {
   fueroCaso: string | null;
   simulacionInicial: SimulacionAudiencia | null;
   turnosIniciales: TurnoSimulacion[];
+  // Vista de sala (escena + barra de fases) en lugar del transcript pelado.
+  // Llega del searchParam `?vista=sala`.
+  vistaSala: boolean;
 };
 
 export function SimuladorShell({
@@ -36,6 +41,7 @@ export function SimuladorShell({
   fueroCaso,
   simulacionInicial,
   turnosIniciales,
+  vistaSala,
 }: Props) {
   const router = useRouter();
   const [simulacion, setSimulacion] = useState(simulacionInicial);
@@ -109,6 +115,7 @@ export function SimuladorShell({
         onCerrada={onCerrada}
         onNuevaAudiencia={() => setConfigurando(true)}
         mostrandoConfig={mostrarConfig}
+        vistaSala={vistaSala}
       />
 
       {mostrarConfig ? (
@@ -120,6 +127,15 @@ export function SimuladorShell({
         />
       ) : (
         <>
+          {/* M1: la escena se monta pero todavía no lee los turnos — nadie se
+              ilumina. El cableado de `activo` / `esTuTurno` es M2/M5. */}
+          {vistaSala ? (
+            <EscenaSala
+              rolUsuario={simulacion!.rol_usuario}
+              descripcion={TIPO_AUDIENCIA_LABEL[simulacion!.tipo_audiencia]}
+            />
+          ) : null}
+
           <TranscriptAudiencia
             simulacion={simulacion!}
             turnos={turnos}

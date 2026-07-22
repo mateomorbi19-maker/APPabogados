@@ -5,7 +5,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Gavel, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   DIFICULTADES,
@@ -26,6 +26,7 @@ type Props = {
   onCerrada: (sim: SimulacionAudiencia) => void;
   onNuevaAudiencia: () => void;
   mostrandoConfig: boolean;
+  vistaSala: boolean;
 };
 
 const ESTADO_CLASES: Record<string, string> = {
@@ -43,6 +44,7 @@ export function SimuladorHeader({
   onCerrada,
   onNuevaAudiencia,
   mostrandoConfig,
+  vistaSala,
 }: Props) {
   const [cerrarOpen, setCerrarOpen] = useState(false);
 
@@ -96,6 +98,23 @@ export function SimuladorHeader({
         ) : null}
 
         <div className="flex-1" />
+
+        {/* Alterna escena/texto por searchParam. Es un <Link> y no un botón de
+            estado porque el flag lo lee el server component: navegar es lo que
+            lo aplica. Se oculta en la configuración, donde no hay sala. */}
+        {simulacion && !mostrandoConfig ? (
+          <Link
+            href={
+              vistaSala
+                ? `/dashboard/simulador/${casoId}`
+                : `/dashboard/simulador/${casoId}?vista=sala`
+            }
+            scroll={false}
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+          >
+            {vistaSala ? "Vista de texto" : "Vista de sala"}
+          </Link>
+        ) : null}
 
         {puedeCerrar ? (
           <Button variant="outline" size="sm" onClick={() => setCerrarOpen(true)}>

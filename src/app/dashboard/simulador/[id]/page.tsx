@@ -23,11 +23,19 @@ const FUERO_SOPORTADO = "pba";
 
 export default async function SimuladorPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ vista?: string | string[] }>;
 }) {
   const { id: casoId } = await params;
   if (!UUID_RE.test(casoId)) notFound();
+
+  // Flag de la Vista de sala (escena + barra de fases). Mismo mecanismo que el
+  // chat y el admin usan para su estado de vista: un searchParam, sin infra de
+  // feature flags. El modo texto sigue siendo el default hasta validarla.
+  const { vista } = await searchParams;
+  const vistaSala = (Array.isArray(vista) ? vista[0] : vista) === "sala";
 
   const auth = await requireUsuarioOr403();
   if (!auth.ok) notFound();
@@ -92,6 +100,7 @@ export default async function SimuladorPage({
       fueroCaso={casoTipado.fuero}
       simulacionInicial={simulacion}
       turnosIniciales={turnos}
+      vistaSala={vistaSala}
     />
   );
 }
