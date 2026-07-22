@@ -33,6 +33,9 @@ export function CerrarAudienciaModal({
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // El cierre quedó sin confirmar: reintentar generaría un segundo informe y
+  // lo cobraría. La salida es recargar.
+  const [indeterminado, setIndeterminado] = useState(false);
 
   const handleClose = () => {
     if (loading) return;
@@ -54,8 +57,28 @@ export function CerrarAudienciaModal({
         | null;
 
       if (!res.ok || !json || json.ok === false) {
+        // 409 = el server YA cerró la audiencia y guardó el informe (este
+        // mismo request que se cortó por timeout del proxy, u otro desde otra
+        // pestaña). El informe está pago y persistido; como no hay GET de la
+        // simulación, recargar es la única forma de que el abogado lo vea en
+        // vez de quedarse con un error sobre algo que en realidad salió bien.
+        if (res.status === 409) {
+          window.location.reload();
+          return;
+        }
+        // Body ilegible (proxy que devolvió HTML): el cierre pudo haber
+        // terminado igual. Ofrecemos recargar en vez de sugerir reintentar,
+        // que generaría —y cobraría— un segundo informe.
+        if (!json) {
+          setIndeterminado(true);
+          setError(
+            "No pudimos confirmar el cierre. Es posible que el informe se haya generado igual: recargá la página para verlo.",
+          );
+          setLoading(false);
+          return;
+        }
         setError(
-          json && "error" in json && typeof json.error === "string"
+          "error" in json && typeof json.error === "string"
             ? json.error
             : `No se pudo cerrar la audiencia (HTTP ${res.status})`,
         );
@@ -96,13 +119,21 @@ export function CerrarAudienciaModal({
         ) : null}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Seguir en la audiencia
-          </Button>
-          <Button onClick={confirmar} disabled={loading}>
-            {loading ? <Loader2 className="size-4 animate-spin" /> : null}
-            {loading ? "Generando informe…" : "Cerrar y ver informe"}
-          </Button>
+          {indeterminado ? (
+            <Button onClick={() => window.location.reload()}>
+              Recargar la página
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose} disabled={loading}>
+                Seguir en la audiencia
+              </Button>
+              <Button onClick={confirmar} disabled={loading}>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : null}
+                {loading ? "Generando informe…" : "Cerrar y ver informe"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

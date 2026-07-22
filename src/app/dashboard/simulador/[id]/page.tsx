@@ -47,7 +47,12 @@ export default async function SimuladorPage({
   // Simulación más reciente del caso (en curso, finalizada o abandonada).
   // Si es la primera vez, no hay ninguna y el shell muestra la pantalla de
   // configuración.
-  const { data: sims } = await supabase
+  // OJO: los errores de estas dos lecturas se PROPAGAN a propósito. Mapear un
+  // fallo de SELECT a "no hay simulación" mostraría la pantalla de arranque a
+  // alguien que tiene una audiencia en curso, y el siguiente clic en "Iniciar
+  // audiencia" la daría por abandonada y pagaría una llamada nueva al modelo.
+  // Es preferible el error boundary de Next: el abogado recarga y la recupera.
+  const { data: sims, error: simsErr } = await supabase
     .from("simulaciones_audiencia")
     .select(
       "id, caso_id, tipo_audiencia, rol_usuario, dificultad, magistrado_perfil, estado, debriefing, creada_en, actualizada_en, finalizada_en",
@@ -55,17 +60,23 @@ export default async function SimuladorPage({
     .eq("caso_id", casoId)
     .order("creada_en", { ascending: false })
     .limit(1);
+  if (simsErr) {
+    throw new Error(`simulador page: error leyendo simulaciones: ${simsErr.message}`);
+  }
   const simulacion = ((sims ?? [])[0] ?? null) as SimulacionAudiencia | null;
 
   let turnos: TurnoSimulacion[] = [];
   if (simulacion) {
-    const { data: ts } = await supabase
+    const { data: ts, error: tsErr } = await supabase
       .from("turnos_simulacion")
       .select(
         "id, simulacion_id, emisor, emisor_nombre, contenido, metadata, ejecucion_id, creado_en",
       )
       .eq("simulacion_id", simulacion.id)
       .order("creado_en", { ascending: true });
+    if (tsErr) {
+      throw new Error(`simulador page: error leyendo turnos: ${tsErr.message}`);
+    }
     turnos = (ts ?? []) as TurnoSimulacion[];
   }
 

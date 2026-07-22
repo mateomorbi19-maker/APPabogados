@@ -90,6 +90,10 @@ export function SimuladorShell({
 
   const onCerrada = (cerrada: SimulacionAudiencia) => {
     setSimulacion(cerrada);
+    // Sale de la pantalla de configuración: sin esto, cerrar desde ahí
+    // generaba el informe (y lo cobraba) para dejarte en la misma pantalla,
+    // sin transcript ni informe a la vista.
+    setConfigurando(false);
     setEsperando(false);
     router.refresh();
   };

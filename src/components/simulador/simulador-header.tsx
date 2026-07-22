@@ -49,8 +49,13 @@ export function SimuladorHeader({
   const enCurso = simulacion?.estado === "en_curso";
   // Sin intervenciones propias no hay nada que evaluar: el backend rechaza el
   // cierre de una audiencia vacía, así que tampoco lo ofrecemos.
+  // También se oculta en la pantalla de configuración: ahí el botón invitaba a
+  // cerrar una audiencia cuyo transcript no estás viendo.
   const puedeCerrar =
-    enCurso && !ocupado && turnos.some((t) => t.emisor === "usuario");
+    enCurso &&
+    !mostrandoConfig &&
+    !ocupado &&
+    turnos.some((t) => t.emisor === "usuario");
 
   return (
     <header className="shrink-0 border-b border-border bg-card/50 backdrop-blur">
