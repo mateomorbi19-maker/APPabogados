@@ -9,7 +9,6 @@
 // Adaptado de lexstrategy_sala.html. Los tonos del mobiliario son los del
 // mockup; conviven bien con el canvas #08080c de la app.
 
-import { cn } from "@/lib/utils";
 import {
   ASIENTOS,
   ASIENTO_DEL_USUARIO,
@@ -38,8 +37,10 @@ export function EscenaSala({
   descripcion,
 }: Props) {
   const asientoUsuario = ASIENTO_DEL_USUARIO[rolUsuario];
-  const asientos = ASIENTOS.filter(
-    (a) => !a.opcional || a.rol === asientoUsuario || hayQuerellante,
+  const conQuerella = hayQuerellante || asientoUsuario === "querellante";
+  const asientos = ASIENTOS.filter((a) => !a.opcional || conQuerella).map((a) =>
+    // Con querella, la mesa de la acusación se reparte entre dos.
+    conQuerella && a.xConQuerella !== undefined ? { ...a, x: a.xConQuerella } : a,
   );
 
   return (
@@ -51,23 +52,19 @@ export function EscenaSala({
       }}
       aria-label="Disposición de la sala de audiencias"
     >
-      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 pb-2.5">
-        <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--el-text-muted)]">
-          La sala
-        </span>
-        {descripcion ? (
-          <span className="truncate text-[12px] text-[var(--el-text-soft)]">
-            {descripcion}
+      <div className="el-stage-wrap">
+        <div className="flex items-center justify-between gap-3 pb-2.5">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--el-text-muted)]">
+            La sala
           </span>
-        ) : null}
-      </div>
+          {descripcion ? (
+            <span className="truncate text-[12px] text-[var(--el-text-soft)]">
+              {descripcion}
+            </span>
+          ) : null}
+        </div>
 
-      <div
-        className={cn(
-          "relative mx-auto w-full max-w-[1180px]",
-          "aspect-[1000/300] max-h-[250px]",
-        )}
-      >
+        <div className="el-stage">
         <svg
           viewBox="0 0 1000 300"
           preserveAspectRatio="xMidYMid meet"
@@ -161,6 +158,7 @@ export function EscenaSala({
             esUsuario={a.rol === asientoUsuario}
           />
         ))}
+        </div>
       </div>
     </section>
   );

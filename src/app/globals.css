@@ -426,11 +426,37 @@
    =========================================================================== */
 
 @layer components {
+  /* Escenario. El ancho es el eje que manda y la altura sale del aspect-ratio:
+     al revés (cap por max-height) la caja deja de respetar 1000/300, el SVG
+     letterboxea con preserveAspectRatio y los asientos —que se posicionan en %
+     sobre el ancho COMPLETO— se despegan del mobiliario. 833px = 250 * 1000/300
+     es el ancho al que el escenario mide 250px de alto, o sea el tope real que
+     tenía el mockup. El tercer término lo achica en viewports bajos para no
+     comerse el transcript ni empujar la barra de intervención fuera del
+     h-dvh del shell (26dvh de alto → 26dvh * 10/3 de ancho). */
+  .el-stage-wrap {
+    margin-inline: auto;
+    width: min(100%, 833px, calc(26dvh * 10 / 3));
+  }
+  .el-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1000 / 300;
+  }
+
   .el-seat {
     transform: translate(-50%, -50%);
     transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
   }
+  /* Reposo del marco. Va acá y NO como utilities en el componente: Tailwind v4
+     emite `@layer theme, base, components, utilities`, así que una utility
+     border-[…]/shadow-[…] le gana a .el-seat-active .el-seat-frame por CAPA,
+     sin importar la especificidad — y el anillo y el glow quedaban muertos.
+     Con ambos estados en la misma capa decide la especificidad, que es lo que
+     queremos (0,2,0 del estado activo sobre 0,1,0 del reposo). */
   .el-seat-frame {
+    border-color: var(--el-border);
+    box-shadow: 0 6px 16px rgb(0 0 0 / 0.4);
     transition:
       box-shadow 0.3s ease,
       border-color 0.3s ease;

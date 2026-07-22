@@ -86,6 +86,11 @@ export type Asiento = {
   // translate(-50%,-50%)). Valores del Apéndice A del brief.
   x: number;
   y: number;
+  // Posición alternativa cuando la querella ocupa la mesa de la acusación: los
+  // dos comparten los 210px de ancho del mueble (7%–28% del viewBox), así que
+  // el fiscal se corre a la izquierda para hacerle lugar en vez de quedar uno
+  // encima del otro.
+  xConQuerella?: number;
   // Tamaño del marco. El juez es el más grande (preside); secretario,
   // querellante e imputado son los chicos.
   tam: "sm" | "md" | "lg";
@@ -99,8 +104,8 @@ export type Asiento = {
 export const ASIENTOS: ReadonlyArray<Asiento> = [
   { rol: "juez", x: 50, y: 19, tam: "lg" },
   { rol: "secretario", x: 36, y: 31, tam: "sm" },
-  { rol: "fiscal", x: 17.5, y: 67, tam: "md" },
-  { rol: "querellante", x: 29, y: 71, tam: "sm", opcional: true },
+  { rol: "fiscal", x: 17.5, y: 67, tam: "md", xConQuerella: 11.5 },
+  { rol: "querellante", x: 23.5, y: 69, tam: "sm", opcional: true },
   { rol: "defensa", x: 67, y: 67, tam: "md" },
   { rol: "imputado", x: 87, y: 70, tam: "sm" },
 ];

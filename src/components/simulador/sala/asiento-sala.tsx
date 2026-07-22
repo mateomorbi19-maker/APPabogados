@@ -76,7 +76,10 @@ export function AsientoSala({
 
       <div
         className={cn(
-          "el-seat-frame flex items-center justify-center rounded-2xl border border-[var(--el-border)] bg-gradient-to-b from-[#141c2c] to-[#0d1420] shadow-[0_6px_16px_rgba(0,0,0,.4)]",
+          // El borde y la sombra de reposo los pone .el-seat-frame en
+          // globals.css, NO utilities acá: en Tailwind v4 la capa utilities le
+          // gana a components y anulaba el anillo y el glow del hablante.
+          "el-seat-frame flex items-center justify-center rounded-2xl border bg-gradient-to-b from-[#141c2c] to-[#0d1420]",
           TAM_MARCO[asiento.tam],
         )}
       >

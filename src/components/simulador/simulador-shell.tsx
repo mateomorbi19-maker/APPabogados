@@ -140,6 +140,7 @@ export function SimuladorShell({
             simulacion={simulacion!}
             turnos={turnos}
             esperando={esperando}
+            vistaSala={vistaSala}
           />
 
           {enCurso ? (
