@@ -23,6 +23,8 @@ const TIPOS: Record<string, string> = {
   analizar_caso: "Análisis",
   pre_analisis: "Pre-análisis",
   consulta_caso: "Consulta",
+  simular_mapa: "Simulación de mapa",
+  simular_audiencia: "Simulación de audiencia",
 };
 
 export const fmtTipo = (tipo: string): string => TIPOS[tipo] ?? tipo;
