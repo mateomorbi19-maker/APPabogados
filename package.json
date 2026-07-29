@@ -16,6 +16,8 @@
     "@clerk/themes": "^2.4.57",
     "@dagrejs/dagre": "^3.0.0",
     "@googleapis/calendar": "^15.0.0",
+    "@googleapis/drive": "^20.2.0",
+    "@googleapis/gmail": "^17.0.0",
     "@supabase/supabase-js": "^2.104.1",
     "@xyflow/react": "^12.11.0",
     "class-variance-authority": "^0.7.1",

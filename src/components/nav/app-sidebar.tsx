@@ -7,6 +7,8 @@ import {
   CalendarDays,
   FolderOpen,
   Home,
+  Inbox,
+  Library,
   LogOut,
   Shield,
   Sparkles,
@@ -43,6 +45,18 @@ const ITEMS: NavItem[] = [
     label: "Agenda",
     icon: CalendarDays,
     match: (p) => p.startsWith("/dashboard/agenda"),
+  },
+  {
+    href: "/dashboard/bandeja",
+    label: "Bandeja de entrada",
+    icon: Inbox,
+    match: (p) => p.startsWith("/dashboard/bandeja"),
+  },
+  {
+    href: "/dashboard/repositorio",
+    label: "Repositorio",
+    icon: Library,
+    match: (p) => p.startsWith("/dashboard/repositorio"),
   },
   {
     href: "/consumo",
