@@ -19,7 +19,11 @@ export default async function BandejaPage() {
 
   return (
     <ConsumoProvider>
-      <NavShell nombreUsuario={result.nombre} isAdmin={result.role === "admin"}>
+      <NavShell
+        nombreUsuario={result.nombre}
+        isAdmin={result.role === "admin"}
+        ancho="completo"
+      >
         <BandejaView />
       </NavShell>
     </ConsumoProvider>
