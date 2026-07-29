@@ -38,8 +38,27 @@ export async function buscarDocumentos(
     filter: {},
     match_threshold: RAG_SIMILARITY_THRESHOLD,
   });
-  if (error) {
-    throw new Error(`match_documents falló: ${error.message}`);
+
+  if (!error) return (data ?? []) as DocumentoMatch[];
+
+  // Fallback de compatibilidad: si la migración que parametriza el umbral
+  // (20260627003911_match_documents_threshold_param.sql) no está aplicada en la
+  // DB, PostgREST responde PGRST202 ("no existe la función con esos params") y
+  // el RAG devuelve CERO chunks en silencio. Pasó en producción entre el
+  // 2026-06-27 y el 2026-07-29: todo análisis salió sin grounding.
+  // Reintentamos con la firma vieja (umbral hardcodeado dentro del SQL) para
+  // que el RAG funcione aunque el repo y la DB estén desfasados.
+  if (error.code === "PGRST202") {
+    const legacy = await supabase.rpc("match_documents", {
+      query_embedding: embedding,
+      match_count: k,
+      filter: {},
+    });
+    if (legacy.error) {
+      throw new Error(`match_documents falló: ${legacy.error.message}`);
+    }
+    return (legacy.data ?? []) as DocumentoMatch[];
   }
-  return (data ?? []) as DocumentoMatch[];
+
+  throw new Error(`match_documents falló: ${error.message}`);
 }
