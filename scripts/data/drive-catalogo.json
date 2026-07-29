@@ -1,0 +1,3964 @@
+{
+  "raiz": "1Co0Bhm8CGMStz7Hyo5cVwnaA-J3Zrbkv",
+  "carpetas": [
+    {
+      "id": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "titulo": "Fallos penal",
+      "parentId": "1Co0Bhm8CGMStz7Hyo5cVwnaA-J3Zrbkv",
+      "ruta": "Fallos penal"
+    },
+    {
+      "id": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "titulo": "Doctrina Penal",
+      "parentId": "1Co0Bhm8CGMStz7Hyo5cVwnaA-J3Zrbkv",
+      "ruta": "Doctrina Penal"
+    },
+    {
+      "id": "1x0UvuufIyZsLZq3CePEX6i0juWs5Trf_",
+      "titulo": "Armas: tenencia y/o portación",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Armas: tenencia y/o portación"
+    },
+    {
+      "id": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "titulo": "Amenaza, coacción e intimidación",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación"
+    },
+    {
+      "id": "1LaVB6KeIsWLSaMsgVyPJe_riIGHk1iKH",
+      "titulo": "Género",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Género"
+    },
+    {
+      "id": "1_JP9I8_Y92zzI8_h8_G0_VuD1gm-4_RU",
+      "titulo": "Extradición",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Extradición"
+    },
+    {
+      "id": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "titulo": "Debido proceso",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Debido proceso"
+    },
+    {
+      "id": "1nT4UskG5KBfiD6kGacjYP0RTnN5WDigA",
+      "titulo": "Indubio pro reo",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Indubio pro reo"
+    },
+    {
+      "id": "1nPqmhx1xoC3v_fLlRutsq4kqDywz3ne7",
+      "titulo": "Omision",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Omision"
+    },
+    {
+      "id": "1u-Q_0FdHG310IZZ0ymQjqe2FrvWjZC_W",
+      "titulo": "Hurto",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Hurto"
+    },
+    {
+      "id": "1qe2TXwCtfcWVGzgz5oHitj9hGMrkRsm6",
+      "titulo": "Principio de Inocencia",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Principio de Inocencia"
+    },
+    {
+      "id": "1hniZhTRRLuSlXpTKVBqMl3WPfsZCqtYw",
+      "titulo": "Ejecución de la pena",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Ejecución de la pena"
+    },
+    {
+      "id": "1gHewjg5tFgBMary5u9_n-tWKByX4yNpr",
+      "titulo": "Robo",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Robo"
+    },
+    {
+      "id": "18MgF7y9IVE7DHXnlO65yGXBEFoNYpDys",
+      "titulo": "Derecho a defensa",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Derecho a defensa"
+    },
+    {
+      "id": "1f5lJWJbQv4rcUqURLeHsGzYhzXkGuGpr",
+      "titulo": "Iter criminis",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Iter criminis"
+    },
+    {
+      "id": "13VylpyMGFbQzEdlJiSE47BPejhGHTlFd",
+      "titulo": "Lesiones",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Lesiones"
+    },
+    {
+      "id": "1gFNDu5oR297mllUD2ozrT4t6NJV9joC3",
+      "titulo": "Bagatela - Principio de insignificancia",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Bagatela - Principio de insignificancia"
+    },
+    {
+      "id": "1BeS2B0ibMMoQSSXsBUbhDdJ5HzJg7aLT",
+      "titulo": "Doble conforme",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Doble conforme"
+    },
+    {
+      "id": "1miawSTxcToukEQ80xrNyFwBOpm75D7Yl",
+      "titulo": "Delitos sexuales",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Delitos sexuales"
+    },
+    {
+      "id": "14b-40kIrNmDxiD0Tw2iDCARAIkL8SviE",
+      "titulo": "Inimputabilidad",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Inimputabilidad"
+    },
+    {
+      "id": "1FvCYojElVXSC9kMsXRSToqyC3HfN95qA",
+      "titulo": "Autoria y participacion",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Autoria y participacion"
+    },
+    {
+      "id": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "titulo": "Principio Acusatorio",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Principio Acusatorio"
+    },
+    {
+      "id": "13id5UUdmZcEFR2XjZ8dn3-la7PNSu9Wl",
+      "titulo": "Minoridad",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Minoridad"
+    },
+    {
+      "id": "1PGv6ctDNDbItbhfFQIPa1wxBKWArGxQ7",
+      "titulo": "aborto",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/aborto"
+    },
+    {
+      "id": "1Ruu4wjWaFgp1JUcjwkMSJAXLNXag7A9D",
+      "titulo": "Deber de fundamentación",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Deber de fundamentación"
+    },
+    {
+      "id": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "titulo": "Penal Economico",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Penal Economico"
+    },
+    {
+      "id": "19GscjAsaRoymnRzTld3yef4u4MHFAcuc",
+      "titulo": "Ley penal mas benigna",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Ley penal mas benigna"
+    },
+    {
+      "id": "1BXcguqnzRfUjHJZvd9nm3Qp6ntAsKqQi",
+      "titulo": "Competencia Penal Federal",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Competencia Penal Federal"
+    },
+    {
+      "id": "1o3uP7w1H4K5d-DId7PYSWtAaw0xTCO5A",
+      "titulo": "Victima",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Victima"
+    },
+    {
+      "id": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "titulo": "prueba",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/prueba"
+    },
+    {
+      "id": "1LyOmw30rz8eWifkQkJSURNQbmF5VmXBX",
+      "titulo": "Legitima defensa",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Legitima defensa"
+    },
+    {
+      "id": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "titulo": "Homicidio",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Homicidio"
+    },
+    {
+      "id": "12P5TDmNEtpWbpllrBK5vq3SePVD5fz0w",
+      "titulo": "Ambito espacial de la ley penal",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Ambito espacial de la ley penal"
+    },
+    {
+      "id": "1Ap47bQesIwkPlaRqkO4s5nbQAwoZmtQ_",
+      "titulo": "Defraudacion",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Defraudacion"
+    },
+    {
+      "id": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "titulo": "Determinación de la pena",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Determinación de la pena"
+    },
+    {
+      "id": "1imD8R4iRxP-0NqY3020lvPJcpMKj1CTf",
+      "titulo": "Regimen Penal Juvenil",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Regimen Penal Juvenil"
+    },
+    {
+      "id": "1tu_x8fjPHT_VXDI6grt30wJAJ-NbEn-i",
+      "titulo": "Carceles",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Carceles"
+    },
+    {
+      "id": "1AE9vPI1tIzCQW6oolDhFJ50D_bPw_FXv",
+      "titulo": "Acción penal - Querella",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Acción penal - Querella"
+    },
+    {
+      "id": "1dUIBcLJQGXTSnHzUJOO046fE1sGEnbAE",
+      "titulo": "Prision Perpetua",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Prision Perpetua"
+    },
+    {
+      "id": "1GFuPrJ1mi-gg8JDM-Vw7VoG1HaIXFz7T",
+      "titulo": "Culpabilidad",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Culpabilidad"
+    },
+    {
+      "id": "1DHQHbqXGCsTTzRasE--Dd6Mw65hqJyq7",
+      "titulo": "Prision Domiciliaria",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Prision Domiciliaria"
+    },
+    {
+      "id": "1wEfw5IroudBECrMBxPnqLtUklbgHkzFo",
+      "titulo": "Non bis in idem",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Non bis in idem"
+    },
+    {
+      "id": "1SysZeHAd_Wa0FN6zvd-SHg3Zy8vtKjAU",
+      "titulo": "Pena de muerte - estandares internacionales",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Pena de muerte - estandares internacionales"
+    },
+    {
+      "id": "1DuD1FwfP-7Lj6Pevo5BslKw2xYsoZhOa",
+      "titulo": "Estupefacientes",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Estupefacientes"
+    },
+    {
+      "id": "1D-Y7rsUS0xJsiqTij3lOdI2YiDtdcBJn",
+      "titulo": "Homicidio Preteritencional",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Homicidio Preteritencional"
+    },
+    {
+      "id": "13y65whE0cOdfcSdOrO4H4qg4PTinqdUC",
+      "titulo": "Actio libera in causa",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Actio libera in causa"
+    },
+    {
+      "id": "1s5Pn2dFm6ygRkvge84fGsIQ98RzysNAR",
+      "titulo": "Lesa Humanidad",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Lesa Humanidad"
+    },
+    {
+      "id": "10a62FTyz-SZZJhvLTO5eWOs79WLij5hy",
+      "titulo": "Casación",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Casación"
+    },
+    {
+      "id": "1dnpE_sbFkOpH6AKHL_OnR-0MSiWI-1AX",
+      "titulo": "Accion penal - Fiscalía",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Accion penal - Fiscalía"
+    },
+    {
+      "id": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "titulo": "Prision Preventiva",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Prision Preventiva"
+    },
+    {
+      "id": "1D7cYsdjdGKCJ6B2nqPwxrTfqytUWtsY5",
+      "titulo": "Crimen organizado",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Crimen organizado"
+    },
+    {
+      "id": "1WvahQ-eyZAVM8jCdXFTfGjVOPemnpL08",
+      "titulo": "Fallos Penal Ambiental",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Fallos Penal Ambiental"
+    },
+    {
+      "id": "14wDZLwAcXrPTGWERvbDB58zrxpUp-L15",
+      "titulo": "Garantias constitucionales",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Garantias constitucionales"
+    },
+    {
+      "id": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "titulo": "Suspension juicio a prueba - Probation",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation"
+    },
+    {
+      "id": "1FtiopOwjZU9JC5nSG-wlE9zrp5vGaZUw",
+      "titulo": "Peculado",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Peculado"
+    },
+    {
+      "id": "1TNZoy1d2FzZ7MgVs1iI4m6_7VOr3p_53",
+      "titulo": "Reincidencia",
+      "parentId": "13sEGM5kPTl11CxzJM59lDl81u5FjyLnC",
+      "ruta": "Fallos penal/Reincidencia"
+    },
+    {
+      "id": "1KONWYv7sgdINr4t1N-SJCZA-aY_uLTOg",
+      "titulo": "Ejecucion de la pena",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Ejecucion de la pena"
+    },
+    {
+      "id": "1oHnfeB3XmRPenmpz-kYSgkuGf05gSUYS",
+      "titulo": "Penal parte empresa",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Penal parte empresa"
+    },
+    {
+      "id": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "titulo": "Imputacion objetiva",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Imputacion objetiva"
+    },
+    {
+      "id": "1IbC73nQvtsh7QxaZlIZInVBzZgavvCl0",
+      "titulo": "Estado de necesidad",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Estado de necesidad"
+    },
+    {
+      "id": "1nvueAYt4K7v6q1bMjrGiaamVzwdbXS6L",
+      "titulo": "Bien juridico - derecho penal",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Bien juridico - derecho penal"
+    },
+    {
+      "id": "1G37-dSbEyIaqJRRw903TbCDRRZSR0LCP",
+      "titulo": "Lesiones",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Lesiones"
+    },
+    {
+      "id": "1JlREiMgHixQPh5FHQ6DO64nVasN-MmRI",
+      "titulo": "Derecho Penal Internacional",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Derecho Penal Internacional"
+    },
+    {
+      "id": "1te-sceKdQb7nUhXjxepfkmc9nZmj0Kz2",
+      "titulo": "Delitos contra la seguridad nacional",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delitos contra la seguridad nacional"
+    },
+    {
+      "id": "10cS-6gLDkODzJRoFEmROeyhWbfwCRshr",
+      "titulo": "Jurisdicción",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Jurisdicción"
+    },
+    {
+      "id": "1rTDGrTyQsLwAtHDdLj6FBR3XHZ-QK4pp",
+      "titulo": "Estupefacientes",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Estupefacientes"
+    },
+    {
+      "id": "1c52q1tZz6M8ApEgmKzLPgkks-_QM5M_D",
+      "titulo": "Medidas de Coerción",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Medidas de Coerción"
+    },
+    {
+      "id": "1kMlmPwj92RFrgNpJumqJUuBcd3n_hYFf",
+      "titulo": "Flagrancia",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Flagrancia"
+    },
+    {
+      "id": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "titulo": "Admin publica",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Admin publica"
+    },
+    {
+      "id": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "titulo": "PenalEconom",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/PenalEconom"
+    },
+    {
+      "id": "1gClDn95jXhAhRSfaPdmVAaGVwenw8g85",
+      "titulo": "Orden Publico",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Orden Publico"
+    },
+    {
+      "id": "1S2oZj6PzjqxeQeXhvblRkeezABw-AYVR",
+      "titulo": "Derechos Humanos",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Derechos Humanos"
+    },
+    {
+      "id": "1vu9E0QUK_GG3VZyTGKWp_aWEz6GZqmh7",
+      "titulo": "Delitos contra el orden publico",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delitos contra el orden publico"
+    },
+    {
+      "id": "1AC-E2QD6Jb3aTVGKQzK2A2LIEK0Ag5VN",
+      "titulo": "Minoridad",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Minoridad"
+    },
+    {
+      "id": "1CEmVrzTsWLiPmxZiMk00o-p0D6Zt2VLx",
+      "titulo": "Delito contra la libertad",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delito contra la libertad"
+    },
+    {
+      "id": "19pVpnhvar_e4abUer-S0yi7CV-nQF2Ee",
+      "titulo": "Teorías de la pena",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Teorías de la pena"
+    },
+    {
+      "id": "158bl26sdzkMw0H06qla4O4gYyXAV5iTU",
+      "titulo": "Dolo, culpa, imprudencia",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Dolo, culpa, imprudencia"
+    },
+    {
+      "id": "1TdeBu5uSi6suI6YWPOnxe9pm1n34QHWa",
+      "titulo": "Materia recursiva",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Materia recursiva"
+    },
+    {
+      "id": "16JD5TW6LqeMzPygQjyiBD3K8oADozm8o",
+      "titulo": "Delitos contra el estado civil",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delitos contra el estado civil"
+    },
+    {
+      "id": "1cYBk82eD1y9qv9-Kivvro-p_r4f1B1f9",
+      "titulo": "Legitima defensa",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Legitima defensa"
+    },
+    {
+      "id": "1JGtmvM38ZOYRcuX8un0iJkkdEUC3-p_-",
+      "titulo": "Analisis Economico del Derecho Penal (AEDP)",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Analisis Economico del Derecho Penal (AEDP)"
+    },
+    {
+      "id": "1-rAU3phqEOZbiAhmCIFvwZ977qNI1BUF",
+      "titulo": "Teoría del delito",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Teoría del delito"
+    },
+    {
+      "id": "18R4V0TOLPvKi34SXJPKN_Dzgs8xgEn-N",
+      "titulo": "Autoria y participación",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Autoria y participación"
+    },
+    {
+      "id": "1d-WS70V1a1FeecHm_qS8FBpJ_WTC0aT6",
+      "titulo": "Juicio abreviado",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Juicio abreviado"
+    },
+    {
+      "id": "11wHYrzLLwipxnzlKd-O1GSZtYYJyTWoA",
+      "titulo": "Delitos contra la salud publica",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delitos contra la salud publica"
+    },
+    {
+      "id": "1bnvU3IM5fsdDAK9l_s7oP2y06KV6MkSc",
+      "titulo": "Abuso Sexual y violacion",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Abuso Sexual y violacion"
+    },
+    {
+      "id": "1uYNCp0arYcH6WeuWtFiNiCFuhJWSZWGs",
+      "titulo": "Armas",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Armas"
+    },
+    {
+      "id": "1felSjPRGTdLHv97ywJt8T5Yiugc9H4TX",
+      "titulo": "Omision y acción",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Omision y acción"
+    },
+    {
+      "id": "1wUquQ3jEa8tZP3OMH4J6CSBc8vTzyIYJ",
+      "titulo": "Delitos contra el honor",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delitos contra el honor"
+    },
+    {
+      "id": "1px29fOBX8Cn3_csEeLdHNAHVLDJRcjTD",
+      "titulo": "Determinación de la pena",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Determinación de la pena"
+    },
+    {
+      "id": "1SpfXjIOInJuhpKnPsdsySBROhfK8iV0U",
+      "titulo": "Delitos contra la propiedad",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delitos contra la propiedad"
+    },
+    {
+      "id": "1biW-3oRg_PoVyfZYGBxTkt3zXhjWa2Xn",
+      "titulo": "Derecho Procesal Penal — Procedimiento Bonaerense (Ley 11.922)",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Derecho Procesal Penal — Procedimiento Bonaerense (Ley 11.922)"
+    },
+    {
+      "id": "1rtSnANftSbr6xbG-wkAkrr4yJzy2Qr0g",
+      "titulo": "Oborto",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Oborto"
+    },
+    {
+      "id": "19hBZrQLSFCmGNVtDcZnal0oCJw_YidO4",
+      "titulo": "Medidas no privativas de libertad",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Medidas no privativas de libertad"
+    },
+    {
+      "id": "1LXPb3R7Wuw81iNyjeD4GsNSv9GD9ovcv",
+      "titulo": "Investigación Penal Preparatoria (IPP) y juicio oral",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Investigación Penal Preparatoria (IPP) y juicio oral"
+    },
+    {
+      "id": "1RI6jT6237wK_nG3jQe03OCMVIywLUgND",
+      "titulo": "Nulidades",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Nulidades"
+    },
+    {
+      "id": "1kGFYL_sWJmGVmwIftqYHHziJT6CdxoS3",
+      "titulo": "Homicidio simple y agravado",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Homicidio simple y agravado"
+    },
+    {
+      "id": "1X69FyrqWRyWSPNCDZ71K-0ed_0iGCHXc",
+      "titulo": "Juicio por jurados",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Juicio por jurados"
+    },
+    {
+      "id": "1tUW8J_6tKC4g_9kky92v5KANDuUEIWlf",
+      "titulo": "Etapa intermedia – Control de la acusación y elevación a juicio",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Etapa intermedia – Control de la acusación y elevación a juicio"
+    },
+    {
+      "id": "11DsSwXOz-bQq9nRSHdoccejj85aPPEDM",
+      "titulo": "Criminología",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Criminología"
+    },
+    {
+      "id": "1KDnMEpSG2sz3KqUgPXQsGgjZeXuX0p7e",
+      "titulo": "Simulacion IA Argum Juridica",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Simulacion IA Argum Juridica"
+    },
+    {
+      "id": "1UIPH56U4XPjWl0Q-qOq5lKbpAA8Pme7J",
+      "titulo": "Hurto",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Hurto"
+    },
+    {
+      "id": "1I673EiBbJ-cu82TZGxDmkldYAuKnOvjA",
+      "titulo": "Delitos contra la fe publica",
+      "parentId": "1cn6ecjnrjbkwimi6vBq4d5wPHB5pCmUP",
+      "ruta": "Doctrina Penal/Delitos contra la fe publica"
+    }
+  ],
+  "archivos": [
+    {
+      "id": "1-5whm7yukcuTlhLB-3l2ecxdBFRxCDbL",
+      "titulo": "118272_CACERES_agravante.pdf",
+      "parentId": "1x0UvuufIyZsLZq3CePEX6i0juWs5Trf_",
+      "ruta": "Fallos penal/Armas: tenencia y/o portación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:13:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1-5whm7yukcuTlhLB-3l2ecxdBFRxCDbL/view?usp=drivesdk"
+    },
+    {
+      "id": "1K5o5u_3_lU-SQOukVFidB8OBfYJ_BfFk",
+      "titulo": "Casco (Causa n°22051).pdf",
+      "parentId": "1x0UvuufIyZsLZq3CePEX6i0juWs5Trf_",
+      "ruta": "Fallos penal/Armas: tenencia y/o portación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:13:49Z",
+      "viewUrl": "https://drive.google.com/file/d/1K5o5u_3_lU-SQOukVFidB8OBfYJ_BfFk/view?usp=drivesdk"
+    },
+    {
+      "id": "1aowTTZVUpJq0Eo5ncxd-SGkHK7vItnVI",
+      "titulo": "ROMERO, NATALIA JOHANA R casac.pdf",
+      "parentId": "1x0UvuufIyZsLZq3CePEX6i0juWs5Trf_",
+      "ruta": "Fallos penal/Armas: tenencia y/o portación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:14:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1aowTTZVUpJq0Eo5ncxd-SGkHK7vItnVI/view?usp=drivesdk"
+    },
+    {
+      "id": "1I1CXaDv0gwhSALmg0N3_63-sF7LtLnkh",
+      "titulo": "FUENTES, NAHUEL SANTIAGO.pdf",
+      "parentId": "1x0UvuufIyZsLZq3CePEX6i0juWs5Trf_",
+      "ruta": "Fallos penal/Armas: tenencia y/o portación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:14:02Z",
+      "viewUrl": "https://drive.google.com/file/d/1I1CXaDv0gwhSALmg0N3_63-sF7LtLnkh/view?usp=drivesdk"
+    },
+    {
+      "id": "1swYYUINXgVqm3EDq41g7i6OxWnd1Rg2b",
+      "titulo": "IULIANO JOSE EDUARDO.pdf",
+      "parentId": "1x0UvuufIyZsLZq3CePEX6i0juWs5Trf_",
+      "ruta": "Fallos penal/Armas: tenencia y/o portación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:14:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1swYYUINXgVqm3EDq41g7i6OxWnd1Rg2b/view?usp=drivesdk"
+    },
+    {
+      "id": "1JYgvd3agXvIDDbq3emLBTTjA9AnZ8ijr",
+      "titulo": "VILLALBA, CRISTIAN GONZALO S- RECURSO DE CASACION.pdf",
+      "parentId": "1x0UvuufIyZsLZq3CePEX6i0juWs5Trf_",
+      "ruta": "Fallos penal/Armas: tenencia y/o portación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:15:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1JYgvd3agXvIDDbq3emLBTTjA9AnZ8ijr/view?usp=drivesdk"
+    },
+    {
+      "id": "1Gd0KCtefPH7MyFIDUpkGOx2Um6yjbRoH",
+      "titulo": "Ramos (Causa Nº 30747).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:00:40Z",
+      "viewUrl": "https://drive.google.com/file/d/1Gd0KCtefPH7MyFIDUpkGOx2Um6yjbRoH/view?usp=drivesdk"
+    },
+    {
+      "id": "1kkDMpdUnAowTA8fhHEB4EhFe3CT29Cnu",
+      "titulo": "Fernández Galeano (reg. Nº 1802 y causa Nº 73009l).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T01:55:20Z",
+      "viewUrl": "https://drive.google.com/file/d/1kkDMpdUnAowTA8fhHEB4EhFe3CT29Cnu/view?usp=drivesdk"
+    },
+    {
+      "id": "1G3gySfLOCfS4gbZ6VG6xgZaMj3jhwn6h",
+      "titulo": "GPL (causa N° 23568).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T01:58:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1G3gySfLOCfS4gbZ6VG6xgZaMj3jhwn6h/view?usp=drivesdk"
+    },
+    {
+      "id": "1E91eVB0QMPSxjhIhnR9cigg1VvvGQZqW",
+      "titulo": "Irrazabal Madrid (causa n° 4041).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T01:59:33Z",
+      "viewUrl": "https://drive.google.com/file/d/1E91eVB0QMPSxjhIhnR9cigg1VvvGQZqW/view?usp=drivesdk"
+    },
+    {
+      "id": "1ydO0MjEezbuEZSq6SEFNuXMjVXFdS4BB",
+      "titulo": "Gray (causa Nº 579).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T01:59:07Z",
+      "viewUrl": "https://drive.google.com/file/d/1ydO0MjEezbuEZSq6SEFNuXMjVXFdS4BB/view?usp=drivesdk"
+    },
+    {
+      "id": "11zrWqqnRyrTvbuHeaugGrCQtwhi7zNYh",
+      "titulo": "Ramos León (reg. N° 2682 y causa N° 67322).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:00:59Z",
+      "viewUrl": "https://drive.google.com/file/d/11zrWqqnRyrTvbuHeaugGrCQtwhi7zNYh/view?usp=drivesdk"
+    },
+    {
+      "id": "1jqGHFXexnvB1q88oPzzDTJmlIhSPC9HM",
+      "titulo": "Narvaez Lugo (Reg. Nº 1760 y causa Nº 44952).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T01:59:55Z",
+      "viewUrl": "https://drive.google.com/file/d/1jqGHFXexnvB1q88oPzzDTJmlIhSPC9HM/view?usp=drivesdk"
+    },
+    {
+      "id": "1LooGywg3XsbGyn_Fmr-PkpqrJcJ4Lh1Q",
+      "titulo": "Ramacciato (causa N° 59300) (1).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:00:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1LooGywg3XsbGyn_Fmr-PkpqrJcJ4Lh1Q/view?usp=drivesdk"
+    },
+    {
+      "id": "1nv99FwY1TOUN-4BgNT33SRX0dpxBhDMx",
+      "titulo": "Vallejos Meneses (causa N° 60581).pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T02:01:20Z",
+      "viewUrl": "https://drive.google.com/file/d/1nv99FwY1TOUN-4BgNT33SRX0dpxBhDMx/view?usp=drivesdk"
+    },
+    {
+      "id": "1OZ8ft1TOna81F2xPHIBoxOHyLpXOhHoX",
+      "titulo": "Félix (reg. Nº 2547 y causa Nº 78410) - Probation en amenazas coactivas.pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-27T01:57:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1OZ8ft1TOna81F2xPHIBoxOHyLpXOhHoX/view?usp=drivesdk"
+    },
+    {
+      "id": "1LqZmd_e20aHov9LE6WYvCluYPKnMXOZN",
+      "titulo": "Amenazas, intimidación, tipo penal.pdf",
+      "parentId": "1Ev_pnzuIPaLoy_tKVHkW-xIkTPjlseMb",
+      "ruta": "Fallos penal/Amenaza, coacción e intimidación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-06-16T22:44:03Z",
+      "viewUrl": "https://drive.google.com/file/d/1LqZmd_e20aHov9LE6WYvCluYPKnMXOZN/view?usp=drivesdk"
+    },
+    {
+      "id": "1U130lOsCxAPPfPXkjSePPi53hfI0zZwu",
+      "titulo": "Wagner, Sebastián José Luis y otros.pdf",
+      "parentId": "1LaVB6KeIsWLSaMsgVyPJe_riIGHk1iKH",
+      "ruta": "Fallos penal/Género",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-26T19:24:09Z",
+      "viewUrl": "https://drive.google.com/file/d/1U130lOsCxAPPfPXkjSePPi53hfI0zZwu/view?usp=drivesdk"
+    },
+    {
+      "id": "1Q0I5Kiz0B8sQmwXWfK6uWmN5Nb5Hx17r",
+      "titulo": "FALLO CFP 000760_2021_CS001.pdf",
+      "parentId": "1_JP9I8_Y92zzI8_h8_G0_VuD1gm-4_RU",
+      "ruta": "Fallos penal/Extradición",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-24T11:20:23Z",
+      "viewUrl": "https://drive.google.com/file/d/1Q0I5Kiz0B8sQmwXWfK6uWmN5Nb5Hx17r/view?usp=drivesdk"
+    },
+    {
+      "id": "1EMnA29NAKrxBG6dyoYwSvHG9PynZy31Z",
+      "titulo": "Chacón (Causa N°3165).pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:13:44Z",
+      "viewUrl": "https://drive.google.com/file/d/1EMnA29NAKrxBG6dyoYwSvHG9PynZy31Z/view?usp=drivesdk"
+    },
+    {
+      "id": "19InFLGtEY2YbVLHzXkgCCPUTEvBTKZGv",
+      "titulo": "Balmaceda Binimelli, J. M..pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:12:27Z",
+      "viewUrl": "https://drive.google.com/file/d/19InFLGtEY2YbVLHzXkgCCPUTEvBTKZGv/view?usp=drivesdk"
+    },
+    {
+      "id": "1ePDMiZPCgscc8RL-mILR0b--UnQ0sVYe",
+      "titulo": "NGR (Causa N°14535).pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:14:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1ePDMiZPCgscc8RL-mILR0b--UnQ0sVYe/view?usp=drivesdk"
+    },
+    {
+      "id": "11vdQK-Jsh-Mfs98ynwIWJcjwyQiHHd1j",
+      "titulo": "21-Belizan - Testado.pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:13:18Z",
+      "viewUrl": "https://drive.google.com/file/d/11vdQK-Jsh-Mfs98ynwIWJcjwyQiHHd1j/view?usp=drivesdk"
+    },
+    {
+      "id": "1Xvm2Fi5eYGLSzVZrDOVomuQA0miauBlh",
+      "titulo": "Rivero (Causa N° 2524).pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:15:57Z",
+      "viewUrl": "https://drive.google.com/file/d/1Xvm2Fi5eYGLSzVZrDOVomuQA0miauBlh/view?usp=drivesdk"
+    },
+    {
+      "id": "1-W4FSq4-UZks_m0EJGAzDFFTrofE8ZbB",
+      "titulo": "Caso Ohman.pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:15:34Z",
+      "viewUrl": "https://drive.google.com/file/d/1-W4FSq4-UZks_m0EJGAzDFFTrofE8ZbB/view?usp=drivesdk"
+    },
+    {
+      "id": "1kwUunZbweeDQrtQPo5NMY3zKqVdO2v83",
+      "titulo": "Albarenque (Causa N°16263).pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:10:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1kwUunZbweeDQrtQPo5NMY3zKqVdO2v83/view?usp=drivesdk"
+    },
+    {
+      "id": "1mA6Jw2LPgVjddvQcv23IQgHqGYbFrxBj",
+      "titulo": "CSJN. Miño. Sentencia completa.pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:14:17Z",
+      "viewUrl": "https://drive.google.com/file/d/1mA6Jw2LPgVjddvQcv23IQgHqGYbFrxBj/view?usp=drivesdk"
+    },
+    {
+      "id": "1cTx2rIbEwUo-K6G_GXxG3hVP40g0AXwp",
+      "titulo": "Beati (Reg. N° 82 y Causa N° 39699 ).pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:12:50Z",
+      "viewUrl": "https://drive.google.com/file/d/1cTx2rIbEwUo-K6G_GXxG3hVP40g0AXwp/view?usp=drivesdk"
+    },
+    {
+      "id": "1V5ojoxs0DdwLc2JXii8p7w8MF9QwlEqt",
+      "titulo": "3- Flores TESTADO.pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-29T02:14:01Z",
+      "viewUrl": "https://drive.google.com/file/d/1V5ojoxs0DdwLc2JXii8p7w8MF9QwlEqt/view?usp=drivesdk"
+    },
+    {
+      "id": "1u04DDZtqQGUOF89FifG8mNLc8M5DkgKB",
+      "titulo": "Smolsky (Causa N° 8704).pdf",
+      "parentId": "1FdFr-UjmtRqv1FS8ElcgHkc7uWpRNeJ8",
+      "ruta": "Fallos penal/Debido proceso",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-24T11:27:27Z",
+      "viewUrl": "https://drive.google.com/file/d/1u04DDZtqQGUOF89FifG8mNLc8M5DkgKB/view?usp=drivesdk"
+    },
+    {
+      "id": "1vDBd1xmu6U5IeoR2ojcqB2o1DdUEgBti",
+      "titulo": "Vázquez (causa Nº 367)_indub_pro_reo.pdf",
+      "parentId": "1nT4UskG5KBfiD6kGacjYP0RTnN5WDigA",
+      "ruta": "Fallos penal/Indubio pro reo",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:20:57Z",
+      "viewUrl": "https://drive.google.com/file/d/1vDBd1xmu6U5IeoR2ojcqB2o1DdUEgBti/view?usp=drivesdk"
+    },
+    {
+      "id": "1YiGiOPp97c3dqzpwsZ30opOmL-bw98NK",
+      "titulo": "González Nieva (causa Nº 4490)_indub_pro_reo.pdf",
+      "parentId": "1nT4UskG5KBfiD6kGacjYP0RTnN5WDigA",
+      "ruta": "Fallos penal/Indubio pro reo",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:20:27Z",
+      "viewUrl": "https://drive.google.com/file/d/1YiGiOPp97c3dqzpwsZ30opOmL-bw98NK/view?usp=drivesdk"
+    },
+    {
+      "id": "1nLM-CkUFRF6LRmHM2VWel0Jk2Yiz0Q1-",
+      "titulo": "Rivero (causa n° 8033)_indubio_pro_reo.pdf",
+      "parentId": "1nT4UskG5KBfiD6kGacjYP0RTnN5WDigA",
+      "ruta": "Fallos penal/Indubio pro reo",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:20:01Z",
+      "viewUrl": "https://drive.google.com/file/d/1nLM-CkUFRF6LRmHM2VWel0Jk2Yiz0Q1-/view?usp=drivesdk"
+    },
+    {
+      "id": "1FRWPprzlLIKBEjep4-jo7LJZkLDR9h0T",
+      "titulo": "CSJN-Rosas,-Romina-Mariela-y-otros.pdf",
+      "parentId": "1nPqmhx1xoC3v_fLlRutsq4kqDywz3ne7",
+      "ruta": "Fallos penal/Omision",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:07Z",
+      "viewUrl": "https://drive.google.com/file/d/1FRWPprzlLIKBEjep4-jo7LJZkLDR9h0T/view?usp=drivesdk"
+    },
+    {
+      "id": "1hDQ8HkZI_3LJfzgicTFjddNmVuCUOUwQ",
+      "titulo": "CNCC---Mischanchuk-(omision-impropia).pdf",
+      "parentId": "1nPqmhx1xoC3v_fLlRutsq4kqDywz3ne7",
+      "ruta": "Fallos penal/Omision",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:28Z",
+      "viewUrl": "https://drive.google.com/file/d/1hDQ8HkZI_3LJfzgicTFjddNmVuCUOUwQ/view?usp=drivesdk"
+    },
+    {
+      "id": "1yjNULMg9-pnESD3npeO3EDtpe0jbBVdn",
+      "titulo": "TOC-7---FV-y-otros-(omision-impropia-y-concurso).pdf",
+      "parentId": "1nPqmhx1xoC3v_fLlRutsq4kqDywz3ne7",
+      "ruta": "Fallos penal/Omision",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:32:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1yjNULMg9-pnESD3npeO3EDtpe0jbBVdn/view?usp=drivesdk"
+    },
+    {
+      "id": "1nbPkaXnnSzAzGYR5XTkNeSulTKSRXpO4",
+      "titulo": "SCJ-Tucuman---Villafane.pdf",
+      "parentId": "1nPqmhx1xoC3v_fLlRutsq4kqDywz3ne7",
+      "ruta": "Fallos penal/Omision",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:32:49Z",
+      "viewUrl": "https://drive.google.com/file/d/1nbPkaXnnSzAzGYR5XTkNeSulTKSRXpO4/view?usp=drivesdk"
+    },
+    {
+      "id": "1hafoNUx2bGD3gykUXDORTgr3ygRmN9Xk",
+      "titulo": "CNCC---Orbiscay-(omision-impropia).pdf",
+      "parentId": "1nPqmhx1xoC3v_fLlRutsq4kqDywz3ne7",
+      "ruta": "Fallos penal/Omision",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:23Z",
+      "viewUrl": "https://drive.google.com/file/d/1hafoNUx2bGD3gykUXDORTgr3ygRmN9Xk/view?usp=drivesdk"
+    },
+    {
+      "id": "1r6Hc7EA0tzIWUQENEzsvk8cN_ADQiMl0",
+      "titulo": "Fernández Prieto y Tumbeiro v. Argentina.pdf",
+      "parentId": "1qe2TXwCtfcWVGzgz5oHitj9hGMrkRsm6",
+      "ruta": "Fallos penal/Principio de Inocencia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-18T00:08:34Z",
+      "viewUrl": "https://drive.google.com/file/d/1r6Hc7EA0tzIWUQENEzsvk8cN_ADQiMl0/view?usp=drivesdk"
+    },
+    {
+      "id": "1fU5qQAuSsdCZ0YQQYqUbJA8oRvSyaYQJ",
+      "titulo": "Tommasi, J A (causa N° 23)_inocencia.pdf",
+      "parentId": "1qe2TXwCtfcWVGzgz5oHitj9hGMrkRsm6",
+      "ruta": "Fallos penal/Principio de Inocencia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:18:20Z",
+      "viewUrl": "https://drive.google.com/file/d/1fU5qQAuSsdCZ0YQQYqUbJA8oRvSyaYQJ/view?usp=drivesdk"
+    },
+    {
+      "id": "18hJC_4BbQ6BKEkEO_GY9dqfqL7uc9MfB",
+      "titulo": "fallo goldemberg_inocencia.pdf",
+      "parentId": "1qe2TXwCtfcWVGzgz5oHitj9hGMrkRsm6",
+      "ruta": "Fallos penal/Principio de Inocencia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:17:51Z",
+      "viewUrl": "https://drive.google.com/file/d/18hJC_4BbQ6BKEkEO_GY9dqfqL7uc9MfB/view?usp=drivesdk"
+    },
+    {
+      "id": "10GSRaEmJxbPd1HXjomu1dEGtTJ6cQcIx",
+      "titulo": "Castillo (causa N° 2450)_princip_inocencia.pdf",
+      "parentId": "1qe2TXwCtfcWVGzgz5oHitj9hGMrkRsm6",
+      "ruta": "Fallos penal/Principio de Inocencia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:16:25Z",
+      "viewUrl": "https://drive.google.com/file/d/10GSRaEmJxbPd1HXjomu1dEGtTJ6cQcIx/view?usp=drivesdk"
+    },
+    {
+      "id": "1nOfJ73xqnR5_2n7-Uge6qyR175ECSMrk",
+      "titulo": "desktop.ini",
+      "parentId": "1hniZhTRRLuSlXpTKVBqMl3WPfsZCqtYw",
+      "ruta": "Fallos penal/Ejecución de la pena",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:40:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1nOfJ73xqnR5_2n7-Uge6qyR175ECSMrk/view?usp=drivesdk"
+    },
+    {
+      "id": "1FDME6oplve4m0gHBVj3ikxutOsnospmS",
+      "titulo": "Torres, Oscar Claudio CSJN.pdf",
+      "parentId": "1hniZhTRRLuSlXpTKVBqMl3WPfsZCqtYw",
+      "ruta": "Fallos penal/Ejecución de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:24:07Z",
+      "viewUrl": "https://drive.google.com/file/d/1FDME6oplve4m0gHBVj3ikxutOsnospmS/view?usp=drivesdk"
+    },
+    {
+      "id": "1J4VhpDHa_6bc1F-eCPVfomswD1bqW9PZ",
+      "titulo": "Cabral, Agustín CSJN.pdf",
+      "parentId": "1hniZhTRRLuSlXpTKVBqMl3WPfsZCqtYw",
+      "ruta": "Fallos penal/Ejecución de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:14:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1J4VhpDHa_6bc1F-eCPVfomswD1bqW9PZ/view?usp=drivesdk"
+    },
+    {
+      "id": "1UHyTbBihUV4NF8UOXIlyPI-kMq3zXu0v",
+      "titulo": "desktop.ini",
+      "parentId": "1gHewjg5tFgBMary5u9_n-tWKByX4yNpr",
+      "ruta": "Fallos penal/Robo",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:54:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1UHyTbBihUV4NF8UOXIlyPI-kMq3zXu0v/view?usp=drivesdk"
+    },
+    {
+      "id": "1aziqop2spoHFKfuXXQnRTGshDvnZ8AoC",
+      "titulo": "Fallo-Salvini.pdf",
+      "parentId": "1gHewjg5tFgBMary5u9_n-tWKByX4yNpr",
+      "ruta": "Fallos penal/Robo",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:51:21Z",
+      "viewUrl": "https://drive.google.com/file/d/1aziqop2spoHFKfuXXQnRTGshDvnZ8AoC/view?usp=drivesdk"
+    },
+    {
+      "id": "16bEKyzPAEiVr2--IT__Pqfj4HpuBPEIB",
+      "titulo": "desktop.ini",
+      "parentId": "18MgF7y9IVE7DHXnlO65yGXBEFoNYpDys",
+      "ruta": "Fallos penal/Derecho a defensa",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:22:30Z",
+      "viewUrl": "https://drive.google.com/file/d/16bEKyzPAEiVr2--IT__Pqfj4HpuBPEIB/view?usp=drivesdk"
+    },
+    {
+      "id": "18-cOBfeEO0eat-X0aSKT_KpSxxGbKFOr",
+      "titulo": "Boletín - Derecho a conocer la prueba de cargo - Jurisprudencia internacional.pdf",
+      "parentId": "18MgF7y9IVE7DHXnlO65yGXBEFoNYpDys",
+      "ruta": "Fallos penal/Derecho a defensa",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:56:41Z",
+      "viewUrl": "https://drive.google.com/file/d/18-cOBfeEO0eat-X0aSKT_KpSxxGbKFOr/view?usp=drivesdk"
+    },
+    {
+      "id": "1swPwuSlCxTuf49ThBljAo-1of0A6SFQn",
+      "titulo": "Yemal, Jorge Gabriel CSJN.pdf",
+      "parentId": "18MgF7y9IVE7DHXnlO65yGXBEFoNYpDys",
+      "ruta": "Fallos penal/Derecho a defensa",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:24:17Z",
+      "viewUrl": "https://drive.google.com/file/d/1swPwuSlCxTuf49ThBljAo-1of0A6SFQn/view?usp=drivesdk"
+    },
+    {
+      "id": "1VUeoAKqlVgJs3YQe9zT2zVfHvMXB1V-v",
+      "titulo": "Fallo-Salvini.pdf",
+      "parentId": "1f5lJWJbQv4rcUqURLeHsGzYhzXkGuGpr",
+      "ruta": "Fallos penal/Iter criminis",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:51:21Z",
+      "viewUrl": "https://drive.google.com/file/d/1VUeoAKqlVgJs3YQe9zT2zVfHvMXB1V-v/view?usp=drivesdk"
+    },
+    {
+      "id": "1e-Tvx1VuZAIClMz-mk7HW5u9MSGCK8DX",
+      "titulo": "Fallo-Salvini.pdf",
+      "parentId": "13VylpyMGFbQzEdlJiSE47BPejhGHTlFd",
+      "ruta": "Fallos penal/Lesiones",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:51:21Z",
+      "viewUrl": "https://drive.google.com/file/d/1e-Tvx1VuZAIClMz-mk7HW5u9MSGCK8DX/view?usp=drivesdk"
+    },
+    {
+      "id": "1RakCxyLLLp-xHAtufdisUJONtJrs7-9V",
+      "titulo": "Bien-juridico-Fallo-Zabal.pdf",
+      "parentId": "1gFNDu5oR297mllUD2ozrT4t6NJV9joC3",
+      "ruta": "Fallos penal/Bagatela - Principio de insignificancia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:55:48Z",
+      "viewUrl": "https://drive.google.com/file/d/1RakCxyLLLp-xHAtufdisUJONtJrs7-9V/view?usp=drivesdk"
+    },
+    {
+      "id": "1Opo-3uanNrviKUTSWYeDy1hxr72yzFUq",
+      "titulo": "desktop.ini",
+      "parentId": "1BeS2B0ibMMoQSSXsBUbhDdJ5HzJg7aLT",
+      "ruta": "Fallos penal/Doble conforme",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:21:30Z",
+      "viewUrl": "https://drive.google.com/file/d/1Opo-3uanNrviKUTSWYeDy1hxr72yzFUq/view?usp=drivesdk"
+    },
+    {
+      "id": "1Gfjf1iRAeMkP7o5-J3JDIQRO6XN2oeDD",
+      "titulo": "Herrera Ulloa vs. Costa Rica CIDH.pdf",
+      "parentId": "1BeS2B0ibMMoQSSXsBUbhDdJ5HzJg7aLT",
+      "ruta": "Fallos penal/Doble conforme",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:43:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1Gfjf1iRAeMkP7o5-J3JDIQRO6XN2oeDD/view?usp=drivesdk"
+    },
+    {
+      "id": "1XAQmMys5kMmB_Qck7kyq2i_PSgnxs9NX",
+      "titulo": "Giroldi, Horacio CSJN.pdf",
+      "parentId": "1BeS2B0ibMMoQSSXsBUbhDdJ5HzJg7aLT",
+      "ruta": "Fallos penal/Doble conforme",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:42:49Z",
+      "viewUrl": "https://drive.google.com/file/d/1XAQmMys5kMmB_Qck7kyq2i_PSgnxs9NX/view?usp=drivesdk"
+    },
+    {
+      "id": "1UnR7iAnuZfu8xz6zLk0C2DBk885squwp",
+      "titulo": "desktop.ini",
+      "parentId": "1miawSTxcToukEQ80xrNyFwBOpm75D7Yl",
+      "ruta": "Fallos penal/Delitos sexuales",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:32:58Z",
+      "viewUrl": "https://drive.google.com/file/d/1UnR7iAnuZfu8xz6zLk0C2DBk885squwp/view?usp=drivesdk"
+    },
+    {
+      "id": "1Jj-axcPXzyRpc-0rxe-rie94I-niVWsD",
+      "titulo": "D’Acosta, Miguel Angel   CSJN.pdf",
+      "parentId": "1miawSTxcToukEQ80xrNyFwBOpm75D7Yl",
+      "ruta": "Fallos penal/Delitos sexuales",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:23:56Z",
+      "viewUrl": "https://drive.google.com/file/d/1Jj-axcPXzyRpc-0rxe-rie94I-niVWsD/view?usp=drivesdk"
+    },
+    {
+      "id": "1cz125aZ92hAM1iC377VmtltiBoVCBeus",
+      "titulo": "JURISPRUDENCIA-CLASE-VII-Abuso-Sexual-Gravemente-Ultrajante.pdf",
+      "parentId": "1miawSTxcToukEQ80xrNyFwBOpm75D7Yl",
+      "ruta": "Fallos penal/Delitos sexuales",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:01:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1cz125aZ92hAM1iC377VmtltiBoVCBeus/view?usp=drivesdk"
+    },
+    {
+      "id": "19L1IMVWztxI9JVc3GUVnbzyktZaVqccg",
+      "titulo": "JURISPRUDENCIA-CLASE-VII-Abuso-Sexual-simple.pdf",
+      "parentId": "1miawSTxcToukEQ80xrNyFwBOpm75D7Yl",
+      "ruta": "Fallos penal/Delitos sexuales",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:01:09Z",
+      "viewUrl": "https://drive.google.com/file/d/19L1IMVWztxI9JVc3GUVnbzyktZaVqccg/view?usp=drivesdk"
+    },
+    {
+      "id": "1ZoGj5vkK5Tj6aalPrfaRlQ1R9iKszFsl",
+      "titulo": "PEREZ, BRAIAN ABEL S ABUSO SEXUAL.pdf",
+      "parentId": "1miawSTxcToukEQ80xrNyFwBOpm75D7Yl",
+      "ruta": "Fallos penal/Delitos sexuales",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:45:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1ZoGj5vkK5Tj6aalPrfaRlQ1R9iKszFsl/view?usp=drivesdk"
+    },
+    {
+      "id": "1H94iAG0elNEFpTKXCVx-3eHWGQklAX6D",
+      "titulo": "TOC-6-Cisneros.pdf",
+      "parentId": "14b-40kIrNmDxiD0Tw2iDCARAIkL8SviE",
+      "ruta": "Fallos penal/Inimputabilidad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-24T02:23:03Z",
+      "viewUrl": "https://drive.google.com/file/d/1H94iAG0elNEFpTKXCVx-3eHWGQklAX6D/view?usp=drivesdk"
+    },
+    {
+      "id": "1_vwuyPanq8_AgCappa1aXt-xW-dGuOnM",
+      "titulo": "Caso-Ullmann.pdf",
+      "parentId": "14b-40kIrNmDxiD0Tw2iDCARAIkL8SviE",
+      "ruta": "Fallos penal/Inimputabilidad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:25:24Z",
+      "viewUrl": "https://drive.google.com/file/d/1_vwuyPanq8_AgCappa1aXt-xW-dGuOnM/view?usp=drivesdk"
+    },
+    {
+      "id": "1CrLHCP7lnryCohEjaQDngyY3uHsjJtdx",
+      "titulo": "CFCP-Orona-BruzzoneAutoria-y-participacion-Art-47.pdf",
+      "parentId": "1FvCYojElVXSC9kMsXRSToqyC3HfN95qA",
+      "ruta": "Fallos penal/Autoria y participacion",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:23:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1CrLHCP7lnryCohEjaQDngyY3uHsjJtdx/view?usp=drivesdk"
+    },
+    {
+      "id": "1ssrdr3Ydcx3ItGkNEzOJuMVb6kPrmLHy",
+      "titulo": "desktop.ini",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:23:30Z",
+      "viewUrl": "https://drive.google.com/file/d/1ssrdr3Ydcx3ItGkNEzOJuMVb6kPrmLHy/view?usp=drivesdk"
+    },
+    {
+      "id": "1Yvx0wKjLqQfAPH52hlTxtcj_7lP_NRYW",
+      "titulo": "6- Ercoli (causa N° 2969)_princip_acusatorio.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:10:14Z",
+      "viewUrl": "https://drive.google.com/file/d/1Yvx0wKjLqQfAPH52hlTxtcj_7lP_NRYW/view?usp=drivesdk"
+    },
+    {
+      "id": "1towL0F35Suc0jj_aUa-QeUX6Nx3k9Gzi",
+      "titulo": "Mostaccio, Julio G. CSJN.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:39:40Z",
+      "viewUrl": "https://drive.google.com/file/d/1towL0F35Suc0jj_aUa-QeUX6Nx3k9Gzi/view?usp=drivesdk"
+    },
+    {
+      "id": "1WhFk2pUkRlbZBUQBQlRGHUWoYr-IiJU9",
+      "titulo": "Marcilese, Pedro Julio CSJN.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:39:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1WhFk2pUkRlbZBUQBQlRGHUWoYr-IiJU9/view?usp=drivesdk"
+    },
+    {
+      "id": "1FAfzRuEF2zbmttbqofoeE7p7-GLo40t7",
+      "titulo": "López (FCR 686-2026)_Princip_acusatorio.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:12:41Z",
+      "viewUrl": "https://drive.google.com/file/d/1FAfzRuEF2zbmttbqofoeE7p7-GLo40t7/view?usp=drivesdk"
+    },
+    {
+      "id": "1F6beUMTXSMOQ_sd7h_G-4_kkj1m7SkxR",
+      "titulo": "Cattonar, Julio Pablo CSJN.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:39:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1F6beUMTXSMOQ_sd7h_G-4_kkj1m7SkxR/view?usp=drivesdk"
+    },
+    {
+      "id": "1HuaPnBzA7wGbDi1Vzkil8EOjOTwy41vO",
+      "titulo": "Sircovich, Jorge Eduardo CSJN.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:40:20Z",
+      "viewUrl": "https://drive.google.com/file/d/1HuaPnBzA7wGbDi1Vzkil8EOjOTwy41vO/view?usp=drivesdk"
+    },
+    {
+      "id": "1YpAzWCE9rD9qKsgBS3bDAo3WxMNfofqM",
+      "titulo": "Tarifeño, Francisco CSJN.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:38:56Z",
+      "viewUrl": "https://drive.google.com/file/d/1YpAzWCE9rD9qKsgBS3bDAo3WxMNfofqM/view?usp=drivesdk"
+    },
+    {
+      "id": "10wiHIGqcxyArGXk6dcebK8V6Hno_f-CY",
+      "titulo": "Zurita, Hugo Gabriel CSJN.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:40:46Z",
+      "viewUrl": "https://drive.google.com/file/d/10wiHIGqcxyArGXk6dcebK8V6Hno_f-CY/view?usp=drivesdk"
+    },
+    {
+      "id": "1-lEVKIuz4jqQJs0FS-jR3i6ZL0wh1TlA",
+      "titulo": "Fallo-Antinir.pdf",
+      "parentId": "1MnMxpdZz4qUE-amxoVh6ZgsDf_HYa39k",
+      "ruta": "Fallos penal/Principio Acusatorio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:51:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1-lEVKIuz4jqQJs0FS-jR3i6ZL0wh1TlA/view?usp=drivesdk"
+    },
+    {
+      "id": "1gYKH9gY-b6FwO5Dw39SAHfpaFsZyv7k4",
+      "titulo": "Asesor de menores (CNCCC, CFCP).pdf",
+      "parentId": "13id5UUdmZcEFR2XjZ8dn3-la7PNSu9Wl",
+      "ruta": "Fallos penal/Minoridad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:03:58Z",
+      "viewUrl": "https://drive.google.com/file/d/1gYKH9gY-b6FwO5Dw39SAHfpaFsZyv7k4/view?usp=drivesdk"
+    },
+    {
+      "id": "1_BsH0_r7M-V5Sd9QKYezzz7xhZ6HGUXW",
+      "titulo": "Zambrana Daza, Norma Beatríz  CSJN.pdf",
+      "parentId": "1PGv6ctDNDbItbhfFQIPa1wxBKWArGxQ7",
+      "ruta": "Fallos penal/aborto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:13:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1_BsH0_r7M-V5Sd9QKYezzz7xhZ6HGUXW/view?usp=drivesdk"
+    },
+    {
+      "id": "1MYBD7w4C1dpr1TbUOmuM3A7fPZl_Uhpa",
+      "titulo": "Frías, Natividad 1966 Fallo plenario Cámara Nacional de Apelaciones en lo Criminal y.pdf",
+      "parentId": "1PGv6ctDNDbItbhfFQIPa1wxBKWArGxQ7",
+      "ruta": "Fallos penal/aborto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:15:42Z",
+      "viewUrl": "https://drive.google.com/file/d/1MYBD7w4C1dpr1TbUOmuM3A7fPZl_Uhpa/view?usp=drivesdk"
+    },
+    {
+      "id": "1OtKy7zmdMTDX3BZ2R80HCmxrCybLhaon",
+      "titulo": "Baldivieso, Cesar Alejandro CSJN.pdf",
+      "parentId": "1PGv6ctDNDbItbhfFQIPa1wxBKWArGxQ7",
+      "ruta": "Fallos penal/aborto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:13:24Z",
+      "viewUrl": "https://drive.google.com/file/d/1OtKy7zmdMTDX3BZ2R80HCmxrCybLhaon/view?usp=drivesdk"
+    },
+    {
+      "id": "1DonsAzcLlhKf-DEifYAzC_QgPza_XEc_",
+      "titulo": "Fallo-FAL.pdf",
+      "parentId": "1PGv6ctDNDbItbhfFQIPa1wxBKWArGxQ7",
+      "ruta": "Fallos penal/aborto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:51:28Z",
+      "viewUrl": "https://drive.google.com/file/d/1DonsAzcLlhKf-DEifYAzC_QgPza_XEc_/view?usp=drivesdk"
+    },
+    {
+      "id": "1EFpmh13_0Rwdr-kLjJodimvOlEWgTzRI",
+      "titulo": "NN (Causa N° 4577).pdf",
+      "parentId": "1Ruu4wjWaFgp1JUcjwkMSJAXLNXag7A9D",
+      "ruta": "Fallos penal/Deber de fundamentación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:13:56Z",
+      "viewUrl": "https://drive.google.com/file/d/1EFpmh13_0Rwdr-kLjJodimvOlEWgTzRI/view?usp=drivesdk"
+    },
+    {
+      "id": "1HXeA7Pk6prMr-584327RJu05xp_jm9sU",
+      "titulo": "Barrios Testado.pdf",
+      "parentId": "1Ruu4wjWaFgp1JUcjwkMSJAXLNXag7A9D",
+      "ruta": "Fallos penal/Deber de fundamentación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:14:59Z",
+      "viewUrl": "https://drive.google.com/file/d/1HXeA7Pk6prMr-584327RJu05xp_jm9sU/view?usp=drivesdk"
+    },
+    {
+      "id": "1XiI9dkdxjuOIK5U6GTRvoSmrOq0eEOol",
+      "titulo": "Iglesias y otros v. Argentina.pdf",
+      "parentId": "1Ruu4wjWaFgp1JUcjwkMSJAXLNXag7A9D",
+      "ruta": "Fallos penal/Deber de fundamentación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:16:05Z",
+      "viewUrl": "https://drive.google.com/file/d/1XiI9dkdxjuOIK5U6GTRvoSmrOq0eEOol/view?usp=drivesdk"
+    },
+    {
+      "id": "1kp3NX87w56FK4WH03ykpTkgxgDU14Jw7",
+      "titulo": "Ortega -testado-.pdf",
+      "parentId": "1Ruu4wjWaFgp1JUcjwkMSJAXLNXag7A9D",
+      "ruta": "Fallos penal/Deber de fundamentación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:16:54Z",
+      "viewUrl": "https://drive.google.com/file/d/1kp3NX87w56FK4WH03ykpTkgxgDU14Jw7/view?usp=drivesdk"
+    },
+    {
+      "id": "1ONvA7WOZrZk4XmYQcXz_2jMFZccRfHNm",
+      "titulo": "Cámara-de-Casación-Penal-sobre-recurso-Cossio.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:15.996Z",
+      "viewUrl": "https://drive.google.com/file/d/1ONvA7WOZrZk4XmYQcXz_2jMFZccRfHNm/view?usp=drivesdk"
+    },
+    {
+      "id": "1NvY-J2bO7xVGzOJrpl4zPbRKYIJ9dFK4",
+      "titulo": "60-PAPADOPULOS-CLAUDIO-S-INFRACCION-LEY-22415.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:13:36Z",
+      "viewUrl": "https://drive.google.com/file/d/1NvY-J2bO7xVGzOJrpl4zPbRKYIJ9dFK4/view?usp=drivesdk"
+    },
+    {
+      "id": "1Uz3LbXPnXD_B3c5e57pHQBVS-P2djFCw",
+      "titulo": "TOPE-2-Acosta-Aguilera-condena-lavado-de-activos.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:23:11Z",
+      "viewUrl": "https://drive.google.com/file/d/1Uz3LbXPnXD_B3c5e57pHQBVS-P2djFCw/view?usp=drivesdk"
+    },
+    {
+      "id": "10e2e56ldcPw4ehzZA5SAcopeoLV8QiW9",
+      "titulo": "Fallo-Cavallo-Domingo-F-y-otros-s-sobreseimiento-peculado-.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:15.817Z",
+      "viewUrl": "https://drive.google.com/file/d/10e2e56ldcPw4ehzZA5SAcopeoLV8QiW9/view?usp=drivesdk"
+    },
+    {
+      "id": "1OTn-1BBHwW1EAlDqw2-q9VTERhl0jtaN",
+      "titulo": "48-Clan-LOZA-Fundamentos.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:11:30Z",
+      "viewUrl": "https://drive.google.com/file/d/1OTn-1BBHwW1EAlDqw2-q9VTERhl0jtaN/view?usp=drivesdk"
+    },
+    {
+      "id": "1owE_F4vhugBWU_IppXNEaf5A9nKw5Bn4",
+      "titulo": "2-JNCCF-4-Caserta-Condena-art.-25-ley-23.737-y-210-CP.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:07:04Z",
+      "viewUrl": "https://drive.google.com/file/d/1owE_F4vhugBWU_IppXNEaf5A9nKw5Bn4/view?usp=drivesdk"
+    },
+    {
+      "id": "128fax38nkvHe4n5slhEwG9DYFCkzwwrv",
+      "titulo": "12-Menéndez-Cartel-de-Juarez-2016-CABA.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:08:38Z",
+      "viewUrl": "https://drive.google.com/file/d/128fax38nkvHe4n5slhEwG9DYFCkzwwrv/view?usp=drivesdk"
+    },
+    {
+      "id": "1H8iN8EQ9ploKSEDQfU6jRV-VtGLLbSj2",
+      "titulo": "Granillo-Ocampo-CCCF.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:15.996Z",
+      "viewUrl": "https://drive.google.com/file/d/1H8iN8EQ9ploKSEDQfU6jRV-VtGLLbSj2/view?usp=drivesdk"
+    },
+    {
+      "id": "1om-G-2y-4updbJLCUgt75t5AjC6NPzcG",
+      "titulo": "11-Vargas-2016-Mendoza.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:13:04Z",
+      "viewUrl": "https://drive.google.com/file/d/1om-G-2y-4updbJLCUgt75t5AjC6NPzcG/view?usp=drivesdk"
+    },
+    {
+      "id": "1VR3EubHkMYpBDMzlVdYOI6P1WFwEqQRC",
+      "titulo": "57-NASIF-SENTENCIA-DE-LAVADO.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:17:50Z",
+      "viewUrl": "https://drive.google.com/file/d/1VR3EubHkMYpBDMzlVdYOI6P1WFwEqQRC/view?usp=drivesdk"
+    },
+    {
+      "id": "16JVnoBYuPkNYzLmL7UEtdlI-Lm4H4NZA",
+      "titulo": "76-BOSCHETTI-CONTRERA-Sentencia-de-Boschetti-hermanos.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:17:16Z",
+      "viewUrl": "https://drive.google.com/file/d/16JVnoBYuPkNYzLmL7UEtdlI-Lm4H4NZA/view?usp=drivesdk"
+    },
+    {
+      "id": "18CdmfZFJAWq2jqaZ_IINxPDQquS9p6ur",
+      "titulo": "28-Pérez-Corradi-fundamentos.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:07:59Z",
+      "viewUrl": "https://drive.google.com/file/d/18CdmfZFJAWq2jqaZ_IINxPDQquS9p6ur/view?usp=drivesdk"
+    },
+    {
+      "id": "1doh6kICU89Q_cM2ZejWLEj45d5jaMcj7",
+      "titulo": "Dictamen-PGN-causa-Alsogaray.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:16.018Z",
+      "viewUrl": "https://drive.google.com/file/d/1doh6kICU89Q_cM2ZejWLEj45d5jaMcj7/view?usp=drivesdk"
+    },
+    {
+      "id": "11YAnTj9EDgTg9VfLwZ3HdasbkPwlcG1C",
+      "titulo": "26-Calvente-13-07-18.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:12:32Z",
+      "viewUrl": "https://drive.google.com/file/d/11YAnTj9EDgTg9VfLwZ3HdasbkPwlcG1C/view?usp=drivesdk"
+    },
+    {
+      "id": "1citlXAcficz7V0nlM36Tvs2ZkmFxCD9a",
+      "titulo": "CSJN-Pompas.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:16.172Z",
+      "viewUrl": "https://drive.google.com/file/d/1citlXAcficz7V0nlM36Tvs2ZkmFxCD9a/view?usp=drivesdk"
+    },
+    {
+      "id": "1DP4KJLJoBvCP8v1-SlmD6RGygxjRUIOh",
+      "titulo": "63-GALLARDO-PEREGRINO-OSVALDO-Y-OTROS-S-ASOCIACION-ILICITA-INFRACCION-LEY-23737-Y-INFRACCION-ART-303.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:14:53Z",
+      "viewUrl": "https://drive.google.com/file/d/1DP4KJLJoBvCP8v1-SlmD6RGygxjRUIOh/view?usp=drivesdk"
+    },
+    {
+      "id": "1PipVi9IWsV-0G2LZT_eMh2IaF8aUduTY",
+      "titulo": "Fallo-Tribunal-Criminal-Oral-Federal-de-Corrientes-_Hurtado-Suárez-y-otros_-2023.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:16:07Z",
+      "viewUrl": "https://drive.google.com/file/d/1PipVi9IWsV-0G2LZT_eMh2IaF8aUduTY/view?usp=drivesdk"
+    },
+    {
+      "id": "1Q07G5e3QMkY5ALfSxH9TMEfD2vncNPAf",
+      "titulo": "Causa-Peremateu.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:16.037Z",
+      "viewUrl": "https://drive.google.com/file/d/1Q07G5e3QMkY5ALfSxH9TMEfD2vncNPAf/view?usp=drivesdk"
+    },
+    {
+      "id": "1SFiv37NJuCN0WPO7RL5pnx_cNI16GK8H",
+      "titulo": "TOF Mar del Plata — Banda de Aníbal Gordon — SAVE (2024).pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:14:12Z",
+      "viewUrl": "https://drive.google.com/file/d/1SFiv37NJuCN0WPO7RL5pnx_cNI16GK8H/view?usp=drivesdk"
+    },
+    {
+      "id": "1tQZyuM02cETBwChzszGacNJezE7E2YLo",
+      "titulo": "27-Scordamaglia-20-12-18.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:12:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1tQZyuM02cETBwChzszGacNJezE7E2YLo/view?usp=drivesdk"
+    },
+    {
+      "id": "13kR7gktgODoDMc86CqOOISmldPeTyIcd",
+      "titulo": "1-Capó-1999-San-Martín-Buenos-Aires-vGS.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:07:34Z",
+      "viewUrl": "https://drive.google.com/file/d/13kR7gktgODoDMc86CqOOISmldPeTyIcd/view?usp=drivesdk"
+    },
+    {
+      "id": "16Do-j2uo_GkaOXhley8nnr6iN5oOfzOb",
+      "titulo": "Cámara-declara-nulidad.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:16.072Z",
+      "viewUrl": "https://drive.google.com/file/d/16Do-j2uo_GkaOXhley8nnr6iN5oOfzOb/view?usp=drivesdk"
+    },
+    {
+      "id": "1yTwBNzsR1IbRM72yCvnZ7Eu-O1Arwzxx",
+      "titulo": "CFCP-Sala-IV-Causa-Tandanor-revocacion.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:16.150Z",
+      "viewUrl": "https://drive.google.com/file/d/1yTwBNzsR1IbRM72yCvnZ7Eu-O1Arwzxx/view?usp=drivesdk"
+    },
+    {
+      "id": "1ZxWoJouTt5TYfkGrjMOVM0lII1gXylHD",
+      "titulo": "33-Baez-dispositiva.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:05:45Z",
+      "viewUrl": "https://drive.google.com/file/d/1ZxWoJouTt5TYfkGrjMOVM0lII1gXylHD/view?usp=drivesdk"
+    },
+    {
+      "id": "1a4z5bNv0wf5V-kyaw_NtYiNO4FiZXJVp",
+      "titulo": "Fallo-Cámara-de-Apelaciones-Causa-Jaime.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:16.101Z",
+      "viewUrl": "https://drive.google.com/file/d/1a4z5bNv0wf5V-kyaw_NtYiNO4FiZXJVp/view?usp=drivesdk"
+    },
+    {
+      "id": "1JiHC7KrGg9MSZnFu_JkJNCd6iQWZdC-V",
+      "titulo": "82-MORENO-ESTANISLAO-.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:19:16Z",
+      "viewUrl": "https://drive.google.com/file/d/1JiHC7KrGg9MSZnFu_JkJNCd6iQWZdC-V/view?usp=drivesdk"
+    },
+    {
+      "id": "14GhLmOErxT5QTGF9mODFTyOmSxifDhPa",
+      "titulo": "Fallo-TOCF-Bahia-Blanca-Bobinas-Blancas.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:10:44Z",
+      "viewUrl": "https://drive.google.com/file/d/14GhLmOErxT5QTGF9mODFTyOmSxifDhPa/view?usp=drivesdk"
+    },
+    {
+      "id": "1fc5cwk6JFFHgvVS0MJx__FaHhSNoVjoc",
+      "titulo": "74-Delfin-Reinaldo-Castedo-Fundamentos-.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:18:47Z",
+      "viewUrl": "https://drive.google.com/file/d/1fc5cwk6JFFHgvVS0MJx__FaHhSNoVjoc/view?usp=drivesdk"
+    },
+    {
+      "id": "1WLsJkyBeJzGWPU1UMJnXds2oRNfF5DbW",
+      "titulo": "16-DISPOSITIVA-LAVADO.pdf-carbon.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:10:05Z",
+      "viewUrl": "https://drive.google.com/file/d/1WLsJkyBeJzGWPU1UMJnXds2oRNfF5DbW/view?usp=drivesdk"
+    },
+    {
+      "id": "1A9559lFC5f2riWSGFIYoPdDqrUFW-xEZ",
+      "titulo": "29-sentencia-RODRIGO-Eduardo-Daniel-y-otros-CBI.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:09:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1A9559lFC5f2riWSGFIYoPdDqrUFW-xEZ/view?usp=drivesdk"
+    },
+    {
+      "id": "14jwKKpXQ5PnhNMUGOM-Te9xawm-UVDsY",
+      "titulo": "Vago_G_Skanska_emb_prev.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:30:16.009Z",
+      "viewUrl": "https://drive.google.com/file/d/14jwKKpXQ5PnhNMUGOM-Te9xawm-UVDsY/view?usp=drivesdk"
+    },
+    {
+      "id": "1iPTde1SfR_h0c5V0Yf5nAmvYJ5HoToiX",
+      "titulo": "CSJN-Schlaen-extradición-denegada-por-lavado-de-activos.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T19:06:16Z",
+      "viewUrl": "https://drive.google.com/file/d/1iPTde1SfR_h0c5V0Yf5nAmvYJ5HoToiX/view?usp=drivesdk"
+    },
+    {
+      "id": "1AjXrF3Wpd69MlLMIqHnfI6Y1LyE5YEd0",
+      "titulo": "CSJN-23-10-2007-Fallo-Palero.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:16:02Z",
+      "viewUrl": "https://drive.google.com/file/d/1AjXrF3Wpd69MlLMIqHnfI6Y1LyE5YEd0/view?usp=drivesdk"
+    },
+    {
+      "id": "1T8w5X6rroS9KWd8RdkfD1fx2UMGPETmM",
+      "titulo": "JNPE-2-22-09-2016-Antonini-Wilson-Decomiso-anticipado.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:27:36Z",
+      "viewUrl": "https://drive.google.com/file/d/1T8w5X6rroS9KWd8RdkfD1fx2UMGPETmM/view?usp=drivesdk"
+    },
+    {
+      "id": "1JzOXpg1UMCsYhtvdbHDFt1jE97c2geg0",
+      "titulo": "FERREYRA, Héctor Daniel s-recurso de casacion.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:22:50Z",
+      "viewUrl": "https://drive.google.com/file/d/1JzOXpg1UMCsYhtvdbHDFt1jE97c2geg0/view?usp=drivesdk"
+    },
+    {
+      "id": "1i9rM3dpMnWRo0YFkSla3Ke8IkvSdtf5R",
+      "titulo": "intermediacion-captacion-ahorro-sala-B.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T17:39:07Z",
+      "viewUrl": "https://drive.google.com/file/d/1i9rM3dpMnWRo0YFkSla3Ke8IkvSdtf5R/view?usp=drivesdk"
+    },
+    {
+      "id": "1Zt9x5NhMs7npkRoDV8dXT43MP8CPdNUa",
+      "titulo": "Determinación administrativa no es condición de procedibilidad.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:20:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1Zt9x5NhMs7npkRoDV8dXT43MP8CPdNUa/view?usp=drivesdk"
+    },
+    {
+      "id": "1dwu1TjK0OhRvIDayEjQjUNjH1gAZl1ap",
+      "titulo": "Vigil Sustitución del importador — Franquicias.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:28:41Z",
+      "viewUrl": "https://drive.google.com/file/d/1dwu1TjK0OhRvIDayEjQjUNjH1gAZl1ap/view?usp=drivesdk"
+    },
+    {
+      "id": "1NsXBJT-Rz32PzeQ4YWmENmPmDxQgvpVB",
+      "titulo": "Evasión como precedente del lavado de activos - CFCP, Sala III.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:18:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1NsXBJT-Rz32PzeQ4YWmENmPmDxQgvpVB/view?usp=drivesdk"
+    },
+    {
+      "id": "1pefl2YwBhlWMuNXugwcPIrDTCOuIU8cq",
+      "titulo": "CNPE_S1-2.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:27:01Z",
+      "viewUrl": "https://drive.google.com/file/d/1pefl2YwBhlWMuNXugwcPIrDTCOuIU8cq/view?usp=drivesdk"
+    },
+    {
+      "id": "18K14HlCqX0HzkrhT1Ci32wiswlqpDWgb",
+      "titulo": "Fallo Real de Azúa Asociación ilícita fiscal.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:16:43Z",
+      "viewUrl": "https://drive.google.com/file/d/18K14HlCqX0HzkrhT1Ci32wiswlqpDWgb/view?usp=drivesdk"
+    },
+    {
+      "id": "1re7bDnlb6zG6igERtKiGFt4Ff7vYUXWX",
+      "titulo": "TOPE-2-07-07-2015-Probation.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:25:25Z",
+      "viewUrl": "https://drive.google.com/file/d/1re7bDnlb6zG6igERtKiGFt4Ff7vYUXWX/view?usp=drivesdk"
+    },
+    {
+      "id": "1qPy8yzpBtYhT-MALsZE3zXhTSUUlmYH9",
+      "titulo": "sentencia-toc-bolsafe-11.08.2022.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T17:41:25Z",
+      "viewUrl": "https://drive.google.com/file/d/1qPy8yzpBtYhT-MALsZE3zXhTSUUlmYH9/view?usp=drivesdk"
+    },
+    {
+      "id": "1lhS6R_EHzndiT4hT1xXwXpKHQO3-Xjcr",
+      "titulo": "Chukwudi - Constitucionalidad de la equiparación tentativa-consumación.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:14:03Z",
+      "viewUrl": "https://drive.google.com/file/d/1lhS6R_EHzndiT4hT1xXwXpKHQO3-Xjcr/view?usp=drivesdk"
+    },
+    {
+      "id": "18EZvahiBPGJYyAhtYaqJCPMZH3aWlWxO",
+      "titulo": "CFCP-Sala-IV-18-08-2022-Art.-947-y-la-indexación.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:26:09Z",
+      "viewUrl": "https://drive.google.com/file/d/18EZvahiBPGJYyAhtYaqJCPMZH3aWlWxO/view?usp=drivesdk"
+    },
+    {
+      "id": "1SJN1XSI6glNeeuZVg15PGziGQ6ZWdG4x",
+      "titulo": "27-Sentencia-RODRIGO-Eduardo-Daniel-y-otros-CBI.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T17:42:49.124Z",
+      "viewUrl": "https://drive.google.com/file/d/1SJN1XSI6glNeeuZVg15PGziGQ6ZWdG4x/view?usp=drivesdk"
+    },
+    {
+      "id": "10Z5_HittONCn4kSObHrtJRvnwnqViiFm",
+      "titulo": "pantoff-sit.-procesal.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T17:40:53Z",
+      "viewUrl": "https://drive.google.com/file/d/10Z5_HittONCn4kSObHrtJRvnwnqViiFm/view?usp=drivesdk"
+    },
+    {
+      "id": "1tQumxIAtbI0BoPJCQ-UinGAwQyVU787s",
+      "titulo": "Fariña, Jorge Leonardo y otro s-recurso de casacion.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:22:26Z",
+      "viewUrl": "https://drive.google.com/file/d/1tQumxIAtbI0BoPJCQ-UinGAwQyVU787s/view?usp=drivesdk"
+    },
+    {
+      "id": "1xIugh9-CR0C74iz526hphcpAvLOIhnnW",
+      "titulo": "Samid Asociación ilícita fiscal - delito autónomo.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:17:45Z",
+      "viewUrl": "https://drive.google.com/file/d/1xIugh9-CR0C74iz526hphcpAvLOIhnnW/view?usp=drivesdk"
+    },
+    {
+      "id": "1CCBhlNREUrBtrunF4w-VoyMT0A7fxsWR",
+      "titulo": "Competencia-310-Vattuone-CPE-Sala-B.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T17:42:15Z",
+      "viewUrl": "https://drive.google.com/file/d/1CCBhlNREUrBtrunF4w-VoyMT0A7fxsWR/view?usp=drivesdk"
+    },
+    {
+      "id": "1-r48VOFgpYx4Yx18YT58jTcNIMwqBxcl",
+      "titulo": "CSJN-19-10-1989-Legumbres-Bien-jurídico-protegido.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:12:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1-r48VOFgpYx4Yx18YT58jTcNIMwqBxcl/view?usp=drivesdk"
+    },
+    {
+      "id": "19pq5hmq-KWhSJjYM-0rswzQuboIC4rey",
+      "titulo": "CSJN-12-09-2023-Salidas-no-documentadas.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:19:56Z",
+      "viewUrl": "https://drive.google.com/file/d/19pq5hmq-KWhSJjYM-0rswzQuboIC4rey/view?usp=drivesdk"
+    },
+    {
+      "id": "1yiAxTUjEgJHQvNv13c_GsuvtMSVnklHN",
+      "titulo": "Bakchellian CSJN Concepto de espontaneidad.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:19:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1yiAxTUjEgJHQvNv13c_GsuvtMSVnklHN/view?usp=drivesdk"
+    },
+    {
+      "id": "15k8cnPx1bWERjBNcqMgo0o3J-RqUPLDc",
+      "titulo": "CSJN-28-10-2021-Fallo-Vidal - Ley penal más benigna en materia tributaria.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T18:15:37Z",
+      "viewUrl": "https://drive.google.com/file/d/15k8cnPx1bWERjBNcqMgo0o3J-RqUPLDc/view?usp=drivesdk"
+    },
+    {
+      "id": "1UFXhxIS5U-lv_EQQ8pcAX5YqrfM_xTgd",
+      "titulo": "Fallo-de-Cámara-Federal-de-Casación-Penal-BÁEZ-LAZARO-2023.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T15:17:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1UFXhxIS5U-lv_EQQ8pcAX5YqrfM_xTgd/view?usp=drivesdk"
+    },
+    {
+      "id": "1kZ4fX3AK_1mqxSE_o9Uhutv6fLNti_1W",
+      "titulo": "Pochetti, Carolina s legajo de casación.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T14:49:34Z",
+      "viewUrl": "https://drive.google.com/file/d/1kZ4fX3AK_1mqxSE_o9Uhutv6fLNti_1W/view?usp=drivesdk"
+    },
+    {
+      "id": "1LBM6OQD3Sbk32apwtYDbgL-ERwhzwgl5",
+      "titulo": "Condena-confirmacion-CFCP-Sala-IV-SANTANDER-Ruben-D.-Asociacion-ilicita-fiscal.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T15:21:15Z",
+      "viewUrl": "https://drive.google.com/file/d/1LBM6OQD3Sbk32apwtYDbgL-ERwhzwgl5/view?usp=drivesdk"
+    },
+    {
+      "id": "15u27lxZ-ClC7udpa9AYRX-SHCWWvPwyb",
+      "titulo": "122-OLIVETTO-JOSE-LUIS-Y-OTROS-S.-INFRACCION-303-CP.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-25T14:48:24Z",
+      "viewUrl": "https://drive.google.com/file/d/15u27lxZ-ClC7udpa9AYRX-SHCWWvPwyb/view?usp=drivesdk"
+    },
+    {
+      "id": "17dPau7mMQjailuejKGL-C0dXUq65aZ_e",
+      "titulo": "desktop.ini",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:43:03Z",
+      "viewUrl": "https://drive.google.com/file/d/17dPau7mMQjailuejKGL-C0dXUq65aZ_e/view?usp=drivesdk"
+    },
+    {
+      "id": "1Div8AxDIJFYUH3-wMrvr-oByHqf4_XGa",
+      "titulo": "Ruiz, Roque CSJN.pdf",
+      "parentId": "116nKUVj4NN-QdlotUvM_sKkhxFaql6l9",
+      "ruta": "Fallos penal/Penal Economico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:25:20Z",
+      "viewUrl": "https://drive.google.com/file/d/1Div8AxDIJFYUH3-wMrvr-oByHqf4_XGa/view?usp=drivesdk"
+    },
+    {
+      "id": "1J_NWaAi4ouOQ9IBpcNcNiTqssl_0j6tZ",
+      "titulo": "Retroactividad-de-la-ley-penal-mas-benigna-Fallo-Roldan.pdf",
+      "parentId": "19GscjAsaRoymnRzTld3yef4u4MHFAcuc",
+      "ruta": "Fallos penal/Ley penal mas benigna",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:50:53Z",
+      "viewUrl": "https://drive.google.com/file/d/1J_NWaAi4ouOQ9IBpcNcNiTqssl_0j6tZ/view?usp=drivesdk"
+    },
+    {
+      "id": "1bfivJkQsqAnp7omgrpbjrcErxfHL2f70",
+      "titulo": "Retroactividad-de-la-ley-penal-mas-benigna-Fallo-Cristalux.pdf",
+      "parentId": "19GscjAsaRoymnRzTld3yef4u4MHFAcuc",
+      "ruta": "Fallos penal/Ley penal mas benigna",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:51:04Z",
+      "viewUrl": "https://drive.google.com/file/d/1bfivJkQsqAnp7omgrpbjrcErxfHL2f70/view?usp=drivesdk"
+    },
+    {
+      "id": "1kJFVS5mCuQQuDNC1wYD51ZaQ_HRH8QZp",
+      "titulo": "Retroactividad-de-la-ley-penal-mas-benigna-Fallo-Ayerza.pdf",
+      "parentId": "19GscjAsaRoymnRzTld3yef4u4MHFAcuc",
+      "ruta": "Fallos penal/Ley penal mas benigna",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:51:17Z",
+      "viewUrl": "https://drive.google.com/file/d/1kJFVS5mCuQQuDNC1wYD51ZaQ_HRH8QZp/view?usp=drivesdk"
+    },
+    {
+      "id": "13cjpMIwFf8gJG8GG9AzkAnrM3HVKAuew",
+      "titulo": "Retroactividad-de-la-ley-penal-mas-benigna-Fallo-MPS.pdf",
+      "parentId": "19GscjAsaRoymnRzTld3yef4u4MHFAcuc",
+      "ruta": "Fallos penal/Ley penal mas benigna",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:50:58Z",
+      "viewUrl": "https://drive.google.com/file/d/13cjpMIwFf8gJG8GG9AzkAnrM3HVKAuew/view?usp=drivesdk"
+    },
+    {
+      "id": "1atUp8KzffQ6vBe1DCME3GVLnQblZEBE0",
+      "titulo": "CSJN---Jofre.pdf",
+      "parentId": "19GscjAsaRoymnRzTld3yef4u4MHFAcuc",
+      "ruta": "Fallos penal/Ley penal mas benigna",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:47:23Z",
+      "viewUrl": "https://drive.google.com/file/d/1atUp8KzffQ6vBe1DCME3GVLnQblZEBE0/view?usp=drivesdk"
+    },
+    {
+      "id": "1nsRqL66kVbd-2TJw-tIFkC6vkcNGAWCz",
+      "titulo": "CSJN Loyola - Testado_Competenc_Fed.pdf",
+      "parentId": "1BXcguqnzRfUjHJZvd9nm3Qp6ntAsKqQi",
+      "ruta": "Fallos penal/Competencia Penal Federal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:21:51Z",
+      "viewUrl": "https://drive.google.com/file/d/1nsRqL66kVbd-2TJw-tIFkC6vkcNGAWCz/view?usp=drivesdk"
+    },
+    {
+      "id": "1_id4GC1ud7CP8bfGzF7RP3M9C0e2zmtj",
+      "titulo": "NN (Causa N° 1551)_competnc_fed.pdf",
+      "parentId": "1BXcguqnzRfUjHJZvd9nm3Qp6ntAsKqQi",
+      "ruta": "Fallos penal/Competencia Penal Federal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:22:44Z",
+      "viewUrl": "https://drive.google.com/file/d/1_id4GC1ud7CP8bfGzF7RP3M9C0e2zmtj/view?usp=drivesdk"
+    },
+    {
+      "id": "1IQ666eYDeZydLeVTO0KNE5LCalWG0vBZ",
+      "titulo": "Price (causa N° 2646)_competenc_fed.pdf",
+      "parentId": "1BXcguqnzRfUjHJZvd9nm3Qp6ntAsKqQi",
+      "ruta": "Fallos penal/Competencia Penal Federal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:23:09Z",
+      "viewUrl": "https://drive.google.com/file/d/1IQ666eYDeZydLeVTO0KNE5LCalWG0vBZ/view?usp=drivesdk"
+    },
+    {
+      "id": "1kqW5K_oKvgcG77v6hyoijq2OT3uCMWan",
+      "titulo": "Chacón (Causa N°3165)_competenc_fed.pdf",
+      "parentId": "1BXcguqnzRfUjHJZvd9nm3Qp6ntAsKqQi",
+      "ruta": "Fallos penal/Competencia Penal Federal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:22:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1kqW5K_oKvgcG77v6hyoijq2OT3uCMWan/view?usp=drivesdk"
+    },
+    {
+      "id": "1anrcvGg3zaCybB5HBbaekYHdfup7H4H8",
+      "titulo": "Romillo y otra (causa N° 12684).pdf",
+      "parentId": "1o3uP7w1H4K5d-DId7PYSWtAaw0xTCO5A",
+      "ruta": "Fallos penal/Victima",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:09:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1anrcvGg3zaCybB5HBbaekYHdfup7H4H8/view?usp=drivesdk"
+    },
+    {
+      "id": "1iNQvjH0o-5RpORxq4v47MTtOH-BjXjn0",
+      "titulo": "23. Mambrín - Testado.pdf",
+      "parentId": "1o3uP7w1H4K5d-DId7PYSWtAaw0xTCO5A",
+      "ruta": "Fallos penal/Victima",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:10:34Z",
+      "viewUrl": "https://drive.google.com/file/d/1iNQvjH0o-5RpORxq4v47MTtOH-BjXjn0/view?usp=drivesdk"
+    },
+    {
+      "id": "1cOqpO2ZY0dQgQ8_1YlNEdEHiW0DCHAHP",
+      "titulo": "desktop.ini",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:57:46Z",
+      "viewUrl": "https://drive.google.com/file/d/1cOqpO2ZY0dQgQ8_1YlNEdEHiW0DCHAHP/view?usp=drivesdk"
+    },
+    {
+      "id": "111rT0GqXfmg64C-qt_tw5DCR7SsCcJsW",
+      "titulo": "Pérez (reg. Nº 1976 y causa Nº 27556).pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:36:15Z",
+      "viewUrl": "https://drive.google.com/file/d/111rT0GqXfmg64C-qt_tw5DCR7SsCcJsW/view?usp=drivesdk"
+    },
+    {
+      "id": "1ast7NHSL-N0ntClD52bOgDbyMr8zfHLQ",
+      "titulo": "Benitez, Anibal Leonel CSJN.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:38:11Z",
+      "viewUrl": "https://drive.google.com/file/d/1ast7NHSL-N0ntClD52bOgDbyMr8zfHLQ/view?usp=drivesdk"
+    },
+    {
+      "id": "1drfvl_eSbE9cigQrqa_k0JkiCqyAgcXa",
+      "titulo": "Daray, Carlos Ángel.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:34:58Z",
+      "viewUrl": "https://drive.google.com/file/d/1drfvl_eSbE9cigQrqa_k0JkiCqyAgcXa/view?usp=drivesdk"
+    },
+    {
+      "id": "1IX9TMYOIC60zdKkolcLxdZdz2vSTIYGu",
+      "titulo": "Francomano,   Alberto J. CSJN.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:14:27Z",
+      "viewUrl": "https://drive.google.com/file/d/1IX9TMYOIC60zdKkolcLxdZdz2vSTIYGu/view?usp=drivesdk"
+    },
+    {
+      "id": "17FI_BHGrIlNhPF2qVGr53VRcsKzhpnhz",
+      "titulo": "Rayford, Reginald CSJN.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:13:50Z",
+      "viewUrl": "https://drive.google.com/file/d/17FI_BHGrIlNhPF2qVGr53VRcsKzhpnhz/view?usp=drivesdk"
+    },
+    {
+      "id": "11DJJeKMQCOBZYua2OGRBEowbib86vva8",
+      "titulo": "Charles_Hermanos_CSJN_Fallos9-278_1891.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:21:50Z",
+      "viewUrl": "https://drive.google.com/file/d/11DJJeKMQCOBZYua2OGRBEowbib86vva8/view?usp=drivesdk"
+    },
+    {
+      "id": "1ZvAXymJasdNPWOJHB7OBpBCowsZKhVcC",
+      "titulo": "García D’Auro, Ramiro CSJN.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:26:07Z",
+      "viewUrl": "https://drive.google.com/file/d/1ZvAXymJasdNPWOJHB7OBpBCowsZKhVcC/view?usp=drivesdk"
+    },
+    {
+      "id": "1wccL9xJmz-A3Ywu44aKjPPuz3xBMu1lL",
+      "titulo": "Fiorentino, Diego Enrique CSJN.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:23:00Z",
+      "viewUrl": "https://drive.google.com/file/d/1wccL9xJmz-A3Ywu44aKjPPuz3xBMu1lL/view?usp=drivesdk"
+    },
+    {
+      "id": "1uVg8dNHWvLryMkG7WpBupOE9vDVM7SZn",
+      "titulo": "Jofré, Hilda Nélida CSJN.pdf",
+      "parentId": "1FNef-ylb5kTJKAU_dUIKeH8CKY8dGyZz",
+      "ruta": "Fallos penal/prueba",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:14:51Z",
+      "viewUrl": "https://drive.google.com/file/d/1uVg8dNHWvLryMkG7WpBupOE9vDVM7SZn/view?usp=drivesdk"
+    },
+    {
+      "id": "1AzfqUGA_2hEZYg1g9kO6DGQstmgJGhA4",
+      "titulo": "desktop.ini",
+      "parentId": "1LyOmw30rz8eWifkQkJSURNQbmF5VmXBX",
+      "ruta": "Fallos penal/Legitima defensa",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:46:19Z",
+      "viewUrl": "https://drive.google.com/file/d/1AzfqUGA_2hEZYg1g9kO6DGQstmgJGhA4/view?usp=drivesdk"
+    },
+    {
+      "id": "1Zr0p1ktQfNTCsxRCB_FeulofQEhh1aOm",
+      "titulo": "Chocobar,-Luis-Oscar-sobre-procesamiento.pdf",
+      "parentId": "1LyOmw30rz8eWifkQkJSURNQbmF5VmXBX",
+      "ruta": "Fallos penal/Legitima defensa",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:39:08Z",
+      "viewUrl": "https://drive.google.com/file/d/1Zr0p1ktQfNTCsxRCB_FeulofQEhh1aOm/view?usp=drivesdk"
+    },
+    {
+      "id": "1qxjcRxLIYPna4GVwPvSGWz7Nvi-iz1mH",
+      "titulo": "desktop.ini",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:36:19Z",
+      "viewUrl": "https://drive.google.com/file/d/1qxjcRxLIYPna4GVwPvSGWz7Nvi-iz1mH/view?usp=drivesdk"
+    },
+    {
+      "id": "1GxAc9KYPw_x2ltBzLqCqxXGKyo0D4ytC",
+      "titulo": "Montenegro, Luciano B. CSJN.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:13:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1GxAc9KYPw_x2ltBzLqCqxXGKyo0D4ytC/view?usp=drivesdk"
+    },
+    {
+      "id": "1JAnYtNHKhTXxtc_aUgKzN1qq__JjqxEE",
+      "titulo": "Paulino, Oscar Ceferino CSJN.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:14:02Z",
+      "viewUrl": "https://drive.google.com/file/d/1JAnYtNHKhTXxtc_aUgKzN1qq__JjqxEE/view?usp=drivesdk"
+    },
+    {
+      "id": "16NqODtBuFrDnNv2-pbTikqNZpQz0tpl6",
+      "titulo": "JURISPRUDENCIA-CLASE-II-HOMICIDIO-ATENUADO.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:01:18Z",
+      "viewUrl": "https://drive.google.com/file/d/16NqODtBuFrDnNv2-pbTikqNZpQz0tpl6/view?usp=drivesdk"
+    },
+    {
+      "id": "1gKxafrHuV_4aMip_2YWHfBYBNNrIXW5v",
+      "titulo": "HOMIC-TTADO.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:01:26Z",
+      "viewUrl": "https://drive.google.com/file/d/1gKxafrHuV_4aMip_2YWHfBYBNNrIXW5v/view?usp=drivesdk"
+    },
+    {
+      "id": "11rKxmU4_mVqvtFTQinrF0DPYi7AiYUGn",
+      "titulo": "HOMICIDIO.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:01:22Z",
+      "viewUrl": "https://drive.google.com/file/d/11rKxmU4_mVqvtFTQinrF0DPYi7AiYUGn/view?usp=drivesdk"
+    },
+    {
+      "id": "108EvTLUf344eT0cNs2__MMvP3QV4bI7Q",
+      "titulo": "HOMICIDIO-SIMPLE-_2.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:01:30Z",
+      "viewUrl": "https://drive.google.com/file/d/108EvTLUf344eT0cNs2__MMvP3QV4bI7Q/view?usp=drivesdk"
+    },
+    {
+      "id": "1jTSrR0adJvYkXQ8azUwtx0RqCWLAc4_l",
+      "titulo": "Fallo-Pitbull-TOC-4-La-Plata.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:01Z",
+      "viewUrl": "https://drive.google.com/file/d/1jTSrR0adJvYkXQ8azUwtx0RqCWLAc4_l/view?usp=drivesdk"
+    },
+    {
+      "id": "1Um09n_7B8ACdCPq4cF_NVCaS4ANbVjsj",
+      "titulo": "-Fallo-Lamuniere.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:32:17Z",
+      "viewUrl": "https://drive.google.com/file/d/1Um09n_7B8ACdCPq4cF_NVCaS4ANbVjsj/view?usp=drivesdk"
+    },
+    {
+      "id": "1ziVC56W0io6d3gfMDWzj-ycAXXFFPrqD",
+      "titulo": "SCJ-Tucuman---Villafane.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:32:49Z",
+      "viewUrl": "https://drive.google.com/file/d/1ziVC56W0io6d3gfMDWzj-ycAXXFFPrqD/view?usp=drivesdk"
+    },
+    {
+      "id": "1W6WNpJsQ1UelTXbW3KaJeHFWZw2VTDPK",
+      "titulo": "Toc-6-san-isidro---Carrascosa.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:36:23Z",
+      "viewUrl": "https://drive.google.com/file/d/1W6WNpJsQ1UelTXbW3KaJeHFWZw2VTDPK/view?usp=drivesdk"
+    },
+    {
+      "id": "1BImBtZ57lpY75px6kEOH4fzy1JnUVAIz",
+      "titulo": "Fallo-de-las-hamacas.pdf",
+      "parentId": "1XEjjhmvbzbCelHLBpesV5h6zgEzosXGz",
+      "ruta": "Fallos penal/Homicidio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:32:24Z",
+      "viewUrl": "https://drive.google.com/file/d/1BImBtZ57lpY75px6kEOH4fzy1JnUVAIz/view?usp=drivesdk"
+    },
+    {
+      "id": "1COihHCPcUmR0KfzWm6i1jX2iRhi-gaLH",
+      "titulo": "Ambito-espacial-de-la-ley-penal-Fallo-Moralejo.pdf",
+      "parentId": "12P5TDmNEtpWbpllrBK5vq3SePVD5fz0w",
+      "ruta": "Fallos penal/Ambito espacial de la ley penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:51:30Z",
+      "viewUrl": "https://drive.google.com/file/d/1COihHCPcUmR0KfzWm6i1jX2iRhi-gaLH/view?usp=drivesdk"
+    },
+    {
+      "id": "1E5tuTYrj3aMLxcc0brKs5FQd-djNxsp2",
+      "titulo": "Ambito-espacial-de-la-ley-penal-Fallo-Maradona.pdf",
+      "parentId": "12P5TDmNEtpWbpllrBK5vq3SePVD5fz0w",
+      "ruta": "Fallos penal/Ambito espacial de la ley penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:52:00Z",
+      "viewUrl": "https://drive.google.com/file/d/1E5tuTYrj3aMLxcc0brKs5FQd-djNxsp2/view?usp=drivesdk"
+    },
+    {
+      "id": "1gk9arO70DUhp2KEVu4Cj4SGC2lPVLjk-",
+      "titulo": "Ambito-espacial-de-la-ley-penal-Fallo-Descalzo-Aeronaves.pdf",
+      "parentId": "12P5TDmNEtpWbpllrBK5vq3SePVD5fz0w",
+      "ruta": "Fallos penal/Ambito espacial de la ley penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:52:05Z",
+      "viewUrl": "https://drive.google.com/file/d/1gk9arO70DUhp2KEVu4Cj4SGC2lPVLjk-/view?usp=drivesdk"
+    },
+    {
+      "id": "15NpNlG_SuVSfNP5v2eZX7YM0J3UjfsV4",
+      "titulo": "Ambito-espacial-de-la-ley-penal-Fallo-Ruiz-Mira.pdf",
+      "parentId": "12P5TDmNEtpWbpllrBK5vq3SePVD5fz0w",
+      "ruta": "Fallos penal/Ambito espacial de la ley penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:51:25Z",
+      "viewUrl": "https://drive.google.com/file/d/15NpNlG_SuVSfNP5v2eZX7YM0J3UjfsV4/view?usp=drivesdk"
+    },
+    {
+      "id": "1C4DxWaXiAYU7S5kPUo3iL11wutRKBeWs",
+      "titulo": "Ambito-espacial-de-la-ley-penal-Fallo-Garcia-Garcia.pdf",
+      "parentId": "12P5TDmNEtpWbpllrBK5vq3SePVD5fz0w",
+      "ruta": "Fallos penal/Ambito espacial de la ley penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:51:54Z",
+      "viewUrl": "https://drive.google.com/file/d/1C4DxWaXiAYU7S5kPUo3iL11wutRKBeWs/view?usp=drivesdk"
+    },
+    {
+      "id": "1y_Dj7qG5ZaGSShGjRp8Nxh5ZPSpLmRtO",
+      "titulo": "Juárez (causa N°11468)_falsificaci_defraudac.pdf",
+      "parentId": "1Ap47bQesIwkPlaRqkO4s5nbQAwoZmtQ_",
+      "ruta": "Fallos penal/Defraudacion",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:03:53Z",
+      "viewUrl": "https://drive.google.com/file/d/1y_Dj7qG5ZaGSShGjRp8Nxh5ZPSpLmRtO/view?usp=drivesdk"
+    },
+    {
+      "id": "1d4ZhExw9JOR5j9z80dNxDmxsTc-dCRA-",
+      "titulo": "Gallo, Víctor Alejandro segun incidente de revision de computo de pena.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-26T19:28:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1d4ZhExw9JOR5j9z80dNxDmxsTc-dCRA-/view?usp=drivesdk"
+    },
+    {
+      "id": "1_e2K6mus_Kqgr1PDt23pBjsNJQ9mgWPl",
+      "titulo": "desktop.ini",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:37:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1_e2K6mus_Kqgr1PDt23pBjsNJQ9mgWPl/view?usp=drivesdk"
+    },
+    {
+      "id": "16Ho5O_aDZBYfR4bUpN_Sl5ryq15vW_GE",
+      "titulo": "Schenone, Carlos CSJN.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:12:41Z",
+      "viewUrl": "https://drive.google.com/file/d/16Ho5O_aDZBYfR4bUpN_Sl5ryq15vW_GE/view?usp=drivesdk"
+    },
+    {
+      "id": "186DWOzUjD5RqFtpZDfBhjpiY1O2elAoZ",
+      "titulo": "Mattei, Angel  CSJN.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:40:57Z",
+      "viewUrl": "https://drive.google.com/file/d/186DWOzUjD5RqFtpZDfBhjpiY1O2elAoZ/view?usp=drivesdk"
+    },
+    {
+      "id": "1m2PLsgEZ8UxxVsGVYBgivMxnGI0yxrWT",
+      "titulo": "Polak, Federico G. CSJN.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:44:36Z",
+      "viewUrl": "https://drive.google.com/file/d/1m2PLsgEZ8UxxVsGVYBgivMxnGI0yxrWT/view?usp=drivesdk"
+    },
+    {
+      "id": "164Xr9KaOQBJ_SD6Ishi9R-9-ToIpHrJU",
+      "titulo": "CSJN-Squilario.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:36:02Z",
+      "viewUrl": "https://drive.google.com/file/d/164Xr9KaOQBJ_SD6Ishi9R-9-ToIpHrJU/view?usp=drivesdk"
+    },
+    {
+      "id": "1at22FqDiixfZb0sl7mRn6YYnF_dQQU1K",
+      "titulo": "Cuantificacion-de-la-sancion-penal-en-la-sentencia-condenatoria.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:36:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1at22FqDiixfZb0sl7mRn6YYnF_dQQU1K/view?usp=drivesdk"
+    },
+    {
+      "id": "1lpT1ayXUleYzYH_LIxc7M9mwjqvnluOe",
+      "titulo": "Ejecucion-de-la-pena-Fallo-Veliz.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:39:20Z",
+      "viewUrl": "https://drive.google.com/file/d/1lpT1ayXUleYzYH_LIxc7M9mwjqvnluOe/view?usp=drivesdk"
+    },
+    {
+      "id": "1yj1gV7UDLLagclU_E872ANyf1RKG8dwO",
+      "titulo": "Determinacion-de-la-pena-por-debajo-de-los-minimos-legales.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:36:11Z",
+      "viewUrl": "https://drive.google.com/file/d/1yj1gV7UDLLagclU_E872ANyf1RKG8dwO/view?usp=drivesdk"
+    },
+    {
+      "id": "12s4iRalu6_ICO3YT6a2C2G-9Ft-r3cHx",
+      "titulo": "Sobre-las-pautas-de-mensuracion-de-la-pena-en-el-sistema-normativo-vigente.pdf",
+      "parentId": "1Tc_PdusiJB1IAFX4Pd14u_RR3aCW35TG",
+      "ruta": "Fallos penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:36:15Z",
+      "viewUrl": "https://drive.google.com/file/d/12s4iRalu6_ICO3YT6a2C2G-9Ft-r3cHx/view?usp=drivesdk"
+    },
+    {
+      "id": "1up7aRDiZgXpbtbEans0iWtiSPxES15_V",
+      "titulo": "ACJ (causa Nº 743)_regim_penal_juvenil.pdf",
+      "parentId": "1imD8R4iRxP-0NqY3020lvPJcpMKj1CTf",
+      "ruta": "Fallos penal/Regimen Penal Juvenil",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:25:17Z",
+      "viewUrl": "https://drive.google.com/file/d/1up7aRDiZgXpbtbEans0iWtiSPxES15_V/view?usp=drivesdk"
+    },
+    {
+      "id": "1TbgaHWVFBbhqC2XaKr0okYcnGERP_dm8",
+      "titulo": "GME (causa N° 147)_regim_penal_juvenil.pdf",
+      "parentId": "1imD8R4iRxP-0NqY3020lvPJcpMKj1CTf",
+      "ruta": "Fallos penal/Regimen Penal Juvenil",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:25:41Z",
+      "viewUrl": "https://drive.google.com/file/d/1TbgaHWVFBbhqC2XaKr0okYcnGERP_dm8/view?usp=drivesdk"
+    },
+    {
+      "id": "1hg3M_fvP3AFRrEC0az1_dz-3QAXeXip7",
+      "titulo": "H AO (Causa N° 41000199)_regim_penal_juvenil.pdf",
+      "parentId": "1imD8R4iRxP-0NqY3020lvPJcpMKj1CTf",
+      "ruta": "Fallos penal/Regimen Penal Juvenil",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:24:54Z",
+      "viewUrl": "https://drive.google.com/file/d/1hg3M_fvP3AFRrEC0az1_dz-3QAXeXip7/view?usp=drivesdk"
+    },
+    {
+      "id": "1nd6uUEpPZAfkc3wN-dnQOiyYbikgwBA0",
+      "titulo": "Lavado_Penitenciarias_Mendoza_CSJN_2006-2007.pdf",
+      "parentId": "1tu_x8fjPHT_VXDI6grt30wJAJ-NbEn-i",
+      "ruta": "Fallos penal/Carceles",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:28:44Z",
+      "viewUrl": "https://drive.google.com/file/d/1nd6uUEpPZAfkc3wN-dnQOiyYbikgwBA0/view?usp=drivesdk"
+    },
+    {
+      "id": "1FMI3NXexP62pJ8I5bGnzzYSwlLsYPMYo",
+      "titulo": "Guevara Rodriguez y otros v. Venezuela.pdf",
+      "parentId": "1tu_x8fjPHT_VXDI6grt30wJAJ-NbEn-i",
+      "ruta": "Fallos penal/Carceles",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:18:57Z",
+      "viewUrl": "https://drive.google.com/file/d/1FMI3NXexP62pJ8I5bGnzzYSwlLsYPMYo/view?usp=drivesdk"
+    },
+    {
+      "id": "1AX1xLhVUgvJX2O-NKPmmJ9HPdpXvLmCb",
+      "titulo": "A.A (causa N° 233166).pdf",
+      "parentId": "1tu_x8fjPHT_VXDI6grt30wJAJ-NbEn-i",
+      "ruta": "Fallos penal/Carceles",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:19:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1AX1xLhVUgvJX2O-NKPmmJ9HPdpXvLmCb/view?usp=drivesdk"
+    },
+    {
+      "id": "1zMw-NpttWSkvPmljI3WmEaZxSqAqi_wG",
+      "titulo": "DelOlio_CSJN_D45XLI_2006.pdf",
+      "parentId": "1AE9vPI1tIzCQW6oolDhFJ50D_bPw_FXv",
+      "ruta": "Fallos penal/Acción penal - Querella",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-18T18:29:09Z",
+      "viewUrl": "https://drive.google.com/file/d/1zMw-NpttWSkvPmljI3WmEaZxSqAqi_wG/view?usp=drivesdk"
+    },
+    {
+      "id": "1608CcG9eWYr_20z-hXWRFSqSVnkJvJIO",
+      "titulo": "Santillán, Francisco Agustín CSJN.pdf",
+      "parentId": "1AE9vPI1tIzCQW6oolDhFJ50D_bPw_FXv",
+      "ruta": "Fallos penal/Acción penal - Querella",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:39:17Z",
+      "viewUrl": "https://drive.google.com/file/d/1608CcG9eWYr_20z-hXWRFSqSVnkJvJIO/view?usp=drivesdk"
+    },
+    {
+      "id": "1k-0BE961UySpBbYy-snzCVgz3YwDic4v",
+      "titulo": "articulo-storchi,-un-avance-del-querellante-en-el-proceso-penal-(2).docx",
+      "parentId": "1AE9vPI1tIzCQW6oolDhFJ50D_bPw_FXv",
+      "ruta": "Fallos penal/Acción penal - Querella",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-09T16:40:59Z",
+      "viewUrl": "https://drive.google.com/file/d/1k-0BE961UySpBbYy-snzCVgz3YwDic4v/view?usp=drivesdk"
+    },
+    {
+      "id": "16GKhr0_zOC5EclmngwU0qntHx1dwUx7i",
+      "titulo": "articulo-storchi,-un-avance-del-querellante-en-el-proceso-penal-(2)-(1).docx",
+      "parentId": "1AE9vPI1tIzCQW6oolDhFJ50D_bPw_FXv",
+      "ruta": "Fallos penal/Acción penal - Querella",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-09T16:40:57Z",
+      "viewUrl": "https://drive.google.com/file/d/16GKhr0_zOC5EclmngwU0qntHx1dwUx7i/view?usp=drivesdk"
+    },
+    {
+      "id": "1NUhV24BOcIZivknd7q2ok4ycMJfKLMo9",
+      "titulo": "Alvarez (Causa Nº70150)_prision_perpetua.pdf",
+      "parentId": "1dUIBcLJQGXTSnHzUJOO046fE1sGEnbAE",
+      "ruta": "Fallos penal/Prision Perpetua",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:30:12Z",
+      "viewUrl": "https://drive.google.com/file/d/1NUhV24BOcIZivknd7q2ok4ycMJfKLMo9/view?usp=drivesdk"
+    },
+    {
+      "id": "1MAeSa_dGGr2NQ2Bt4Qj6_xR9Rf5PPYiO",
+      "titulo": "MDE (causa N° 1022)_perpetua.pdf",
+      "parentId": "1dUIBcLJQGXTSnHzUJOO046fE1sGEnbAE",
+      "ruta": "Fallos penal/Prision Perpetua",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:30:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1MAeSa_dGGr2NQ2Bt4Qj6_xR9Rf5PPYiO/view?usp=drivesdk"
+    },
+    {
+      "id": "1mcAIqcVx-h1D3rkWXEqhP0fF_wbKuVap",
+      "titulo": "Guerra (causa N° 45877)_prision_perpetua.pdf",
+      "parentId": "1dUIBcLJQGXTSnHzUJOO046fE1sGEnbAE",
+      "ruta": "Fallos penal/Prision Perpetua",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:29:47Z",
+      "viewUrl": "https://drive.google.com/file/d/1mcAIqcVx-h1D3rkWXEqhP0fF_wbKuVap/view?usp=drivesdk"
+    },
+    {
+      "id": "1wAKiUF0Kg2aWPN7POeyv9UMAf6CuPqWK",
+      "titulo": "CSJN - Soto_homicidagravado_prision_perpetua.pdf",
+      "parentId": "1dUIBcLJQGXTSnHzUJOO046fE1sGEnbAE",
+      "ruta": "Fallos penal/Prision Perpetua",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:29:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1wAKiUF0Kg2aWPN7POeyv9UMAf6CuPqWK/view?usp=drivesdk"
+    },
+    {
+      "id": "1VgDBZgtlfXSn3i2treB8Fn2KSWYljbg4",
+      "titulo": "Corte-Internacional-eleva-condena-a-cadena-perpetua-Noticia.pdf",
+      "parentId": "1dUIBcLJQGXTSnHzUJOO046fE1sGEnbAE",
+      "ruta": "Fallos penal/Prision Perpetua",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:39:32Z",
+      "viewUrl": "https://drive.google.com/file/d/1VgDBZgtlfXSn3i2treB8Fn2KSWYljbg4/view?usp=drivesdk"
+    },
+    {
+      "id": "18c9ZsTXyNz9GUWiTaVGzLhIIkFxDjYi0",
+      "titulo": "CSJN---Gramajo-Marcelo-E.pdf",
+      "parentId": "1dUIBcLJQGXTSnHzUJOO046fE1sGEnbAE",
+      "ruta": "Fallos penal/Prision Perpetua",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:35:57Z",
+      "viewUrl": "https://drive.google.com/file/d/18c9ZsTXyNz9GUWiTaVGzLhIIkFxDjYi0/view?usp=drivesdk"
+    },
+    {
+      "id": "1dNtT-gB02KNq53vembsmlikFTV39YCRr",
+      "titulo": "desktop.ini",
+      "parentId": "1GFuPrJ1mi-gg8JDM-Vw7VoG1HaIXFz7T",
+      "ruta": "Fallos penal/Culpabilidad",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:25:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1dNtT-gB02KNq53vembsmlikFTV39YCRr/view?usp=drivesdk"
+    },
+    {
+      "id": "1k-qgHqL6WRMaxJJqJRTyGqf_QMiteH4l",
+      "titulo": "CSJN-Tejerina-Culpabilidadpd.pdf",
+      "parentId": "1GFuPrJ1mi-gg8JDM-Vw7VoG1HaIXFz7T",
+      "ruta": "Fallos penal/Culpabilidad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:38:50Z",
+      "viewUrl": "https://drive.google.com/file/d/1k-qgHqL6WRMaxJJqJRTyGqf_QMiteH4l/view?usp=drivesdk"
+    },
+    {
+      "id": "1S9r7kMZOk1T5UjWwP6KOWCArUMKnaqh-",
+      "titulo": "Comas (sala 1) -testado-.pdf",
+      "parentId": "1DHQHbqXGCsTTzRasE--Dd6Mw65hqJyq7",
+      "ruta": "Fallos penal/Prision Domiciliaria",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:05:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1S9r7kMZOk1T5UjWwP6KOWCArUMKnaqh-/view?usp=drivesdk"
+    },
+    {
+      "id": "1QX4rvDd4pDmwQYQuznfpsy-2n6NpoGV3",
+      "titulo": "Vargas (sala 2) -testado-.pdf",
+      "parentId": "1DHQHbqXGCsTTzRasE--Dd6Mw65hqJyq7",
+      "ruta": "Fallos penal/Prision Domiciliaria",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:07:56Z",
+      "viewUrl": "https://drive.google.com/file/d/1QX4rvDd4pDmwQYQuznfpsy-2n6NpoGV3/view?usp=drivesdk"
+    },
+    {
+      "id": "1icKbS8uL103vRbnrh9ZN1Fl5BTPXr35p",
+      "titulo": "Grisolia-testado-.pdf",
+      "parentId": "1DHQHbqXGCsTTzRasE--Dd6Mw65hqJyq7",
+      "ruta": "Fallos penal/Prision Domiciliaria",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:05:41Z",
+      "viewUrl": "https://drive.google.com/file/d/1icKbS8uL103vRbnrh9ZN1Fl5BTPXr35p/view?usp=drivesdk"
+    },
+    {
+      "id": "1Rny1VvY9_FE_pbU8GuTZ_k9ut5EcFbCF",
+      "titulo": "Wainer (causa N° 1431).pdf",
+      "parentId": "1DHQHbqXGCsTTzRasE--Dd6Mw65hqJyq7",
+      "ruta": "Fallos penal/Prision Domiciliaria",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:06:50Z",
+      "viewUrl": "https://drive.google.com/file/d/1Rny1VvY9_FE_pbU8GuTZ_k9ut5EcFbCF/view?usp=drivesdk"
+    },
+    {
+      "id": "1-xLMNS8-uPrR8TS5SGefcbuvG6pAUBR_",
+      "titulo": "Acosta (Causa N° 93000136)).pdf",
+      "parentId": "1DHQHbqXGCsTTzRasE--Dd6Mw65hqJyq7",
+      "ruta": "Fallos penal/Prision Domiciliaria",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:04:51Z",
+      "viewUrl": "https://drive.google.com/file/d/1-xLMNS8-uPrR8TS5SGefcbuvG6pAUBR_/view?usp=drivesdk"
+    },
+    {
+      "id": "15X_7gA-ryWreNPDe_bcp78vqtvZk3whd",
+      "titulo": "Sentencia completa.pdf",
+      "parentId": "1DHQHbqXGCsTTzRasE--Dd6Mw65hqJyq7",
+      "ruta": "Fallos penal/Prision Domiciliaria",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:07:21Z",
+      "viewUrl": "https://drive.google.com/file/d/15X_7gA-ryWreNPDe_bcp78vqtvZk3whd/view?usp=drivesdk"
+    },
+    {
+      "id": "12EBS_KCPbPm9_pYVtkDSEjaARI7YvCqC",
+      "titulo": "desktop.ini",
+      "parentId": "1wEfw5IroudBECrMBxPnqLtUklbgHkzFo",
+      "ruta": "Fallos penal/Non bis in idem",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:28:32Z",
+      "viewUrl": "https://drive.google.com/file/d/12EBS_KCPbPm9_pYVtkDSEjaARI7YvCqC/view?usp=drivesdk"
+    },
+    {
+      "id": "1B3tf9R4pJdqhwKnbp4MMkCnOJKL4EBjq",
+      "titulo": "Schettini, Alfredo CSJN.pdf",
+      "parentId": "1wEfw5IroudBECrMBxPnqLtUklbgHkzFo",
+      "ruta": "Fallos penal/Non bis in idem",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:15:02Z",
+      "viewUrl": "https://drive.google.com/file/d/1B3tf9R4pJdqhwKnbp4MMkCnOJKL4EBjq/view?usp=drivesdk"
+    },
+    {
+      "id": "1Bo57Ota0eQBq-qFe7iVFVP7ooDLY6GLQ",
+      "titulo": "Puig_Lucas_Veredicto_SCJBA_P129069.pdf",
+      "parentId": "1wEfw5IroudBECrMBxPnqLtUklbgHkzFo",
+      "ruta": "Fallos penal/Non bis in idem",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:12:11Z",
+      "viewUrl": "https://drive.google.com/file/d/1Bo57Ota0eQBq-qFe7iVFVP7ooDLY6GLQ/view?usp=drivesdk"
+    },
+    {
+      "id": "1ipNCuf6ot1R2AVh15ys4JatMS77O1efY",
+      "titulo": "Copia-de-Pena-de-muerte-Cuadernillo-CIDH.pdf",
+      "parentId": "1SysZeHAd_Wa0FN6zvd-SHg3Zy8vtKjAU",
+      "ruta": "Fallos penal/Pena de muerte - estandares internacionales",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:39:44Z",
+      "viewUrl": "https://drive.google.com/file/d/1ipNCuf6ot1R2AVh15ys4JatMS77O1efY/view?usp=drivesdk"
+    },
+    {
+      "id": "1T5N6ypA2H59oOOYNiLIPksUHkX1VwjZF",
+      "titulo": "desktop.ini",
+      "parentId": "1DuD1FwfP-7Lj6Pevo5BslKw2xYsoZhOa",
+      "ruta": "Fallos penal/Estupefacientes",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-17T23:53:47Z",
+      "viewUrl": "https://drive.google.com/file/d/1T5N6ypA2H59oOOYNiLIPksUHkX1VwjZF/view?usp=drivesdk"
+    },
+    {
+      "id": "1wLXcAQyGMKWGDHKSv70kyyvm-iDyMGMK",
+      "titulo": "Colavini-CSJN-Tenencia-estupefacientes.pdf",
+      "parentId": "1DuD1FwfP-7Lj6Pevo5BslKw2xYsoZhOa",
+      "ruta": "Fallos penal/Estupefacientes",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:56:00Z",
+      "viewUrl": "https://drive.google.com/file/d/1wLXcAQyGMKWGDHKSv70kyyvm-iDyMGMK/view?usp=drivesdk"
+    },
+    {
+      "id": "1zXeSYqGAZebNqj5mO7qVsxkI1jmUMkI9",
+      "titulo": "Montalvo-CSJN-Tenencia-estupefacientes.pdf",
+      "parentId": "1DuD1FwfP-7Lj6Pevo5BslKw2xYsoZhOa",
+      "ruta": "Fallos penal/Estupefacientes",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:55:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1zXeSYqGAZebNqj5mO7qVsxkI1jmUMkI9/view?usp=drivesdk"
+    },
+    {
+      "id": "1ijW2EjvlQ4QlCjoAfmFZrcE3Frvi9gQo",
+      "titulo": "Fallo Bazterrica.pdf",
+      "parentId": "1DuD1FwfP-7Lj6Pevo5BslKw2xYsoZhOa",
+      "ruta": "Fallos penal/Estupefacientes",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-17T23:55:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1ijW2EjvlQ4QlCjoAfmFZrcE3Frvi9gQo/view?usp=drivesdk"
+    },
+    {
+      "id": "1d6qOKSnsKBJF0ESwtVCfw3VV9fhQWt6M",
+      "titulo": "ARRIOLA.pdf",
+      "parentId": "1DuD1FwfP-7Lj6Pevo5BslKw2xYsoZhOa",
+      "ruta": "Fallos penal/Estupefacientes",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:52:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1d6qOKSnsKBJF0ESwtVCfw3VV9fhQWt6M/view?usp=drivesdk"
+    },
+    {
+      "id": "1ARCd-DOuyelfRTdpOJwy8jGIGhuMsywg",
+      "titulo": "CCC-5513-2021-TO1-CNC1_homicid_preteritencional.pdf",
+      "parentId": "1D-Y7rsUS0xJsiqTij3lOdI2YiDtdcBJn",
+      "ruta": "Fallos penal/Homicidio Preteritencional",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:00:12Z",
+      "viewUrl": "https://drive.google.com/file/d/1ARCd-DOuyelfRTdpOJwy8jGIGhuMsywg/view?usp=drivesdk"
+    },
+    {
+      "id": "1V775adKRDSy5Gq1Vur1-MqgDVnMLog0i",
+      "titulo": "CNCC---plenario-Segura.pdf",
+      "parentId": "13y65whE0cOdfcSdOrO4H4qg4PTinqdUC",
+      "ruta": "Fallos penal/Actio libera in causa",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:25:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1V775adKRDSy5Gq1Vur1-MqgDVnMLog0i/view?usp=drivesdk"
+    },
+    {
+      "id": "1mod7-fKrTL91K_XEC2ciuGy-dojAPnVi",
+      "titulo": "desktop.ini",
+      "parentId": "1s5Pn2dFm6ygRkvge84fGsIQ98RzysNAR",
+      "ruta": "Fallos penal/Lesa Humanidad",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:47:15Z",
+      "viewUrl": "https://drive.google.com/file/d/1mod7-fKrTL91K_XEC2ciuGy-dojAPnVi/view?usp=drivesdk"
+    },
+    {
+      "id": "1I0hiUWhwNDuNWoWZ128S9v3s02AKWAVY",
+      "titulo": "Guerrieri, Pascual CSJN.pdf",
+      "parentId": "1s5Pn2dFm6ygRkvge84fGsIQ98RzysNAR",
+      "ruta": "Fallos penal/Lesa Humanidad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:28:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1I0hiUWhwNDuNWoWZ128S9v3s02AKWAVY/view?usp=drivesdk"
+    },
+    {
+      "id": "1K0_vwxzsnoWyAycBoUsI_Xdp1jBF6dhP",
+      "titulo": "Fabro, Pedro Hugo CSJN.pdf",
+      "parentId": "1s5Pn2dFm6ygRkvge84fGsIQ98RzysNAR",
+      "ruta": "Fallos penal/Lesa Humanidad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:24:49Z",
+      "viewUrl": "https://drive.google.com/file/d/1K0_vwxzsnoWyAycBoUsI_Xdp1jBF6dhP/view?usp=drivesdk"
+    },
+    {
+      "id": "1LNtKB_VTqbLvD52V3Q8eC4xvp4Os3QMX",
+      "titulo": "Fallo Casal - Interpretación de Casación.pdf",
+      "parentId": "10a62FTyz-SZZJhvLTO5eWOs79WLij5hy",
+      "ruta": "Fallos penal/Casación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-18T17:56:09Z",
+      "viewUrl": "https://drive.google.com/file/d/1LNtKB_VTqbLvD52V3Q8eC4xvp4Os3QMX/view?usp=drivesdk"
+    },
+    {
+      "id": "1Mlk8P4jnfI9_Ubi4yil3cbbEvXTe29k_",
+      "titulo": "Gallo López, Javier CSJN.pdf",
+      "parentId": "10a62FTyz-SZZJhvLTO5eWOs79WLij5hy",
+      "ruta": "Fallos penal/Casación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:38:26Z",
+      "viewUrl": "https://drive.google.com/file/d/1Mlk8P4jnfI9_Ubi4yil3cbbEvXTe29k_/view?usp=drivesdk"
+    },
+    {
+      "id": "16Fl7W1TNKz6bC7LjPcVA3tLc2vUBwLvm",
+      "titulo": "Hansen, Cristian Enrique CSJN.pdf",
+      "parentId": "10a62FTyz-SZZJhvLTO5eWOs79WLij5hy",
+      "ruta": "Fallos penal/Casación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:23:27Z",
+      "viewUrl": "https://drive.google.com/file/d/16Fl7W1TNKz6bC7LjPcVA3tLc2vUBwLvm/view?usp=drivesdk"
+    },
+    {
+      "id": "1jQBcMaDD42RcBy1FGhjL3dRlHOfuz1qI",
+      "titulo": "Fallo Quiroga, Edgardo Oscar.pdf",
+      "parentId": "1dnpE_sbFkOpH6AKHL_OnR-0MSiWI-1AX",
+      "ruta": "Fallos penal/Accion penal - Fiscalía",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:40:21Z",
+      "viewUrl": "https://drive.google.com/file/d/1jQBcMaDD42RcBy1FGhjL3dRlHOfuz1qI/view?usp=drivesdk"
+    },
+    {
+      "id": "1dOFFK_EZhyv-7Ev6t_JAvv8E3PYW-TXl",
+      "titulo": "desktop.ini",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:18:30Z",
+      "viewUrl": "https://drive.google.com/file/d/1dOFFK_EZhyv-7Ev6t_JAvv8E3PYW-TXl/view?usp=drivesdk"
+    },
+    {
+      "id": "1Ifyrcynj2xYQbV1UOv7V1E_Zd9DYSYWg",
+      "titulo": "Napoli, Erika SCJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:37:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1Ifyrcynj2xYQbV1UOv7V1E_Zd9DYSYWg/view?usp=drivesdk"
+    },
+    {
+      "id": "1lg9gSwY6BEj34h4xRQ8_TLo2n8EVHYU5",
+      "titulo": "Diaz_Bessone_Plenario_13_2008.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:35:12Z",
+      "viewUrl": "https://drive.google.com/file/d/1lg9gSwY6BEj34h4xRQ8_TLo2n8EVHYU5/view?usp=drivesdk"
+    },
+    {
+      "id": "1yxlLZUEVaiB9snM-Ns9yQKvoKZ9MaxgR",
+      "titulo": "Arana, Juan Carlos  CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:37:42Z",
+      "viewUrl": "https://drive.google.com/file/d/1yxlLZUEVaiB9snM-Ns9yQKvoKZ9MaxgR/view?usp=drivesdk"
+    },
+    {
+      "id": "1qK7TiwGyoS04DELwgycyJB0f1yg2tEQe",
+      "titulo": "Hernandez, Guillermo CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:37:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1qK7TiwGyoS04DELwgycyJB0f1yg2tEQe/view?usp=drivesdk"
+    },
+    {
+      "id": "1E7eelooVsQkC4k7Q-4u29zCM5G1UoJeN",
+      "titulo": "Macchieraldo, Ana María  Luisa. Cámara Nacional de Casación penal. Año 2004.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:37:05Z",
+      "viewUrl": "https://drive.google.com/file/d/1E7eelooVsQkC4k7Q-4u29zCM5G1UoJeN/view?usp=drivesdk"
+    },
+    {
+      "id": "1lAdCgCthOifqiFSq3iKSXbMAGRqy7p7B",
+      "titulo": "Sandoval, Andres CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:43:36Z",
+      "viewUrl": "https://drive.google.com/file/d/1lAdCgCthOifqiFSq3iKSXbMAGRqy7p7B/view?usp=drivesdk"
+    },
+    {
+      "id": "1kkUc8ESZvXOQLjfqV6qYvLGHvnhqzvq3",
+      "titulo": "Ibañez Angel Clemente CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:42:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1kkUc8ESZvXOQLjfqV6qYvLGHvnhqzvq3/view?usp=drivesdk"
+    },
+    {
+      "id": "1IthpqtHv5wlUKPDqHlMV_5BPogrjoB7C",
+      "titulo": "Bramajo, Hernán Javier CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:28:01Z",
+      "viewUrl": "https://drive.google.com/file/d/1IthpqtHv5wlUKPDqHlMV_5BPogrjoB7C/view?usp=drivesdk"
+    },
+    {
+      "id": "1gOQY7-S9mZWb30XePLPtuJqbQUrxGi0g",
+      "titulo": "Cichero, Ariel Ignacio CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:23:14Z",
+      "viewUrl": "https://drive.google.com/file/d/1gOQY7-S9mZWb30XePLPtuJqbQUrxGi0g/view?usp=drivesdk"
+    },
+    {
+      "id": "1H5G4ZWcvGV4UEOXmsGsaUpGHtO7iTVHm",
+      "titulo": "Barbará, Rodrigo CNCyC Sala I 2003.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:28:16Z",
+      "viewUrl": "https://drive.google.com/file/d/1H5G4ZWcvGV4UEOXmsGsaUpGHtO7iTVHm/view?usp=drivesdk"
+    },
+    {
+      "id": "15PXNicfvq8Ms_nzKqpXYMH1_BqO_3kH9",
+      "titulo": "Alvarado, Julio CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:43:20Z",
+      "viewUrl": "https://drive.google.com/file/d/15PXNicfvq8Ms_nzKqpXYMH1_BqO_3kH9/view?usp=drivesdk"
+    },
+    {
+      "id": "14tOLZ-10KInFp_KydGUzcpiNLKj3WRW7",
+      "titulo": "Kang Yoong Soo CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:44:49Z",
+      "viewUrl": "https://drive.google.com/file/d/14tOLZ-10KInFp_KydGUzcpiNLKj3WRW7/view?usp=drivesdk"
+    },
+    {
+      "id": "1jq89NWckWeg8UJ7U5OYJA9SFhxWHE6GN",
+      "titulo": "Kipperband , Benjamín CSJN.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:41:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1jq89NWckWeg8UJ7U5OYJA9SFhxWHE6GN/view?usp=drivesdk"
+    },
+    {
+      "id": "1OTgAsgyUP94ObmjFBoron-noG5fpSZsv",
+      "titulo": "Loyo Fraire,_Gabriel Eduardo_2014.pdf",
+      "parentId": "1d2zotQDfkM_jDxQUNs0PZYskwLpFGdTK",
+      "ruta": "Fallos penal/Prision Preventiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:29:11Z",
+      "viewUrl": "https://drive.google.com/file/d/1OTgAsgyUP94ObmjFBoron-noG5fpSZsv/view?usp=drivesdk"
+    },
+    {
+      "id": "1OVWImQ_EsfgjIkAFOJzFudAozygJGk7_",
+      "titulo": "desktop.ini",
+      "parentId": "1D7cYsdjdGKCJ6B2nqPwxrTfqytUWtsY5",
+      "ruta": "Fallos penal/Crimen organizado",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:36:55Z",
+      "viewUrl": "https://drive.google.com/file/d/1OVWImQ_EsfgjIkAFOJzFudAozygJGk7_/view?usp=drivesdk"
+    },
+    {
+      "id": "1-pppGCKbDm4vzGuhXLj8mW_WtyOuOnUT",
+      "titulo": "Minaglia, Mauro Omar   CSJN.pdf",
+      "parentId": "1D7cYsdjdGKCJ6B2nqPwxrTfqytUWtsY5",
+      "ruta": "Fallos penal/Crimen organizado",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:24:30Z",
+      "viewUrl": "https://drive.google.com/file/d/1-pppGCKbDm4vzGuhXLj8mW_WtyOuOnUT/view?usp=drivesdk"
+    },
+    {
+      "id": "1SmtpHZk2OoiDtyysF_meFn6gOI9zDQyO",
+      "titulo": "Boletín Penal Ambiental_Fallos.pdf",
+      "parentId": "1WvahQ-eyZAVM8jCdXFTfGjVOPemnpL08",
+      "ruta": "Fallos penal/Fallos Penal Ambiental",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:09:36Z",
+      "viewUrl": "https://drive.google.com/file/d/1SmtpHZk2OoiDtyysF_meFn6gOI9zDQyO/view?usp=drivesdk"
+    },
+    {
+      "id": "1A8-E_i63TAY0hhcexpUxgqQE8mRPURya",
+      "titulo": "desktop.ini",
+      "parentId": "14wDZLwAcXrPTGWERvbDB58zrxpUp-L15",
+      "ruta": "Fallos penal/Garantias constitucionales",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:20:28Z",
+      "viewUrl": "https://drive.google.com/file/d/1A8-E_i63TAY0hhcexpUxgqQE8mRPURya/view?usp=drivesdk"
+    },
+    {
+      "id": "1UGiPszGA0sz8_y49BMUNUQ32cETlu55v",
+      "titulo": "Autoincriminacion-Fallo-LMR.pdf",
+      "parentId": "14wDZLwAcXrPTGWERvbDB58zrxpUp-L15",
+      "ruta": "Fallos penal/Garantias constitucionales",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:47:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1UGiPszGA0sz8_y49BMUNUQ32cETlu55v/view?usp=drivesdk"
+    },
+    {
+      "id": "1A7fFCZmI3_39R98sHOumLf798KTI6LMT",
+      "titulo": "desktop.ini",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:35:12Z",
+      "viewUrl": "https://drive.google.com/file/d/1A7fFCZmI3_39R98sHOumLf798KTI6LMT/view?usp=drivesdk"
+    },
+    {
+      "id": "1jALmibHwZtiRskINTgE0Fbk6Pv8VW1ih",
+      "titulo": "T, OH_probation_estafa.pdf",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:07:55Z",
+      "viewUrl": "https://drive.google.com/file/d/1jALmibHwZtiRskINTgE0Fbk6Pv8VW1ih/view?usp=drivesdk"
+    },
+    {
+      "id": "1F7wi3RPY4Ou9TmtRAM2-Wg4b8nF7qOJM",
+      "titulo": "PG, C_probation_defraudac.pdf",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:08:36Z",
+      "viewUrl": "https://drive.google.com/file/d/1F7wi3RPY4Ou9TmtRAM2-Wg4b8nF7qOJM/view?usp=drivesdk"
+    },
+    {
+      "id": "1Su4F2ZPthe-FqcneazXp00RLVShrU1fV",
+      "titulo": "Dellamea (reg. Nº 2020 y causa Nº 11010095)_probation.pdf",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:06:51Z",
+      "viewUrl": "https://drive.google.com/file/d/1Su4F2ZPthe-FqcneazXp00RLVShrU1fV/view?usp=drivesdk"
+    },
+    {
+      "id": "1Xc-X-s6IGWdbwYkmQH1cEpBhw4cD0SFc",
+      "titulo": "Roldán (reg. N° 656 y causa Nº 104)_probation.pdf",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:07:19Z",
+      "viewUrl": "https://drive.google.com/file/d/1Xc-X-s6IGWdbwYkmQH1cEpBhw4cD0SFc/view?usp=drivesdk"
+    },
+    {
+      "id": "1LArKg5anMY5jjhUGXvW1hjp2AJNy9VEn",
+      "titulo": "Fallo Moyano.pdf",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:39:03Z",
+      "viewUrl": "https://drive.google.com/file/d/1LArKg5anMY5jjhUGXvW1hjp2AJNy9VEn/view?usp=drivesdk"
+    },
+    {
+      "id": "1CGFRXV9w2UzBbyu5Q3o0I2iglABPd1jp",
+      "titulo": "Clase-25-CSJN-Acosta.pdf",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1CGFRXV9w2UzBbyu5Q3o0I2iglABPd1jp/view?usp=drivesdk"
+    },
+    {
+      "id": "1QuSS9zejVxtsR_APSzPsIk1Ol8Qon0KZ",
+      "titulo": "Fallo-Gongora.pdf",
+      "parentId": "1i0rVqbCEoTnkWA55iFYxk_uLlrZVdChK",
+      "ruta": "Fallos penal/Suspension juicio a prueba - Probation",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:51:25Z",
+      "viewUrl": "https://drive.google.com/file/d/1QuSS9zejVxtsR_APSzPsIk1Ol8Qon0KZ/view?usp=drivesdk"
+    },
+    {
+      "id": "1mM_shZLjb7JvUs5Wdgg1akd3KDoJ9xRN",
+      "titulo": "Rimeto y otros (Causa N 15760)_peculado.pdf",
+      "parentId": "1FtiopOwjZU9JC5nSG-wlE9zrp5vGaZUw",
+      "ruta": "Fallos penal/Peculado",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T21:02:23Z",
+      "viewUrl": "https://drive.google.com/file/d/1mM_shZLjb7JvUs5Wdgg1akd3KDoJ9xRN/view?usp=drivesdk"
+    },
+    {
+      "id": "1tsYXY87xNUSlLdktDBDAabQkElr3e7uk",
+      "titulo": "desktop.ini",
+      "parentId": "1TNZoy1d2FzZ7MgVs1iI4m6_7VOr3p_53",
+      "ruta": "Fallos penal/Reincidencia",
+      "mimeType": "application/octet-stream",
+      "modifiedTime": "2026-07-18T19:40:48Z",
+      "viewUrl": "https://drive.google.com/file/d/1tsYXY87xNUSlLdktDBDAabQkElr3e7uk/view?usp=drivesdk"
+    },
+    {
+      "id": "1Nb3E1cSiflDfsinYrERSPM0kUNNC_rsx",
+      "titulo": "Corte-Suprema-de-Justicia-de-la-Provincia-de-Tucuman.pdf",
+      "parentId": "1TNZoy1d2FzZ7MgVs1iI4m6_7VOr3p_53",
+      "ruta": "Fallos penal/Reincidencia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:35:53Z",
+      "viewUrl": "https://drive.google.com/file/d/1Nb3E1cSiflDfsinYrERSPM0kUNNC_rsx/view?usp=drivesdk"
+    },
+    {
+      "id": "1Ys-oIfEsrH6FUIK0nqb9qF_0T5O09bFu",
+      "titulo": "Cesano,-Garantias-constitucionales-respecto-de-la-ejecucion.pdf",
+      "parentId": "1KONWYv7sgdINr4t1N-SJCZA-aY_uLTOg",
+      "ruta": "Doctrina Penal/Ejecucion de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:40:07Z",
+      "viewUrl": "https://drive.google.com/file/d/1Ys-oIfEsrH6FUIK0nqb9qF_0T5O09bFu/view?usp=drivesdk"
+    },
+    {
+      "id": "1pAhA_PqQJgg_uBYm7A3RP-xhv-Almvek",
+      "titulo": "Roldan---Decomiso.pdf",
+      "parentId": "1KONWYv7sgdINr4t1N-SJCZA-aY_uLTOg",
+      "ruta": "Doctrina Penal/Ejecucion de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:40:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1pAhA_PqQJgg_uBYm7A3RP-xhv-Almvek/view?usp=drivesdk"
+    },
+    {
+      "id": "1WnxXXJ54htAMfzP2JQl6PnuHt6rnZTVn",
+      "titulo": "Cesano,-sobre-la-libertad-condicional.pdf",
+      "parentId": "1KONWYv7sgdINr4t1N-SJCZA-aY_uLTOg",
+      "ruta": "Doctrina Penal/Ejecucion de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:40:13Z",
+      "viewUrl": "https://drive.google.com/file/d/1WnxXXJ54htAMfzP2JQl6PnuHt6rnZTVn/view?usp=drivesdk"
+    },
+    {
+      "id": "1ws_OkVWDa3LSQrzMxpXARmo9Wt1UvEi_",
+      "titulo": "Gomez-Jara-Diez---culpabilidad-de-las-personas-juridicas.pdf",
+      "parentId": "1oHnfeB3XmRPenmpz-kYSgkuGf05gSUYS",
+      "ruta": "Doctrina Penal/Penal parte empresa",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:44Z",
+      "viewUrl": "https://drive.google.com/file/d/1ws_OkVWDa3LSQrzMxpXARmo9Wt1UvEi_/view?usp=drivesdk"
+    },
+    {
+      "id": "1ZY9_vVEqwyAmbzK0TJ84JmGaFSnvZMK9",
+      "titulo": "Responsabilidad-penal-de-las-personas-juridica-Articulo-MCL.pdf",
+      "parentId": "1oHnfeB3XmRPenmpz-kYSgkuGf05gSUYS",
+      "ruta": "Doctrina Penal/Penal parte empresa",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:54:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1ZY9_vVEqwyAmbzK0TJ84JmGaFSnvZMK9/view?usp=drivesdk"
+    },
+    {
+      "id": "1JLqHO_MIB5fmiufrJhN2KvqIr-V13hDr",
+      "titulo": "Donnes---tentativa-en-delitos-de-omision.pdf",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:23:53Z",
+      "viewUrl": "https://drive.google.com/file/d/1JLqHO_MIB5fmiufrJhN2KvqIr-V13hDr/view?usp=drivesdk"
+    },
+    {
+      "id": "1NokWHq4OJy1hhBNLp4Gfe8d25Nq3-34K",
+      "titulo": "Imputacion-Objetiva-Articulo-MCL.docx",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-09T03:58:04Z",
+      "viewUrl": "https://drive.google.com/file/d/1NokWHq4OJy1hhBNLp4Gfe8d25Nq3-34K/view?usp=drivesdk"
+    },
+    {
+      "id": "1lnNxBRewhvXq9RMPuUcAxUEBIPqJx_5d",
+      "titulo": "Imputacion-Objetiva-Principio-de-prohibicion-de-regreso-Articulo-MCL.doc",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/msword",
+      "modifiedTime": "2026-07-09T03:57:45Z",
+      "viewUrl": "https://drive.google.com/file/d/1lnNxBRewhvXq9RMPuUcAxUEBIPqJx_5d/view?usp=drivesdk"
+    },
+    {
+      "id": "1WYv7cfQzHSMlka0yIPUfBOCpLOwC9GZ3",
+      "titulo": "nexo-causal-imputacion-objetiva.docx",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-09T03:57:41Z",
+      "viewUrl": "https://drive.google.com/file/d/1WYv7cfQzHSMlka0yIPUfBOCpLOwC9GZ3/view?usp=drivesdk"
+    },
+    {
+      "id": "1woZlxejMcnwetXmfcLwYM-S9yZsMKbhA",
+      "titulo": "Imputacion-Objetiva-Principio-de-confianza-Articulo-MCL.doc",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/msword",
+      "modifiedTime": "2026-07-09T03:57:49Z",
+      "viewUrl": "https://drive.google.com/file/d/1woZlxejMcnwetXmfcLwYM-S9yZsMKbhA/view?usp=drivesdk"
+    },
+    {
+      "id": "1qGgfbeUDrDMxQVSp-BMBGGggS37yNhwq",
+      "titulo": "Cancio-Melia---Aproximacion-a-la-teoria-de-la-imputacion-objetiva.pdf",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:58:50Z",
+      "viewUrl": "https://drive.google.com/file/d/1qGgfbeUDrDMxQVSp-BMBGGggS37yNhwq/view?usp=drivesdk"
+    },
+    {
+      "id": "1eyQqGgtQQIXflwOCRj-rTW7mk_K0BQfK",
+      "titulo": "Imputacion-Objetiva-Competencia-de-la-victima-Articulo-MCL.docx",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-09T03:57:59Z",
+      "viewUrl": "https://drive.google.com/file/d/1eyQqGgtQQIXflwOCRj-rTW7mk_K0BQfK/view?usp=drivesdk"
+    },
+    {
+      "id": "1CBl6-pV6ltp-CR2oHVPztyZKpqf5kKA1",
+      "titulo": "Corcoy-Bidasolo---Relacion-entre-causalidad-o-imputacion-objetiva.pdf",
+      "parentId": "1T3ZXennyDOMrD8vNJgmre8dqyG9bHtzY",
+      "ruta": "Doctrina Penal/Imputacion objetiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:58:45Z",
+      "viewUrl": "https://drive.google.com/file/d/1CBl6-pV6ltp-CR2oHVPztyZKpqf5kKA1/view?usp=drivesdk"
+    },
+    {
+      "id": "1QvSORbKfL6LZ60N3BWYLRev9355MMYwd",
+      "titulo": "Coca-Vila---Entre-la-responsabilidad-y-la-solidaridad-El-estado-de-necesidad-defensivo.pdf",
+      "parentId": "1IbC73nQvtsh7QxaZlIZInVBzZgavvCl0",
+      "ruta": "Doctrina Penal/Estado de necesidad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:24:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1QvSORbKfL6LZ60N3BWYLRev9355MMYwd/view?usp=drivesdk"
+    },
+    {
+      "id": "1k_o9Hxf8FpGraHKrrGC1aKj6ne3_63o3",
+      "titulo": "Bien-juridico-y-vigencia-de-la-norma-Articulo-Roxin-y-Jakobs.pdf",
+      "parentId": "1nvueAYt4K7v6q1bMjrGiaamVzwdbXS6L",
+      "ruta": "Doctrina Penal/Bien juridico - derecho penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:55:40Z",
+      "viewUrl": "https://drive.google.com/file/d/1k_o9Hxf8FpGraHKrrGC1aKj6ne3_63o3/view?usp=drivesdk"
+    },
+    {
+      "id": "1SyVDieB4X66oVurFKhQgJ9nym64xicHF",
+      "titulo": "Bien-juridico-Articulo-Roxin-2.pdf",
+      "parentId": "1nvueAYt4K7v6q1bMjrGiaamVzwdbXS6L",
+      "ruta": "Doctrina Penal/Bien juridico - derecho penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:55:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1SyVDieB4X66oVurFKhQgJ9nym64xicHF/view?usp=drivesdk"
+    },
+    {
+      "id": "1YQ8G7RFTUiw_gv3v8nIWP2t31kuZ9IRx",
+      "titulo": "Bien-juridico-Articulo-Roxin-1.pdf",
+      "parentId": "1nvueAYt4K7v6q1bMjrGiaamVzwdbXS6L",
+      "ruta": "Doctrina Penal/Bien juridico - derecho penal",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:55:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1YQ8G7RFTUiw_gv3v8nIWP2t31kuZ9IRx/view?usp=drivesdk"
+    },
+    {
+      "id": "1CjX-u4wkHMUHxAwBhrL0iTFo5Vsvc9Pn",
+      "titulo": "8-CLASE-V-LESIONES.pdf",
+      "parentId": "1G37-dSbEyIaqJRRw903TbCDRRZSR0LCP",
+      "ruta": "Doctrina Penal/Lesiones",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:57:12Z",
+      "viewUrl": "https://drive.google.com/file/d/1CjX-u4wkHMUHxAwBhrL0iTFo5Vsvc9Pn/view?usp=drivesdk"
+    },
+    {
+      "id": "1zi441UwVAl4b72ZFMjcUb5vxibT55K2Z",
+      "titulo": "Lesiones.pdf",
+      "parentId": "1G37-dSbEyIaqJRRw903TbCDRRZSR0LCP",
+      "ruta": "Doctrina Penal/Lesiones",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:46:03Z",
+      "viewUrl": "https://drive.google.com/file/d/1zi441UwVAl4b72ZFMjcUb5vxibT55K2Z/view?usp=drivesdk"
+    },
+    {
+      "id": "1LhYdtowyOFiKQLP7iPgbt_HBoAMXJmD0",
+      "titulo": "ESTATUTO-DE-ROMA1.pdf",
+      "parentId": "1JlREiMgHixQPh5FHQ6DO64nVasN-MmRI",
+      "ruta": "Doctrina Penal/Derecho Penal Internacional",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:03:21Z",
+      "viewUrl": "https://drive.google.com/file/d/1LhYdtowyOFiKQLP7iPgbt_HBoAMXJmD0/view?usp=drivesdk"
+    },
+    {
+      "id": "1vM6PeSY4oJRu2S_yK27NzGosOeh5yEFh",
+      "titulo": "DOCTRINA-CLASE-XVII-DELITOS-CONTRA-LA-SEGURIDAD-DE-LA-NACION1.pdf",
+      "parentId": "1te-sceKdQb7nUhXjxepfkmc9nZmj0Kz2",
+      "ruta": "Doctrina Penal/Delitos contra la seguridad nacional",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:59:59Z",
+      "viewUrl": "https://drive.google.com/file/d/1vM6PeSY4oJRu2S_yK27NzGosOeh5yEFh/view?usp=drivesdk"
+    },
+    {
+      "id": "1i2pUMHNumYtVdhfZhmw_PlNLbsSDcXqM",
+      "titulo": "20-CLASE-XVII-DELITOS-CONTRA-LA-SEGURIDAD-DE-LA-NACION-(ARTS-214-A-236)-(1).pdf",
+      "parentId": "1te-sceKdQb7nUhXjxepfkmc9nZmj0Kz2",
+      "ruta": "Doctrina Penal/Delitos contra la seguridad nacional",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:52:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1i2pUMHNumYtVdhfZhmw_PlNLbsSDcXqM/view?usp=drivesdk"
+    },
+    {
+      "id": "1cJraoAB0S07WTl1Ohgk2Ymv0eNLAosFH",
+      "titulo": "DELITOS-CONTRA-LA-SEGURIDAD-PUBLICA.pptx",
+      "parentId": "1te-sceKdQb7nUhXjxepfkmc9nZmj0Kz2",
+      "ruta": "Doctrina Penal/Delitos contra la seguridad nacional",
+      "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "modifiedTime": "2026-07-09T18:53:33Z",
+      "viewUrl": "https://drive.google.com/file/d/1cJraoAB0S07WTl1Ohgk2Ymv0eNLAosFH/view?usp=drivesdk"
+    },
+    {
+      "id": "1qdmlKkAGOVVQ7fkVlrnr-gjfx8PWFH3O",
+      "titulo": "TRANSFERENCIA-DE-LA-JUSTICIA-PENAL-ORDINARIA-EN-EL-PROCESO-DE-AUTONOMIA-DE-LA-CABA.pdf",
+      "parentId": "10cS-6gLDkODzJRoFEmROeyhWbfwCRshr",
+      "ruta": "Doctrina Penal/Jurisdicción",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:04:36Z",
+      "viewUrl": "https://drive.google.com/file/d/1qdmlKkAGOVVQ7fkVlrnr-gjfx8PWFH3O/view?usp=drivesdk"
+    },
+    {
+      "id": "1o0d04CSxAZerBI6DeJ5mEPvpJBbTWLin",
+      "titulo": "Falcone,-Roberto-A,-Derecho-Penal-y-trafico-de-drogas.pdf",
+      "parentId": "1rTDGrTyQsLwAtHDdLj6FBR3XHZ-QK4pp",
+      "ruta": "Doctrina Penal/Estupefacientes",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:48:32Z",
+      "viewUrl": "https://drive.google.com/file/d/1o0d04CSxAZerBI6DeJ5mEPvpJBbTWLin/view?usp=drivesdk"
+    },
+    {
+      "id": "1qXkQXtstKDLK7-iF1RxNOrYHb9HzC0nh",
+      "titulo": "Medidas_de_coerción_procesal_penal.pdf",
+      "parentId": "1c52q1tZz6M8ApEgmKzLPgkks-_QM5M_D",
+      "ruta": "Doctrina Penal/Medidas de Coerción",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:32:05Z",
+      "viewUrl": "https://drive.google.com/file/d/1qXkQXtstKDLK7-iF1RxNOrYHb9HzC0nh/view?usp=drivesdk"
+    },
+    {
+      "id": "1wKlECklL16JEdPYuY9Dt3sYdfFnoj1Ak",
+      "titulo": "PRACTICA-PROFESIONAL-II--PENAL-Bolilla-2-y-3.pdf",
+      "parentId": "1c52q1tZz6M8ApEgmKzLPgkks-_QM5M_D",
+      "ruta": "Doctrina Penal/Medidas de Coerción",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:37:58Z",
+      "viewUrl": "https://drive.google.com/file/d/1wKlECklL16JEdPYuY9Dt3sYdfFnoj1Ak/view?usp=drivesdk"
+    },
+    {
+      "id": "12847v5idprn_S518sOXxXASgfcjAjsba",
+      "titulo": "Cesano---La-prision-domiciliaria,-principios-generales.pdf",
+      "parentId": "1c52q1tZz6M8ApEgmKzLPgkks-_QM5M_D",
+      "ruta": "Doctrina Penal/Medidas de Coerción",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:40:02Z",
+      "viewUrl": "https://drive.google.com/file/d/12847v5idprn_S518sOXxXASgfcjAjsba/view?usp=drivesdk"
+    },
+    {
+      "id": "1rqgSS4W8Ph1oVNuiJtKihkuKPziGwyG6",
+      "titulo": "Libertad-Peligro-de-entorpecimiento-de-la-investigacion-Articulo-JJO.doc",
+      "parentId": "1c52q1tZz6M8ApEgmKzLPgkks-_QM5M_D",
+      "ruta": "Doctrina Penal/Medidas de Coerción",
+      "mimeType": "application/msword",
+      "modifiedTime": "2026-07-09T03:53:44Z",
+      "viewUrl": "https://drive.google.com/file/d/1rqgSS4W8Ph1oVNuiJtKihkuKPziGwyG6/view?usp=drivesdk"
+    },
+    {
+      "id": "1hobhs5Xum9c4EKSTk0afLliKB3PI6eZL",
+      "titulo": "flagrancia_procesal_penal.pdf",
+      "parentId": "1kMlmPwj92RFrgNpJumqJUuBcd3n_hYFf",
+      "ruta": "Doctrina Penal/Flagrancia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:35:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1hobhs5Xum9c4EKSTk0afLliKB3PI6eZL/view?usp=drivesdk"
+    },
+    {
+      "id": "1swEBAcRLNDAjhUk0oBikLuaOqzcuPhcs",
+      "titulo": "24--CLASE-XXI-EVASION-Y-QUEBRANTAMIENTO-DE-PENA.pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:49:26Z",
+      "viewUrl": "https://drive.google.com/file/d/1swEBAcRLNDAjhUk0oBikLuaOqzcuPhcs/view?usp=drivesdk"
+    },
+    {
+      "id": "1xkJ5Hn7nVsXXIrLFKSK2oBPliPKf6l-2",
+      "titulo": "FALSIFICACION-DE-MONEDA-ETC.pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:49:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1xkJ5Hn7nVsXXIrLFKSK2oBPliPKf6l-2/view?usp=drivesdk"
+    },
+    {
+      "id": "1KyNFnr-tc2JVCN7EeOOiBf3qRJGC_ECf",
+      "titulo": "21-CLASE-DELITOS-CONTRA-LA-ADM-PUBLICA-PRIMERA-PARTE-(237-A-245).pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:50:25Z",
+      "viewUrl": "https://drive.google.com/file/d/1KyNFnr-tc2JVCN7EeOOiBf3qRJGC_ECf/view?usp=drivesdk"
+    },
+    {
+      "id": "12fKaYPyABP9B6fs0RtGGNzGKRDK7lKJ2",
+      "titulo": "21--CLASE-XVIII-DELITOS-CONTRA-LA-ADMINISTRACION-PUBLICA-PRIMERA-PARTE2.pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:50:18Z",
+      "viewUrl": "https://drive.google.com/file/d/12fKaYPyABP9B6fs0RtGGNzGKRDK7lKJ2/view?usp=drivesdk"
+    },
+    {
+      "id": "1IE1nHd4aYGF1Upj8XR8co3RP4I0PF0yh",
+      "titulo": "23--CLASE-XX-DELITOS-ADM-PUBLICA-CONTINUACION-(1).pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:49:53Z",
+      "viewUrl": "https://drive.google.com/file/d/1IE1nHd4aYGF1Upj8XR8co3RP4I0PF0yh/view?usp=drivesdk"
+    },
+    {
+      "id": "1xFxqwBIy8N9oz8zFG9Z_UNrRkWCI8pG2",
+      "titulo": "DELITOS-DE-ENCUBRIMIENTO-Y-FALSIFICACION-DE-MONEDA.pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:49:44Z",
+      "viewUrl": "https://drive.google.com/file/d/1xFxqwBIy8N9oz8zFG9Z_UNrRkWCI8pG2/view?usp=drivesdk"
+    },
+    {
+      "id": "1D8XFMv6Zluy7LqOJF-xxlYr0DXRZMSGg",
+      "titulo": "22--CLASE-XIX-ENRIQUECIMIENTO-ILICITO1.pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:50:04Z",
+      "viewUrl": "https://drive.google.com/file/d/1D8XFMv6Zluy7LqOJF-xxlYr0DXRZMSGg/view?usp=drivesdk"
+    },
+    {
+      "id": "1kciT8yLVESCnUg2aPnqS6pEVgeCYMLJ9",
+      "titulo": "Delitos-administracion-publica.pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:47:31Z",
+      "viewUrl": "https://drive.google.com/file/d/1kciT8yLVESCnUg2aPnqS6pEVgeCYMLJ9/view?usp=drivesdk"
+    },
+    {
+      "id": "18nREzFjrEFYJD4Ze8PqboOhM_yxc61AN",
+      "titulo": "Adm-Publica-COMPLETO_2.pdf",
+      "parentId": "1jaFT7HY7uo68h696dXG4ct_QWRWhJUOr",
+      "ruta": "Doctrina Penal/Admin publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:47:40Z",
+      "viewUrl": "https://drive.google.com/file/d/18nREzFjrEFYJD4Ze8PqboOhM_yxc61AN/view?usp=drivesdk"
+    },
+    {
+      "id": "1BBdtQjgVudrRO3HG0_UU-CnSZJcdKWSA",
+      "titulo": "Tipologías-Gafisud-Egmont-2012.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-26T03:18:26Z",
+      "viewUrl": "https://drive.google.com/file/d/1BBdtQjgVudrRO3HG0_UU-CnSZJcdKWSA/view?usp=drivesdk"
+    },
+    {
+      "id": "1xJPyfLhPTlRCNVUMuo1RDuYOXCx0MP9t",
+      "titulo": "Guía-sobre-contrabando-documentado.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-26T03:20:48Z",
+      "viewUrl": "https://drive.google.com/file/d/1xJPyfLhPTlRCNVUMuo1RDuYOXCx0MP9t/view?usp=drivesdk"
+    },
+    {
+      "id": "1g0PB5gq9M2YOEmvJAx0AvbnimRsbUk1Y",
+      "titulo": "GAFI.2014.MonedasVirtuales.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-26T03:19:26Z",
+      "viewUrl": "https://drive.google.com/file/d/1g0PB5gq9M2YOEmvJAx0AvbnimRsbUk1Y/view?usp=drivesdk"
+    },
+    {
+      "id": "1PiyuYsnHUmHFpV-GLx2rrzRJDHdzkPrG",
+      "titulo": "Lavado-de-Dinero-y-Evasion-fiscal.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:03:31Z",
+      "viewUrl": "https://drive.google.com/file/d/1PiyuYsnHUmHFpV-GLx2rrzRJDHdzkPrG/view?usp=drivesdk"
+    },
+    {
+      "id": "1muH-oHGMPYkCNgMYxrmz4IYtxKLjoVo2",
+      "titulo": "27--CLASE-XXV-DEL-PAGO-DE-CHEQUES-SIN-PROVISION-DE-FONDOS.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:48:25Z",
+      "viewUrl": "https://drive.google.com/file/d/1muH-oHGMPYkCNgMYxrmz4IYtxKLjoVo2/view?usp=drivesdk"
+    },
+    {
+      "id": "18oF4DmsVMggqo46Tx1LlRQoRgGLYZbne",
+      "titulo": "Delito-de-lavado-de-dinero--Antecedentes.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:02:02Z",
+      "viewUrl": "https://drive.google.com/file/d/18oF4DmsVMggqo46Tx1LlRQoRgGLYZbne/view?usp=drivesdk"
+    },
+    {
+      "id": "1YgI-asJQDwAfnbl2wSwvlxJPt2D1m0fG",
+      "titulo": "LexStrategy_BaseConocimiento_DelitoEconomico.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-05T16:00:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1YgI-asJQDwAfnbl2wSwvlxJPt2D1m0fG/view?usp=drivesdk"
+    },
+    {
+      "id": "1vtLTS1ark3_HA8KhjKiVh9kizvzPLh4-",
+      "titulo": "Manual de investigacion delitos económicos.pdf",
+      "parentId": "18xPRqyXYvIpd2zT_tm4egDAT9fNotbu-",
+      "ruta": "Doctrina Penal/PenalEconom",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-04T15:19:30Z",
+      "viewUrl": "https://drive.google.com/file/d/1vtLTS1ark3_HA8KhjKiVh9kizvzPLh4-/view?usp=drivesdk"
+    },
+    {
+      "id": "1Kw95orcAx-NjSKY7hV4rUzNN_x5LH0Kq",
+      "titulo": "Orden pub.pdf",
+      "parentId": "1gClDn95jXhAhRSfaPdmVAaGVwenw8g85",
+      "ruta": "Doctrina Penal/Orden Publico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:48:09Z",
+      "viewUrl": "https://drive.google.com/file/d/1Kw95orcAx-NjSKY7hV4rUzNN_x5LH0Kq/view?usp=drivesdk"
+    },
+    {
+      "id": "1lKIHMXzaru8Q9NMNOEb7N3wmYYY7PSaK",
+      "titulo": "DERECHOS-HUMANOS.pdf",
+      "parentId": "1S2oZj6PzjqxeQeXhvblRkeezABw-AYVR",
+      "ruta": "Doctrina Penal/Derechos Humanos",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:57:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1lKIHMXzaru8Q9NMNOEb7N3wmYYY7PSaK/view?usp=drivesdk"
+    },
+    {
+      "id": "163GKndwfDWtuzmvF4IT3W23FYKfnufrG",
+      "titulo": "INDICACIONES-DE-CLASE-ORDEN-PUBLICO-2022.pdf",
+      "parentId": "1vu9E0QUK_GG3VZyTGKWp_aWEz6GZqmh7",
+      "ruta": "Doctrina Penal/Delitos contra el orden publico",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:51:23Z",
+      "viewUrl": "https://drive.google.com/file/d/163GKndwfDWtuzmvF4IT3W23FYKfnufrG/view?usp=drivesdk"
+    },
+    {
+      "id": "1oItnnjlCpa7V9WdFei3Yi9pbAOst2KXS",
+      "titulo": "Reglas de Beijing - comentadas_0.pdf",
+      "parentId": "1AC-E2QD6Jb3aTVGKQzK2A2LIEK0Ag5VN",
+      "ruta": "Doctrina Penal/Minoridad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-18T18:32:56Z",
+      "viewUrl": "https://drive.google.com/file/d/1oItnnjlCpa7V9WdFei3Yi9pbAOst2KXS/view?usp=drivesdk"
+    },
+    {
+      "id": "1sLlWN4AD3bHFqrFFC8UmqxUMGqX3kQCz",
+      "titulo": "14---Delitos-contra-la-libertad--Arts-150-a-161.pdf",
+      "parentId": "1CEmVrzTsWLiPmxZiMk00o-p0D6Zt2VLx",
+      "ruta": "Doctrina Penal/Delito contra la libertad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:54:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1sLlWN4AD3bHFqrFFC8UmqxUMGqX3kQCz/view?usp=drivesdk"
+    },
+    {
+      "id": "12QaasZKzPZ3BgJlcJdXGBzn_WpnEWNjl",
+      "titulo": "11--CLASE-VIII-DELITOS-CONTRA-LA-LIBERTAD-PRIMERA-PARTE_1.pdf",
+      "parentId": "1CEmVrzTsWLiPmxZiMk00o-p0D6Zt2VLx",
+      "ruta": "Doctrina Penal/Delito contra la libertad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:56:22Z",
+      "viewUrl": "https://drive.google.com/file/d/12QaasZKzPZ3BgJlcJdXGBzn_WpnEWNjl/view?usp=drivesdk"
+    },
+    {
+      "id": "1e275WETKM7Gs4Pfu53LNUFpoC6kGiK6v",
+      "titulo": "Hornale---Subsidiariedad-comoprincipio-limitador-Autoproteccion.pdf",
+      "parentId": "19pVpnhvar_e4abUer-S0yi7CV-nQF2Ee",
+      "ruta": "Doctrina Penal/Teorías de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:46:15Z",
+      "viewUrl": "https://drive.google.com/file/d/1e275WETKM7Gs4Pfu53LNUFpoC6kGiK6v/view?usp=drivesdk"
+    },
+    {
+      "id": "1k0sDOteNDdge3toxGd7yR11OcSHLxPL8",
+      "titulo": "Frister-Teorias-de-la-pena.pdf",
+      "parentId": "19pVpnhvar_e4abUer-S0yi7CV-nQF2Ee",
+      "ruta": "Doctrina Penal/Teorías de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-08T02:43:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1k0sDOteNDdge3toxGd7yR11OcSHLxPL8/view?usp=drivesdk"
+    },
+    {
+      "id": "19GEH-ZPFVxHNMTg7J8v4ZX0oZg1xWiha",
+      "titulo": "Crisis-del-derecho-penal-Articulo-MCL.docx",
+      "parentId": "19pVpnhvar_e4abUer-S0yi7CV-nQF2Ee",
+      "ruta": "Doctrina Penal/Teorías de la pena",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-08T02:42:26Z",
+      "viewUrl": "https://drive.google.com/file/d/19GEH-ZPFVxHNMTg7J8v4ZX0oZg1xWiha/view?usp=drivesdk"
+    },
+    {
+      "id": "1n9KtoUn2XRhAX9A4V74Kfhp1go_lrRzD",
+      "titulo": "Bacigalupo-Filosofia-e-ideologia-de-las-teorias-de-la-pena.pdf",
+      "parentId": "19pVpnhvar_e4abUer-S0yi7CV-nQF2Ee",
+      "ruta": "Doctrina Penal/Teorías de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-08T02:41:58Z",
+      "viewUrl": "https://drive.google.com/file/d/1n9KtoUn2XRhAX9A4V74Kfhp1go_lrRzD/view?usp=drivesdk"
+    },
+    {
+      "id": "15TgjEb_pVipBEXgFL981EBiRydo0WAlL",
+      "titulo": "Fernandez-Kis---retribucionismo-.pdf",
+      "parentId": "19pVpnhvar_e4abUer-S0yi7CV-nQF2Ee",
+      "ruta": "Doctrina Penal/Teorías de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-08T02:42:57Z",
+      "viewUrl": "https://drive.google.com/file/d/15TgjEb_pVipBEXgFL981EBiRydo0WAlL/view?usp=drivesdk"
+    },
+    {
+      "id": "11RAYpdXm4bxJp_rshRCP2sepWa-DzbPW",
+      "titulo": "Cordoba---prevencion-general-positiva-y-culpabilidad.pdf",
+      "parentId": "19pVpnhvar_e4abUer-S0yi7CV-nQF2Ee",
+      "ruta": "Doctrina Penal/Teorías de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-08T02:42:36Z",
+      "viewUrl": "https://drive.google.com/file/d/11RAYpdXm4bxJp_rshRCP2sepWa-DzbPW/view?usp=drivesdk"
+    },
+    {
+      "id": "1TQ4_-huUyO5xTA1S6wHVXRQ5KbznFzzc",
+      "titulo": "DOLO-EVENTUAL.pdf",
+      "parentId": "158bl26sdzkMw0H06qla4O4gYyXAV5iTU",
+      "ruta": "Doctrina Penal/Dolo, culpa, imprudencia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:59:37Z",
+      "viewUrl": "https://drive.google.com/file/d/1TQ4_-huUyO5xTA1S6wHVXRQ5KbznFzzc/view?usp=drivesdk"
+    },
+    {
+      "id": "1QtWzzBstmp02_QVEEZdUftHD2azEKAcI",
+      "titulo": "Montiel---el-caso-Messi-(ignorancia-deliberada-e-imprudencia).pdf",
+      "parentId": "158bl26sdzkMw0H06qla4O4gYyXAV5iTU",
+      "ruta": "Doctrina Penal/Dolo, culpa, imprudencia",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:48Z",
+      "viewUrl": "https://drive.google.com/file/d/1QtWzzBstmp02_QVEEZdUftHD2azEKAcI/view?usp=drivesdk"
+    },
+    {
+      "id": "1BO3OOC3fc6pVf7bcRAyIvQcjEARQg3lj",
+      "titulo": "Dolo-e-imprudencia-Articulo-MCL.docx",
+      "parentId": "158bl26sdzkMw0H06qla4O4gYyXAV5iTU",
+      "ruta": "Doctrina Penal/Dolo, culpa, imprudencia",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-09T16:24:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1BO3OOC3fc6pVf7bcRAyIvQcjEARQg3lj/view?usp=drivesdk"
+    },
+    {
+      "id": "19pfDzrDHod7S3Rb71DtYNYDpLki1nmO9",
+      "titulo": "Dolo-Articulo-MCL.docx",
+      "parentId": "158bl26sdzkMw0H06qla4O4gYyXAV5iTU",
+      "ruta": "Doctrina Penal/Dolo, culpa, imprudencia",
+      "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modifiedTime": "2026-07-09T16:24:13Z",
+      "viewUrl": "https://drive.google.com/file/d/19pfDzrDHod7S3Rb71DtYNYDpLki1nmO9/view?usp=drivesdk"
+    },
+    {
+      "id": "15OEvcCuvWd2fNYLhCm9ExrzNI9ZFieES",
+      "titulo": "recurso_apelacion_penal.pdf",
+      "parentId": "1TdeBu5uSi6suI6YWPOnxe9pm1n34QHWa",
+      "ruta": "Doctrina Penal/Materia recursiva",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:32:26Z",
+      "viewUrl": "https://drive.google.com/file/d/15OEvcCuvWd2fNYLhCm9ExrzNI9ZFieES/view?usp=drivesdk"
+    },
+    {
+      "id": "1X6_8tPJu5cglK8gIWMuQnzid5M9rTGpP",
+      "titulo": "17--CLASE-XIV-DELITOS-CONTRA-EL-ESTADO-CIVIL.pdf",
+      "parentId": "16JD5TW6LqeMzPygQjyiBD3K8oADozm8o",
+      "ruta": "Doctrina Penal/Delitos contra el estado civil",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:55:32Z",
+      "viewUrl": "https://drive.google.com/file/d/1X6_8tPJu5cglK8gIWMuQnzid5M9rTGpP/view?usp=drivesdk"
+    },
+    {
+      "id": "1JV_8IGXEF8-ptqdxjDYKCGjtR-IrJn5S",
+      "titulo": "Di-Corleto-Julieta-Mujeres-que-matan.pdf",
+      "parentId": "1cYBk82eD1y9qv9-Kivvro-p_r4f1B1f9",
+      "ruta": "Doctrina Penal/Legitima defensa",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:40:24Z",
+      "viewUrl": "https://drive.google.com/file/d/1JV_8IGXEF8-ptqdxjDYKCGjtR-IrJn5S/view?usp=drivesdk"
+    },
+    {
+      "id": "1CnsOtXg_vp9bXSbHzBMkM60-cklqVt5x",
+      "titulo": "Goldman-Analisis-economico-del-derecho-penal.pdf",
+      "parentId": "1JGtmvM38ZOYRcuX8un0iJkkdEUC3-p_-",
+      "ruta": "Doctrina Penal/Analisis Economico del Derecho Penal (AEDP)",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-06-07T13:30:28Z",
+      "viewUrl": "https://drive.google.com/file/d/1CnsOtXg_vp9bXSbHzBMkM60-cklqVt5x/view?usp=drivesdk"
+    },
+    {
+      "id": "1HpvLoI3Zr1HVoHYeax-jGDiw1O2SkqNX",
+      "titulo": "Evolucion-y-modernas-tendencias-de-la-teoria-del-delito-de-Alemania-Articulo.pdf",
+      "parentId": "1-rAU3phqEOZbiAhmCIFvwZ977qNI1BUF",
+      "ruta": "Doctrina Penal/Teoría del delito",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:54:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1HpvLoI3Zr1HVoHYeax-jGDiw1O2SkqNX/view?usp=drivesdk"
+    },
+    {
+      "id": "1zb0VJxU3T2FcYHwT5bRjuZCnrXbT-bbU",
+      "titulo": "Cuadro-teoria-del-delito.pdf",
+      "parentId": "1-rAU3phqEOZbiAhmCIFvwZ977qNI1BUF",
+      "ruta": "Doctrina Penal/Teoría del delito",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:54:28Z",
+      "viewUrl": "https://drive.google.com/file/d/1zb0VJxU3T2FcYHwT5bRjuZCnrXbT-bbU/view?usp=drivesdk"
+    },
+    {
+      "id": "1_jOdXQQTzJKBZ1QexnIyiip4wzuDyYBE",
+      "titulo": "Donna-autoria-participacion.pdf",
+      "parentId": "18R4V0TOLPvKi34SXJPKN_Dzgs8xgEn-N",
+      "ruta": "Doctrina Penal/Autoria y participación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T19:02:17Z",
+      "viewUrl": "https://drive.google.com/file/d/1_jOdXQQTzJKBZ1QexnIyiip4wzuDyYBE/view?usp=drivesdk"
+    },
+    {
+      "id": "1aEBkDvDgUayxxBa_dPguotu6kdAB8MqM",
+      "titulo": "Cuello-Contreras---domino-y-deber.pdf",
+      "parentId": "18R4V0TOLPvKi34SXJPKN_Dzgs8xgEn-N",
+      "ruta": "Doctrina Penal/Autoria y participación",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:35:41Z",
+      "viewUrl": "https://drive.google.com/file/d/1aEBkDvDgUayxxBa_dPguotu6kdAB8MqM/view?usp=drivesdk"
+    },
+    {
+      "id": "1LNdPyuAi2I4OmQSAFtjV-7-Flcpwoez3",
+      "titulo": "Juicio_abreviado_procesal.pdf",
+      "parentId": "1d-WS70V1a1FeecHm_qS8FBpJ_WTC0aT6",
+      "ruta": "Doctrina Penal/Juicio abreviado",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:34:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1LNdPyuAi2I4OmQSAFtjV-7-Flcpwoez3/view?usp=drivesdk"
+    },
+    {
+      "id": "1OPIZJb434Li6oISgq7oBfMO3NshS4oCP",
+      "titulo": "18--CLASE-XV-DELITOS-CONTRA-LA-SALUD-PUBLICA-(1).pdf",
+      "parentId": "11wHYrzLLwipxnzlKd-O1GSZtYYJyTWoA",
+      "ruta": "Doctrina Penal/Delitos contra la salud publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:53:22Z",
+      "viewUrl": "https://drive.google.com/file/d/1OPIZJb434Li6oISgq7oBfMO3NshS4oCP/view?usp=drivesdk"
+    },
+    {
+      "id": "1hzs-lN1oGuHj_d1frfKZG8eN-ykyN_3V",
+      "titulo": "10--CLASE-VII-DELITOS-CONTRA-INTEGRIDAD-SEXUAL_1.pdf",
+      "parentId": "1bnvU3IM5fsdDAK9l_s7oP2y06KV6MkSc",
+      "ruta": "Doctrina Penal/Abuso Sexual y violacion",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:56:57Z",
+      "viewUrl": "https://drive.google.com/file/d/1hzs-lN1oGuHj_d1frfKZG8eN-ykyN_3V/view?usp=drivesdk"
+    },
+    {
+      "id": "1CwoJ4FU2qNoSblShesvvpOCZIDFakL7S",
+      "titulo": "PPT-Abuso-sexual.pdf",
+      "parentId": "1bnvU3IM5fsdDAK9l_s7oP2y06KV6MkSc",
+      "ruta": "Doctrina Penal/Abuso Sexual y violacion",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:50:10Z",
+      "viewUrl": "https://drive.google.com/file/d/1CwoJ4FU2qNoSblShesvvpOCZIDFakL7S/view?usp=drivesdk"
+    },
+    {
+      "id": "1iuKZtEQHLLsffHfmxIftMqJ5SwXAGY3m",
+      "titulo": "Abuso-sexual-desde-corrupcion.pdf",
+      "parentId": "1bnvU3IM5fsdDAK9l_s7oP2y06KV6MkSc",
+      "ruta": "Doctrina Penal/Abuso Sexual y violacion",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:50:06Z",
+      "viewUrl": "https://drive.google.com/file/d/1iuKZtEQHLLsffHfmxIftMqJ5SwXAGY3m/view?usp=drivesdk"
+    },
+    {
+      "id": "12QJFwYTCPPl1LWqneCch9MOpaSHc3jEt",
+      "titulo": "Clase-23-Ziffer-El-concurso-entre-la-tenencia-de-arma-de-guerra-y-el-robo-con-arma-copia.pdf",
+      "parentId": "1uYNCp0arYcH6WeuWtFiNiCFuhJWSZWGs",
+      "ruta": "Doctrina Penal/Armas",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:35:35Z",
+      "viewUrl": "https://drive.google.com/file/d/12QJFwYTCPPl1LWqneCch9MOpaSHc3jEt/view?usp=drivesdk"
+    },
+    {
+      "id": "1tfrtH589J4Ee47og2aDWzYicxI7rM0t6",
+      "titulo": "Abuso de armas.pdf",
+      "parentId": "1uYNCp0arYcH6WeuWtFiNiCFuhJWSZWGs",
+      "ruta": "Doctrina Penal/Armas",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:50:32Z",
+      "viewUrl": "https://drive.google.com/file/d/1tfrtH589J4Ee47og2aDWzYicxI7rM0t6/view?usp=drivesdk"
+    },
+    {
+      "id": "1pX2EYOEeoySLCnKl_Ml-ZGq_lFeavVjJ",
+      "titulo": "Roxin---El-limite-entre-accion-y-omision.pdf",
+      "parentId": "1felSjPRGTdLHv97ywJt8T5Yiugc9H4TX",
+      "ruta": "Doctrina Penal/Omision y acción",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:52Z",
+      "viewUrl": "https://drive.google.com/file/d/1pX2EYOEeoySLCnKl_Ml-ZGq_lFeavVjJ/view?usp=drivesdk"
+    },
+    {
+      "id": "1f3kMOlBWyNCDH2dVRCML_GEhHrF6w0HY",
+      "titulo": "Gimbernat---Omision-y-accion-Concepto-.pdf",
+      "parentId": "1felSjPRGTdLHv97ywJt8T5Yiugc9H4TX",
+      "ruta": "Doctrina Penal/Omision y acción",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:33:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1f3kMOlBWyNCDH2dVRCML_GEhHrF6w0HY/view?usp=drivesdk"
+    },
+    {
+      "id": "1yYppl9jmV44ypUI_BCDh-hTfTRzZuNBh",
+      "titulo": "8--CLASE-DELITOS-CONTRA-EL-HONOR.pdf",
+      "parentId": "1wUquQ3jEa8tZP3OMH4J6CSBc8vTzyIYJ",
+      "ruta": "Doctrina Penal/Delitos contra el honor",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:56:41Z",
+      "viewUrl": "https://drive.google.com/file/d/1yYppl9jmV44ypUI_BCDh-hTfTRzZuNBh/view?usp=drivesdk"
+    },
+    {
+      "id": "1aSmeZmqjKBoC1dqeXV0SJwxqe-Vmux-S",
+      "titulo": "Aportes-para-una-dogmatica-de-la-determinacion-de-la-pena.pdf",
+      "parentId": "1px29fOBX8Cn3_csEeLdHNAHVLDJRcjTD",
+      "ruta": "Doctrina Penal/Determinación de la pena",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:35:48Z",
+      "viewUrl": "https://drive.google.com/file/d/1aSmeZmqjKBoC1dqeXV0SJwxqe-Vmux-S/view?usp=drivesdk"
+    },
+    {
+      "id": "1mY46X-cVntmITYdKyAQ2qAEGyDSTY032",
+      "titulo": "15-CLASE-XII-DELITOS-CONTRA-LA-PROPIEDAD-PTO-C.pdf",
+      "parentId": "1SpfXjIOInJuhpKnPsdsySBROhfK8iV0U",
+      "ruta": "Doctrina Penal/Delitos contra la propiedad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:54:01Z",
+      "viewUrl": "https://drive.google.com/file/d/1mY46X-cVntmITYdKyAQ2qAEGyDSTY032/view?usp=drivesdk"
+    },
+    {
+      "id": "1UcV7W0XrHhGD2_AS_oe0RvBQYQmEPtUz",
+      "titulo": "14-CLASE-XI-DELITOS-CONTRA-LA-PROPIEDAD-CONTINUACION.pdf",
+      "parentId": "1SpfXjIOInJuhpKnPsdsySBROhfK8iV0U",
+      "ruta": "Doctrina Penal/Delitos contra la propiedad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:54:11Z",
+      "viewUrl": "https://drive.google.com/file/d/1UcV7W0XrHhGD2_AS_oe0RvBQYQmEPtUz/view?usp=drivesdk"
+    },
+    {
+      "id": "1iwcZycOOMjq5WJr9tv33LOKvE1RJ7AwX",
+      "titulo": "PRACTICA-PROF-CPP-1ERA-PARTE.pdf",
+      "parentId": "1biW-3oRg_PoVyfZYGBxTkt3zXhjWa2Xn",
+      "ruta": "Doctrina Penal/Derecho Procesal Penal — Procedimiento Bonaerense (Ley 11.922)",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:38:22Z",
+      "viewUrl": "https://drive.google.com/file/d/1iwcZycOOMjq5WJr9tv33LOKvE1RJ7AwX/view?usp=drivesdk"
+    },
+    {
+      "id": "1cWfgFU5jSq0zR_FgXcyRc1AtJkOPpXBi",
+      "titulo": "CLASE-4-DERECHO-PENAL.pdf",
+      "parentId": "1biW-3oRg_PoVyfZYGBxTkt3zXhjWa2Xn",
+      "ruta": "Doctrina Penal/Derecho Procesal Penal — Procedimiento Bonaerense (Ley 11.922)",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:38:28Z",
+      "viewUrl": "https://drive.google.com/file/d/1cWfgFU5jSq0zR_FgXcyRc1AtJkOPpXBi/view?usp=drivesdk"
+    },
+    {
+      "id": "1bTmZ7bfRl2eqGXC47RyyhYxZV3U4oAL0",
+      "titulo": "6-CLASE-III-ABORTO.pdf",
+      "parentId": "1rtSnANftSbr6xbG-wkAkrr4yJzy2Qr0g",
+      "ruta": "Doctrina Penal/Oborto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:58:11Z",
+      "viewUrl": "https://drive.google.com/file/d/1bTmZ7bfRl2eqGXC47RyyhYxZV3U4oAL0/view?usp=drivesdk"
+    },
+    {
+      "id": "19tKwa49ZabWSlfBhmC4tYuzQ8Hd7CX6V",
+      "titulo": "ANEXO-CLASE-ABORTO.pdf",
+      "parentId": "1rtSnANftSbr6xbG-wkAkrr4yJzy2Qr0g",
+      "ruta": "Doctrina Penal/Oborto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:58:05Z",
+      "viewUrl": "https://drive.google.com/file/d/19tKwa49ZabWSlfBhmC4tYuzQ8Hd7CX6V/view?usp=drivesdk"
+    },
+    {
+      "id": "14942IvJ_9S1jzycCkCSBeuEsiUG4auLU",
+      "titulo": "reglas_de_tokio.pdf",
+      "parentId": "19hBZrQLSFCmGNVtDcZnal0oCJw_YidO4",
+      "ruta": "Doctrina Penal/Medidas no privativas de libertad",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-18T18:31:52Z",
+      "viewUrl": "https://drive.google.com/file/d/14942IvJ_9S1jzycCkCSBeuEsiUG4auLU/view?usp=drivesdk"
+    },
+    {
+      "id": "1JQ9lpKeBy9iysCZqp9VgSaLWQqHkvDOp",
+      "titulo": "02--PRCTICA-PROFESIONAL-II--PENAL-PRIMERA-CLASE.pdf",
+      "parentId": "1LXPb3R7Wuw81iNyjeD4GsNSv9GD9ovcv",
+      "ruta": "Doctrina Penal/Investigación Penal Preparatoria (IPP) y juicio oral",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:37:51Z",
+      "viewUrl": "https://drive.google.com/file/d/1JQ9lpKeBy9iysCZqp9VgSaLWQqHkvDOp/view?usp=drivesdk"
+    },
+    {
+      "id": "1GBqm1a-HWon7ZEYLYGoDvj3Wx2tR1b5J",
+      "titulo": "juicio_oral_procesal.pdf",
+      "parentId": "1LXPb3R7Wuw81iNyjeD4GsNSv9GD9ovcv",
+      "ruta": "Doctrina Penal/Investigación Penal Preparatoria (IPP) y juicio oral",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:31:00Z",
+      "viewUrl": "https://drive.google.com/file/d/1GBqm1a-HWon7ZEYLYGoDvj3Wx2tR1b5J/view?usp=drivesdk"
+    },
+    {
+      "id": "19rmOQ5-SBy7-O142fNd2CVn4uZodNzhk",
+      "titulo": "PENAL--Etapas--investig-penal-preparat-y-juicio--oral.pdf",
+      "parentId": "1LXPb3R7Wuw81iNyjeD4GsNSv9GD9ovcv",
+      "ruta": "Doctrina Penal/Investigación Penal Preparatoria (IPP) y juicio oral",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:29:30Z",
+      "viewUrl": "https://drive.google.com/file/d/19rmOQ5-SBy7-O142fNd2CVn4uZodNzhk/view?usp=drivesdk"
+    },
+    {
+      "id": "1Xwf3YQRX2BgeDtGaHYTffq2sBkXVgxRW",
+      "titulo": "nulidades_procesal_penal.pdf",
+      "parentId": "1RI6jT6237wK_nG3jQe03OCMVIywLUgND",
+      "ruta": "Doctrina Penal/Nulidades",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:30:21Z",
+      "viewUrl": "https://drive.google.com/file/d/1Xwf3YQRX2BgeDtGaHYTffq2sBkXVgxRW/view?usp=drivesdk"
+    },
+    {
+      "id": "1NKX_1UnUXMXna8EI5h7FI6zwC3kQBdVS",
+      "titulo": "1--CLASE-HOMICIDIO-SIMPLE-(DR-BUENO-FERNANDO).pdf",
+      "parentId": "1kGFYL_sWJmGVmwIftqYHHziJT6CdxoS3",
+      "ruta": "Doctrina Penal/Homicidio simple y agravado",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:58:35Z",
+      "viewUrl": "https://drive.google.com/file/d/1NKX_1UnUXMXna8EI5h7FI6zwC3kQBdVS/view?usp=drivesdk"
+    },
+    {
+      "id": "1S7DBp1gWh48tEcm5h4Pt1Q1OBxTd1lik",
+      "titulo": "5--CLASE-III-HOMICIDIO-CULPOSO-Y-EN-RINA.pdf",
+      "parentId": "1kGFYL_sWJmGVmwIftqYHHziJT6CdxoS3",
+      "ruta": "Doctrina Penal/Homicidio simple y agravado",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:58:26Z",
+      "viewUrl": "https://drive.google.com/file/d/1S7DBp1gWh48tEcm5h4Pt1Q1OBxTd1lik/view?usp=drivesdk"
+    },
+    {
+      "id": "1vjmQQqL5CaE8pBrv7BX6R0vpzXbhe1QI",
+      "titulo": "1--PRESENTACION-DEL-CURSO-CLASE-2-HOMICIDIO-SIMPLE1.pdf",
+      "parentId": "1kGFYL_sWJmGVmwIftqYHHziJT6CdxoS3",
+      "ruta": "Doctrina Penal/Homicidio simple y agravado",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:58:39Z",
+      "viewUrl": "https://drive.google.com/file/d/1vjmQQqL5CaE8pBrv7BX6R0vpzXbhe1QI/view?usp=drivesdk"
+    },
+    {
+      "id": "1JiAEeIQYzDndLyJ_gZjMi_tDL1Hzv6wf",
+      "titulo": "Art 79 y 80 CP.pdf",
+      "parentId": "1kGFYL_sWJmGVmwIftqYHHziJT6CdxoS3",
+      "ruta": "Doctrina Penal/Homicidio simple y agravado",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:45:18Z",
+      "viewUrl": "https://drive.google.com/file/d/1JiAEeIQYzDndLyJ_gZjMi_tDL1Hzv6wf/view?usp=drivesdk"
+    },
+    {
+      "id": "1C338CIf1JS8SWY1qsw1USqzErIqZ5dGR",
+      "titulo": "juicio_por_jurados_procesal_penal.pdf",
+      "parentId": "1X69FyrqWRyWSPNCDZ71K-0ed_0iGCHXc",
+      "ruta": "Doctrina Penal/Juicio por jurados",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:35:32Z",
+      "viewUrl": "https://drive.google.com/file/d/1C338CIf1JS8SWY1qsw1USqzErIqZ5dGR/view?usp=drivesdk"
+    },
+    {
+      "id": "1p-vf_CARoMFf-puJEmLyNGvxrF1d7AuW",
+      "titulo": "control_imputación_penal.pdf",
+      "parentId": "1tUW8J_6tKC4g_9kky92v5KANDuUEIWlf",
+      "ruta": "Doctrina Penal/Etapa intermedia – Control de la acusación y elevación a juicio",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T19:32:46Z",
+      "viewUrl": "https://drive.google.com/file/d/1p-vf_CARoMFf-puJEmLyNGvxrF1d7AuW/view?usp=drivesdk"
+    },
+    {
+      "id": "1XqHsv0BYaf1naavq-E80BeUluaF2Er1M",
+      "titulo": "Munoz-Damian-Una-aproximacion-a-los-devenires-criminologicos.pdf",
+      "parentId": "11DsSwXOz-bQq9nRSHdoccejj85aPPEDM",
+      "ruta": "Doctrina Penal/Criminología",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T03:46:29Z",
+      "viewUrl": "https://drive.google.com/file/d/1XqHsv0BYaf1naavq-E80BeUluaF2Er1M/view?usp=drivesdk"
+    },
+    {
+      "id": "1ZnIgtsilIBc3kEMxxU_YNGWruIkxqAp9",
+      "titulo": "Simulaciones con IA - Argumentación Jurídica.pdf",
+      "parentId": "1KDnMEpSG2sz3KqUgPXQsGgjZeXuX0p7e",
+      "ruta": "Doctrina Penal/Simulacion IA Argum Juridica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-12T20:53:43Z",
+      "viewUrl": "https://drive.google.com/file/d/1ZnIgtsilIBc3kEMxxU_YNGWruIkxqAp9/view?usp=drivesdk"
+    },
+    {
+      "id": "1svKoGmc71H8KXObIATSJXiv_UYw6dTai",
+      "titulo": "Clase-hurto-PDF.pdf",
+      "parentId": "1UIPH56U4XPjWl0Q-qOq5lKbpAA8Pme7J",
+      "ruta": "Doctrina Penal/Hurto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:48:49Z",
+      "viewUrl": "https://drive.google.com/file/d/1svKoGmc71H8KXObIATSJXiv_UYw6dTai/view?usp=drivesdk"
+    },
+    {
+      "id": "14RamWYViXjuE7-t3kV8qxoqMVo8K4zys",
+      "titulo": "Hurto.pdf",
+      "parentId": "1UIPH56U4XPjWl0Q-qOq5lKbpAA8Pme7J",
+      "ruta": "Doctrina Penal/Hurto",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T16:48:58Z",
+      "viewUrl": "https://drive.google.com/file/d/14RamWYViXjuE7-t3kV8qxoqMVo8K4zys/view?usp=drivesdk"
+    },
+    {
+      "id": "1ybXb98rQSpBT_LH_XQkODYOvcXmOIBwr",
+      "titulo": "26--CLASE-XXIII-DELITOS-CONTRA-LA-FE-PUBLICA-(2-files-merged).pdf",
+      "parentId": "1I673EiBbJ-cu82TZGxDmkldYAuKnOvjA",
+      "ruta": "Doctrina Penal/Delitos contra la fe publica",
+      "mimeType": "application/pdf",
+      "modifiedTime": "2026-07-09T18:49:00Z",
+      "viewUrl": "https://drive.google.com/file/d/1ybXb98rQSpBT_LH_XQkODYOvcXmOIBwr/view?usp=drivesdk"
+    }
+  ]
+}
