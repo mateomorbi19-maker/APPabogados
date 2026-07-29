@@ -2,6 +2,9 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Adjunto } from "@/lib/casos/adjuntos";
 import { CATEGORIA_LABEL } from "@/lib/casos/categorias";
+import { getNodosDelCaso } from "@/lib/mapa-procesal/queries";
+import { serializarSeccionMapa } from "@/lib/mapa-procesal/serializar";
+import type { Fuero } from "@/lib/mapa-procesal/types";
 
 // Construye el contexto que se le pasa al agente cuando el abogado hace
 // una consulta sobre un caso ya en marcha. Lo arma como markdown
@@ -30,6 +33,10 @@ export type AdjuntoHistorico = {
 export type ContextoCasoResult = {
   contextoMarkdown: string;
   adjuntosHistoricos: AdjuntoHistorico[];
+  // true si el caso ya tiene nodos en el mapa procesal. El chat lo usa para
+  // decidir si le expone al modelo las herramientas de escritura sobre el mapa
+  // (sin mapa no hay nada que modificar).
+  mapaInicializado: boolean;
 };
 
 type EjecucionLite = {
@@ -55,6 +62,8 @@ type CasoLite = {
   estrategia_seleccionada_idx: number;
   estrategia_seleccionada_rol: string;
   estrategia_snapshot: Record<string, unknown>;
+  // Fuero del mapa procesal. NULL en casos cuyo mapa nunca se inicializó.
+  fuero: Fuero | null;
 };
 
 const FECHA_AR = new Intl.DateTimeFormat("es-AR", {
@@ -87,8 +96,19 @@ function bullets(arr: unknown[] | undefined, prefijo = "  - "): string {
     .join("\n");
 }
 
+export type OpcionesContextoCaso = {
+  // Renderiza la sección "## Mapa procesal del caso" (estado del árbol +
+  // esquema canónico del fuero). OPT-IN a propósito: los otros tres consumidores
+  // de este builder son la simulación de ramas del mapa y el simulador de
+  // audiencias, y ambos ya arman su propio bloque con el mapa — sumárselo acá
+  // les duplicaría el contenido del prompt. El único que la necesita es el chat
+  // del caso, que es donde el agente puede modificar el mapa.
+  incluirMapa?: boolean;
+};
+
 export async function buildContextoCaso(
   casoId: string,
+  opciones: OpcionesContextoCaso = {},
 ): Promise<ContextoCasoResult> {
   const supabase = createServerClient();
 
@@ -97,7 +117,7 @@ export async function buildContextoCaso(
   const { data: casoRaw, error: casoErr } = await supabase
     .from("casos")
     .select(
-      "id, caso_descripcion, contexto, rol, ejecucion_origen_id, estrategia_seleccionada_idx, estrategia_seleccionada_rol, estrategia_snapshot",
+      "id, caso_descripcion, contexto, rol, ejecucion_origen_id, estrategia_seleccionada_idx, estrategia_seleccionada_rol, estrategia_snapshot, fuero",
     )
     .eq("id", casoId)
     .maybeSingle();
@@ -136,6 +156,13 @@ export async function buildContextoCaso(
     );
   }
   const eventos = (eventosRaw ?? []) as EventoLite[];
+
+  // Nodos del mapa procesal. La query va scopeada por caso_id y el ownership
+  // del caso ya lo validó la ruta que nos llamó (mismo criterio que el resto
+  // de este builder, que tampoco re-verifica al usuario). Se corre siempre —
+  // es un SELECT indexado y `mapaInicializado` forma parte del contrato — pero
+  // la sección solo se RENDERIZA si el caller la pidió.
+  const nodosMapa = await getNodosDelCaso(casoId);
 
   // Recolectar adjuntos históricos (de eventos manuales y consultas
   // previas) para que la función llamadora sepa qué hay disponible.
@@ -255,8 +282,17 @@ export async function buildContextoCaso(
     }
   }
 
+  // 5. Mapa procesal — estado actual + esquema canónico del fuero. Va último
+  // porque es la sección más volátil: el agente la modifica dentro del mismo
+  // turno y lo que importa es que la lea como "foto de ahora".
+  if (opciones.incluirMapa) {
+    lineas.push(serializarSeccionMapa(nodosMapa, caso.fuero));
+    lineas.push("");
+  }
+
   return {
     contextoMarkdown: lineas.join("\n"),
     adjuntosHistoricos,
+    mapaInicializado: nodosMapa.length > 0,
   };
 }

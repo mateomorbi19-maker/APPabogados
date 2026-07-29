@@ -175,10 +175,12 @@ export async function POST(
     );
   }
 
-  // Insertar las ramas como nodos 'prediccion' hijos del objetivo.
-  let nodosNuevos;
+  // Insertar las ramas como nodos 'prediccion' hijos del objetivo. El tope de
+  // nodos por caso lo aplica crearRamasSimuladas: si no entran todas, guarda
+  // las primeras y avisa cuántas quedaron afuera.
+  let r;
   try {
-    nodosNuevos = await crearRamasSimuladas(id, nodo_id, wl.usuario_id, sim.ramas);
+    r = await crearRamasSimuladas(id, nodo_id, wl.usuario_id, sim.ramas);
   } catch (e) {
     console.error("[POST /mapa/simular] insert ramas falló:", e);
     return jsonResponse(
@@ -190,9 +192,25 @@ export async function POST(
       500,
     );
   }
-  if (nodosNuevos === null) {
+  if (r.status === "not_found") {
     return jsonResponse({ ok: false, error: "Nodo no encontrado" }, 404);
   }
+  if (r.status === "tope") {
+    return jsonResponse(
+      {
+        ok: false,
+        error: `El mapa ya tiene ${r.total} nodos y el máximo es ${r.maximo}: no entra ninguna rama nueva. Podá las hipótesis descartadas antes de simular.`,
+      },
+      409,
+    );
+  }
 
-  return jsonResponse({ ok: true, nodos: nodosNuevos }, 201);
+  return jsonResponse(
+    {
+      ok: true,
+      nodos: r.nodos,
+      ...(r.descartadas > 0 ? { descartadas: r.descartadas } : {}),
+    },
+    201,
+  );
 }

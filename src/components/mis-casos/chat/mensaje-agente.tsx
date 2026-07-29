@@ -34,9 +34,12 @@ import {
   type RespuestaConsulta,
 } from "@/lib/schemas";
 import type { MensajeConversacion } from "@/lib/types";
+import { AccionesMapa } from "./acciones-mapa";
 
 type Props = {
   mensaje: MensajeConversacion;
+  // Necesario para linkear al mapa desde la tarjeta de acciones.
+  casoId: string;
 };
 
 function parsearRespuesta(
@@ -78,7 +81,7 @@ const PRIORIDAD_VARIANT: Record<
   },
 };
 
-export function MensajeAgente({ mensaje }: Props) {
+export function MensajeAgente({ mensaje, casoId }: Props) {
   const respuesta = parsearRespuesta(mensaje);
 
   if (!respuesta) {
@@ -107,6 +110,10 @@ export function MensajeAgente({ mensaje }: Props) {
       ) : (
         <Analisis respuesta={respuesta} />
       )}
+
+      {/* Ortogonal al modo, igual que las búsquedas: el agente puede tocar
+          el mapa respondiendo en cualquiera de los dos. */}
+      <AccionesMapa acciones={respuesta.acciones ?? []} casoId={casoId} />
 
       <BusquedasColapsable busquedas={respuesta.busquedas ?? []} />
     </article>

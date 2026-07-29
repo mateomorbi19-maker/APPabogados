@@ -1,5 +1,6 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
+import { MAX_NODOS_POR_CASO } from "./coherencia";
 import { NODE_SEP, RANK_SEP } from "./layout";
 import { generarPlantillaBase } from "./plantilla-base";
 import { sugerirFuero } from "./sugerir-fuero";
@@ -7,6 +8,20 @@ import type { EstadoNodo, Fuero, NodoProcesalDB } from "./types";
 
 const COLS =
   "id, caso_id, titulo, descripcion, tipo, estado, padre_id, posicion_x, posicion_y, riesgo_alto, metadata, created_at, updated_at";
+
+// Cuántos nodos tiene HOY el caso. Lo usan los dos caminos de creación para
+// aplicar el tope: antes vivía solo dentro de validarAccion (chat), así que la
+// UI podía dejar el mapa por encima del máximo y con eso incapacitar al chat
+// para crear cualquier nodo.
+async function contarNodos(casoId: string): Promise<number> {
+  const supabase = createServerClient();
+  const { count, error } = await supabase
+    .from("mapa_procesal_nodos")
+    .select("id", { count: "exact", head: true })
+    .eq("caso_id", casoId);
+  if (error) throw new Error(`contarNodos: ${error.message}`);
+  return count ?? 0;
+}
 
 // Ownership: los nodos pertenecen a un caso; el caso pertenece a un usuario.
 // Cada función verifica que el caso sea del usuario antes de operar, y todas
@@ -77,6 +92,23 @@ export async function getNodosByCaso(
   return { nodos: (data ?? []) as NodoProcesalDB[], fuero: caso.fuero };
 }
 
+// Lectura de nodos SIN verificar ownership: para callers que YA lo validaron
+// (buildContextoCaso, invocado desde rutas que autenticaron el caso). Mismo
+// patrón que sugerirFueroDelCaso. La query sigue scopeada por caso_id, así que
+// no hay forma de que devuelva nodos de otro caso.
+export async function getNodosDelCaso(
+  casoId: string,
+): Promise<NodoProcesalDB[]> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("mapa_procesal_nodos")
+    .select(COLS)
+    .eq("caso_id", casoId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`getNodosDelCaso: ${error.message}`);
+  return (data ?? []) as NodoProcesalDB[];
+}
+
 export type InicializarResult =
   | { status: "ok"; nodos: NodoProcesalDB[] }
   | { status: "not_owned" }
@@ -115,18 +147,32 @@ export async function inicializarMapa(
   return { status: "ok", nodos: (data ?? []) as NodoProcesalDB[] };
 }
 
-// Crea un nodo hijo (tipo prediccion, estado desbloqueado). Devuelve null si el
-// caso no es del usuario o el padre no existe en ese caso. La posición se
+export type CrearNodoResult =
+  | { status: "ok"; nodo: NodoProcesalDB }
+  // El caso no es del usuario, o el padre no existe en ese caso.
+  | { status: "not_found" }
+  | { status: "tope"; total: number; maximo: number };
+
+// Crea un nodo hijo (tipo prediccion, estado desbloqueado). La posición se
 // siembra debajo del padre, corrida según cuántos hermanos ya tiene (heurística
 // simple; el abogado lo arrastra o usa "Reordenar" si no le gusta).
 export async function crearNodoHijo(
   casoId: string,
   padreId: string,
   usuarioId: string,
-  data: { titulo: string; descripcion?: string | null },
-): Promise<NodoProcesalDB | null> {
-  if (!(await casoEsDelUsuario(casoId, usuarioId))) return null;
+  // `riesgo_alto` lo usa el agente del chat: cuando crea un desenlace adverso
+  // al imputado (prisión preventiva, revocación de libertad) tiene que poder
+  // marcarlo en el mismo insert. La UI del mapa nunca lo manda (crea neutro y
+  // el abogado togglea después), por eso es opcional con default false.
+  data: { titulo: string; descripcion?: string | null; riesgo_alto?: boolean },
+): Promise<CrearNodoResult> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return { status: "not_found" };
   const supabase = createServerClient();
+
+  const total = await contarNodos(casoId);
+  if (total >= MAX_NODOS_POR_CASO) {
+    return { status: "tope", total, maximo: MAX_NODOS_POR_CASO };
+  }
 
   const { data: padre, error: pErr } = await supabase
     .from("mapa_procesal_nodos")
@@ -135,7 +181,7 @@ export async function crearNodoHijo(
     .eq("caso_id", casoId)
     .maybeSingle();
   if (pErr) throw new Error(`crearNodoHijo padre: ${pErr.message}`);
-  if (!padre) return null;
+  if (!padre) return { status: "not_found" };
   const p = padre as { id: string; posicion_x: number; posicion_y: number };
 
   const { count: nHermanos, error: hErr } = await supabase
@@ -154,6 +200,7 @@ export async function crearNodoHijo(
       tipo: "prediccion",
       estado: "desbloqueado",
       padre_id: padreId,
+      riesgo_alto: data.riesgo_alto ?? false,
       posicion_x: p.posicion_x + (nHermanos ?? 0) * NODE_SEP,
       posicion_y: p.posicion_y + RANK_SEP,
     })
@@ -162,22 +209,33 @@ export async function crearNodoHijo(
   if (error || !nodo) {
     throw new Error(`crearNodoHijo: ${error?.message ?? "sin fila"}`);
   }
-  return nodo as NodoProcesalDB;
+  return { status: "ok", nodo: nodo as NodoProcesalDB };
 }
+
+export type CrearRamasResult =
+  // `descartadas` > 0 cuando no entraban todas por el tope: se guardan las
+  // primeras en vez de fallar entera (media simulación es mejor que ninguna).
+  | { status: "ok"; nodos: NodoProcesalDB[]; descartadas: number }
+  | { status: "not_found" }
+  | { status: "tope"; total: number; maximo: number };
 
 // Inserta en batch las ramas propuestas por la simulación IA como hijas del
 // nodo objetivo (tipo prediccion, estado desbloqueado — mismas invariantes que
-// crearNodoHijo). Devuelve null si el caso no es del usuario o el padre no
-// existe. Posiciones: en fila debajo del padre, a continuación de los hermanos
-// existentes ("Reordenar" acomoda la estética).
+// crearNodoHijo). Posiciones: en fila debajo del padre, a continuación de los
+// hermanos existentes ("Reordenar" acomoda la estética).
 export async function crearRamasSimuladas(
   casoId: string,
   padreId: string,
   usuarioId: string,
   ramas: Array<{ titulo: string; descripcion: string; riesgo_alto: boolean }>,
-): Promise<NodoProcesalDB[] | null> {
-  if (!(await casoEsDelUsuario(casoId, usuarioId))) return null;
+): Promise<CrearRamasResult> {
+  if (!(await casoEsDelUsuario(casoId, usuarioId))) return { status: "not_found" };
   const supabase = createServerClient();
+
+  const total = await contarNodos(casoId);
+  const cupo = MAX_NODOS_POR_CASO - total;
+  if (cupo <= 0) return { status: "tope", total, maximo: MAX_NODOS_POR_CASO };
+  const aInsertar = ramas.slice(0, cupo);
 
   const { data: padre, error: pErr } = await supabase
     .from("mapa_procesal_nodos")
@@ -186,7 +244,7 @@ export async function crearRamasSimuladas(
     .eq("caso_id", casoId)
     .maybeSingle();
   if (pErr) throw new Error(`crearRamasSimuladas padre: ${pErr.message}`);
-  if (!padre) return null;
+  if (!padre) return { status: "not_found" };
   const p = padre as { id: string; posicion_x: number; posicion_y: number };
 
   const { count: nHermanos, error: hErr } = await supabase
@@ -196,7 +254,7 @@ export async function crearRamasSimuladas(
     .eq("padre_id", padreId);
   if (hErr) throw new Error(`crearRamasSimuladas hermanos: ${hErr.message}`);
 
-  const filas = ramas.map((r, i) => ({
+  const filas = aInsertar.map((r, i) => ({
     caso_id: casoId,
     titulo: r.titulo,
     descripcion: r.descripcion,
@@ -213,7 +271,11 @@ export async function crearRamasSimuladas(
     .insert(filas)
     .select(COLS);
   if (error) throw new Error(`crearRamasSimuladas: ${error.message}`);
-  return (data ?? []) as NodoProcesalDB[];
+  return {
+    status: "ok",
+    nodos: (data ?? []) as NodoProcesalDB[],
+    descartadas: ramas.length - aInsertar.length,
+  };
 }
 
 // Marca un nodo como ocurrido (tipo real) y desbloquea sus hijos directos

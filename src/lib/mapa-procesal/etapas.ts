@@ -61,3 +61,40 @@ export const ETAPA_ANCHOR_POR_TITULO: Record<string, Etapa> = {
   Ejecución: 6,
   "Ejecución Penal": 6,
 };
+
+// === Normalización de títulos ===
+// Minúsculas, sin acentos (NFD + strip de diacríticos), sin espacios extra.
+// Vive acá, junto a la tabla de anclas, porque es la que define el match del
+// ancla; coherencia.ts la reexporta y la usa además para comparar hermanos,
+// para el esquema canónico y para la detección de desenlaces favorables.
+export function normalizarTitulo(t: string): string {
+  // Descompone (NFD) y descarta los diacríticos combinantes por code point en
+  // vez de por un rango literal en el regex: el rango U+0300–U+036F escrito
+  // como caracteres crudos es exactamente lo que un editor mal configurado
+  // rompe, y ahí la comparación empezaría a fallar en silencio.
+  let sinAcentos = "";
+  for (const ch of t.normalize("NFD")) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp >= 0x0300 && cp <= 0x036f) continue;
+    sinAcentos += ch;
+  }
+  return sinAcentos.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+const ANCHOR_NORMALIZADO: Map<string, Etapa> = new Map(
+  Object.entries(ETAPA_ANCHOR_POR_TITULO).map(([titulo, etapa]) => [
+    normalizarTitulo(titulo),
+    etapa,
+  ]),
+);
+
+// FUENTE ÚNICA de la derivación del ancla de etapa a partir de un título.
+// El lookup es case/acento-insensible a propósito: los títulos los escribe el
+// modelo (o el abogado a mano) y "Ejecución penal" tiene que anclar igual que
+// "Ejecución Penal". Antes había DOS derivaciones — el validador matcheaba
+// normalizado y el layout indexaba el Record en forma exacta —, así que un
+// nodo podía ser ancla para las reglas de coherencia y no serlo para el árbol
+// que ve el modelo (y para el carril que ve el abogado).
+export function etapaAncla(titulo: string): Etapa | undefined {
+  return ANCHOR_NORMALIZADO.get(normalizarTitulo(titulo));
+}

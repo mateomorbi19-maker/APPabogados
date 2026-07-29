@@ -306,6 +306,43 @@ export const recomendacionSchema = z.object({
 });
 export type Recomendacion = z.infer<typeof recomendacionSchema>;
 
+// === Acciones del agente sobre el mapa procesal (chat ↔ mapa) ===
+//
+// Registro de lo que el agente EFECTIVAMENTE hizo (o intentó hacer) sobre el
+// mapa durante un turno del chat. Lo arma el SERVIDOR a partir de las tool
+// calls reales — NO viene en el JSON que emite el modelo. Dos motivos:
+//   (a) el modelo no puede mentir sobre lo que ejecutó, y
+//   (b) el contrato JSON de salida (que es frágil y ya tiene dos modos) no se
+//       toca.
+// Los rechazos por incoherencia también entran acá, con ok=false: son parte
+// del valor de la feature (el abogado tiene que ver qué se frenó y por qué).
+export const accionMapaSchema = z.object({
+  accion: z.enum([
+    "crear",
+    "editar",
+    "eliminar",
+    "marcar_ocurrido",
+    "simular",
+  ]),
+  ok: z.boolean(),
+  // uuid completo del nodo afectado (o del padre, en 'crear' rechazado).
+  nodo_id: z.string().nullable().default(null),
+  titulo: z.string().nullable().default(null),
+  advertencias: z.array(z.string()).default([]),
+  // Solo en rechazos: por qué no se ejecutó, qué regla lo frenó y qué hacer.
+  motivo: z.string().optional(),
+  regla: z.string().optional(),
+  sugerencia: z.string().optional(),
+  // true cuando el rechazo se levanta si el abogado confirma (el modelo debe
+  // volver a llamar la tool con confirmar: true).
+  requiere_confirmacion: z.boolean().optional(),
+  // Solo en 'simular': las ramas que se insertaron.
+  creados: z
+    .array(z.object({ id: z.string(), titulo: z.string() }))
+    .optional(),
+});
+export type AccionMapa = z.infer<typeof accionMapaSchema>;
+
 // Discriminated union por `modo`: 'conversacional' (prosa libre) vs
 // 'analisis' (estructura completa con tesis/fundamento/recomendaciones).
 // El modelo decide qué modo usar según la pregunta del abogado — el
@@ -322,6 +359,10 @@ const respuestaConversacionalSchema = z.object({
   degraded_response: z.boolean().optional(),
   ejecucion_id: z.string().uuid().optional(),
   busquedas: z.array(busquedaSchema).optional(),
+  // Acciones sobre el mapa procesal ejecutadas en este turno. Zod hace strip
+  // de las claves que no declara, así que sin esta línea la UI nunca las vería
+  // aunque el server las persista.
+  acciones: z.array(accionMapaSchema).optional(),
   // Si el parser falló y el server cayó al fallback con texto crudo,
   // este flag aparece true en el panel admin para investigación.
   parser_fallback: z.boolean().optional(),
@@ -339,6 +380,7 @@ const respuestaAnalisisSchema = z.object({
   degraded_response: z.boolean().optional(),
   ejecucion_id: z.string().uuid().optional(),
   busquedas: z.array(busquedaSchema).optional(),
+  acciones: z.array(accionMapaSchema).optional(),
   parser_fallback: z.boolean().optional(),
 });
 

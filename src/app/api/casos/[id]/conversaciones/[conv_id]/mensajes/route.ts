@@ -1,9 +1,14 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
+  accionMapaSchema,
   crearMensajeInputSchema,
   type AdjuntoInput,
 } from "@/lib/schemas";
+import {
+  rechazosConfirmablesDeAcciones,
+  type RechazoConfirmable,
+} from "@/lib/agent/mapa-tools";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { enforceTokenLimit } from "@/lib/auth/enforce-rate";
 import { createServerClient } from "@/lib/supabase/server";
@@ -12,6 +17,7 @@ import { SYSTEM_PROMPT_CONSULTA } from "@/lib/agent/prompts";
 import { parseWithRecovery } from "@/lib/agent/parse";
 import { MODELO_POR_NIVEL } from "@/lib/agent/modelos";
 import {
+  AgentConsultaError,
   runAgentConsulta,
   type AdjuntoModelo,
 } from "@/lib/agent/run-agent-consulta";
@@ -115,6 +121,37 @@ async function prepararAdjuntoParaModelo(
   return null;
 }
 
+// Solo nos interesan las `acciones`; el resto de la respuesta estructurada
+// puede tener cualquier forma (incluido el fallback del parser) sin que eso
+// invalide el registro de rechazos.
+const accionesDeMensajeSchema = z.object({
+  acciones: z.array(accionMapaSchema).default([]),
+});
+
+// Rechazos confirmables que el agente ya le mostró al abogado en su ÚLTIMO
+// turno. Son los únicos que un `confirmar: true` puede levantar: si el registro
+// viniera del turno en curso, el modelo podría auto-confirmarse un borrado en
+// cascada sin que el abogado se enterara nunca.
+async function leerRechazosConfirmablesPrevios(
+  convId: string,
+): Promise<RechazoConfirmable[]> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("mensajes_conversacion")
+    .select("respuesta_estructurada")
+    .eq("conversacion_id", convId)
+    .eq("rol", "agente")
+    .order("creado_en", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  // Best-effort: si la lectura falla, el registro queda vacío y el peor caso es
+  // que el agente tenga que repetirle la advertencia al abogado.
+  if (error || !data?.respuesta_estructurada) return [];
+  const parsed = accionesDeMensajeSchema.safeParse(data.respuesta_estructurada);
+  if (!parsed.success) return [];
+  return [...rechazosConfirmablesDeAcciones(parsed.data.acciones).values()];
+}
+
 type ConversacionLite = { estado: string; caso_id: string };
 
 async function validarConversacionActiva(
@@ -173,7 +210,9 @@ async function validarConversacionActiva(
 //   - El mensaje del usuario se inserta ANTES de llamar al agente.
 //     Queda registro aunque el agente falle.
 //   - Si el agente tira AgentError, persistimos la ejecución con error
-//     y devolvemos 502. NO se inserta mensaje del agente.
+//     y devolvemos 502. Solo se inserta mensaje del agente si el turno
+//     alcanzó a tocar el mapa procesal: ahí el cambio ya está en la DB y
+//     el abogado tiene que verlo en la conversación, no solo en el mapa.
 //   - Si el parseo del JSON falla, ídem.
 //   - El cliente al recibir 502 hace polling al GET /mensajes para
 //     ver si el server alcanzó a crear el mensaje del agente (caso
@@ -287,12 +326,16 @@ export async function POST(
   let mensajesPrevios: Awaited<
     ReturnType<typeof buildContextoConversacion>
   >["mensajesPrevios"];
+  // Las tools de escritura sobre el mapa solo se exponen si el caso ya tiene
+  // mapa: sin nodos no hay nada que modificar y el contexto se lo explica.
+  let mapaHabilitado = false;
   try {
     const built = await buildContextoConversacion(casoId, convId, {
       excluirMensajeId: msgUsuario.id,
     });
     contextoMarkdown = built.contextoMarkdown;
     mensajesPrevios = built.mensajesPrevios;
+    mapaHabilitado = built.mapaInicializado;
   } catch (e) {
     console.error("[POST mensajes] error armando contexto:", e);
     return jsonResponse(
@@ -383,7 +426,12 @@ export async function POST(
     }
   }
 
-  // 4. Llamar al agente con history.
+  // 4. Llamar al agente con history. Si el caso tiene mapa, además le pasamos
+  // los rechazos confirmables del turno anterior (ver el helper): son la única
+  // llave válida para un `confirmar: true`.
+  const rechazosPrevios = mapaHabilitado
+    ? await leerRechazosConfirmablesPrevios(convId)
+    : [];
   const t0 = Date.now();
   let agentResult: Awaited<ReturnType<typeof runAgentConsulta>> | null = null;
   let agentError: AgentError | null = null;
@@ -396,6 +444,14 @@ export async function POST(
       modelId,
       maxTokens,
       mensajesPrevios,
+      // Aislamiento por caso: el agente solo puede tocar el mapa de ESTE caso
+      // y solo si es del usuario autenticado. Ninguna de las dos cosas viene
+      // del modelo — casoId sale de los params de la ruta y usuario_id de la
+      // whitelist.
+      casoId,
+      usuarioId: wl.usuario_id,
+      mapaHabilitado,
+      rechazosConfirmablesPrevios: rechazosPrevios,
     });
   } catch (e) {
     if (e instanceof AgentError) {
@@ -418,38 +474,98 @@ export async function POST(
   // 5a. Si AgentError: persistir ejecución parcial y devolver 502.
   if (agentError) {
     const usage = agentError.partialUsage;
-    await supabase.from("ejecuciones").insert({
-      usuario_id: wl.usuario_id,
-      tipo: "consulta_caso",
-      modelo: modelId,
-      input_tokens: usage.input_tokens,
-      output_tokens: usage.output_tokens,
-      // Costo por-respuesta acumulado en el loop (fix A-3): el tier
-      // long-context se decide por request, no sobre la suma.
-      costo_usd: agentError.partialCostoUsd,
-      latencia_ms,
-      metadata: {
-        caso_id: casoId,
-        conversacion_id: convId,
-        mensaje_usuario_id: msgUsuario.id,
-        nivel,
-        pregunta: contenido,
-        adjuntos,
-        contexto_usado: contextoMarkdown,
-        resultado: null,
-        busquedas: agentError.partialBusquedas,
-        iterations: agentError.partialIterations,
-        cache_creation_input_tokens: usage.cache_creation_input_tokens,
-        cache_read_input_tokens: usage.cache_read_input_tokens,
-        error: agentError.message,
-        error_code: agentError.code,
-      },
-    });
+    // Un turno puede explotar DESPUÉS de haber mutado el mapa: el registro de
+    // lo que se ejecutó se persiste igual, si no queda un cambio real en la DB
+    // sin rastro de quién lo hizo.
+    const accionesParciales =
+      agentError instanceof AgentConsultaError ? agentError.partialAcciones : [];
+    const { data: ejecParcial } = await supabase
+      .from("ejecuciones")
+      .insert({
+        usuario_id: wl.usuario_id,
+        tipo: "consulta_caso",
+        modelo: modelId,
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        // Costo por-respuesta acumulado en el loop (fix A-3): el tier
+        // long-context se decide por request, no sobre la suma.
+        costo_usd: agentError.partialCostoUsd,
+        latencia_ms,
+        metadata: {
+          caso_id: casoId,
+          conversacion_id: convId,
+          mensaje_usuario_id: msgUsuario.id,
+          nivel,
+          pregunta: contenido,
+          adjuntos,
+          contexto_usado: contextoMarkdown,
+          resultado: null,
+          busquedas: agentError.partialBusquedas,
+          acciones: accionesParciales,
+          iterations: agentError.partialIterations,
+          cache_creation_input_tokens: usage.cache_creation_input_tokens,
+          cache_read_input_tokens: usage.cache_read_input_tokens,
+          error: agentError.message,
+          error_code: agentError.code,
+        },
+      })
+      .select("id")
+      .maybeSingle();
+
+    // Si el turno se cortó DESPUÉS de haber mutado el mapa, el chat tiene que
+    // decirlo. Antes esas acciones quedaban solo en ejecuciones.metadata (o
+    // sea, en el panel admin): el abogado leía "hubo un error" mientras dos
+    // nodos ya habían cambiado, sin ninguna traza en la conversación. Se
+    // inserta un mensaje del agente para que la tarjeta de acciones se pinte
+    // igual que en el camino feliz. Cuando no hubo acciones se mantiene el
+    // comportamiento viejo (sin mensaje de agente): un turno fallido y limpio
+    // no necesita ensuciar el historial.
+    let msgAgenteCorte: unknown = null;
+    if (accionesParciales.length > 0) {
+      const ejecutadas = accionesParciales.filter((a) => a.ok).length;
+      const respuestaCorte = {
+        modo: "conversacional" as const,
+        respuesta:
+          `El turno se cortó antes de que pudiera terminar la respuesta: ${mensajeUserParaError(agentError.code)}\n\n` +
+          (ejecutadas > 0
+            ? `Importante: los cambios que ya había aplicado sobre el mapa procesal QUEDARON GUARDADOS (${ejecutadas} ${ejecutadas === 1 ? "cambio" : "cambios"}). Te los listo acá abajo para que los revises.\n\n`
+            : "No alcancé a aplicar ningún cambio sobre el mapa; abajo está el detalle de lo que se intentó.\n\n") +
+          "Reenviame el mensaje y retomo desde este punto.",
+        analisis: null,
+        recomendaciones: null,
+        degraded_response: true,
+        ...(ejecParcial?.id ? { ejecucion_id: ejecParcial.id } : {}),
+        acciones: accionesParciales,
+      };
+      const { data: insertado, error: errCorte } = await supabase
+        .from("mensajes_conversacion")
+        .insert({
+          conversacion_id: convId,
+          rol: "agente",
+          contenido: JSON.stringify(respuestaCorte),
+          adjuntos: [],
+          respuesta_estructurada: respuestaCorte,
+          ...(ejecParcial?.id ? { ejecucion_id: ejecParcial.id } : {}),
+        })
+        .select(
+          "id, conversacion_id, rol, contenido, adjuntos, respuesta_estructurada, ejecucion_id, creado_en",
+        )
+        .maybeSingle();
+      if (errCorte) {
+        console.error("[POST mensajes] no se pudo registrar el corte:", errCorte);
+      }
+      msgAgenteCorte = insertado ?? null;
+    }
+
     return jsonResponse(
       {
         ok: false,
         error: mensajeUserParaError(agentError.code),
         mensaje_usuario: msgUsuario,
+        // Las acciones viajan también en el body para que el cliente las pueda
+        // mostrar sin esperar a recargar la conversación.
+        acciones: accionesParciales,
+        ...(msgAgenteCorte ? { mensaje_agente: msgAgenteCorte } : {}),
         ...(isDev()
           ? {
               error_code: agentError.code,
@@ -505,6 +621,7 @@ export async function POST(
       contexto_usado: contextoMarkdown,
       resultado: parseado.ok ? parseado.resultado : null,
       busquedas: agentResult.busquedas,
+      acciones: agentResult.acciones,
       parseo_intento: parseado.ok ? parseado.parseo_intento : null,
       iterations: agentResult.iterations,
       cache_creation_input_tokens: usage.cache_creation_input_tokens,
@@ -548,12 +665,16 @@ export async function POST(
         degraded_response: agentResult.degraded_response,
         ejecucion_id: ejecInsertada.id,
         busquedas: agentResult.busquedas,
+        // También en el camino de fallback: si el parser falló pero el agente
+        // alcanzó a tocar el mapa, el abogado tiene que ver esos cambios.
+        acciones: agentResult.acciones,
       }
     : {
         ...parseado.resultado,
         degraded_response: agentResult.degraded_response,
         ejecucion_id: ejecInsertada.id,
         busquedas: agentResult.busquedas,
+        acciones: agentResult.acciones,
       };
 
   // 8. Crear mensaje del agente (siempre, incluso en fallback).

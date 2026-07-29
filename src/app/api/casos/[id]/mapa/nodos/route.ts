@@ -36,9 +36,9 @@ export async function POST(
   if (!wl.ok) return jsonResponse({ ok: false, error: wl.message }, wl.status);
 
   const { padre_id, titulo, descripcion } = parsed.data;
-  let nodo;
+  let r;
   try {
-    nodo = await crearNodoHijo(id, padre_id, wl.usuario_id, {
+    r = await crearNodoHijo(id, padre_id, wl.usuario_id, {
       titulo,
       descripcion: descripcion ?? null,
     });
@@ -53,13 +53,22 @@ export async function POST(
       500,
     );
   }
-  if (!nodo) {
+  if (r.status === "not_found") {
     return jsonResponse(
       { ok: false, error: "Caso o nodo padre no encontrado" },
       404,
     );
   }
-  return jsonResponse({ ok: true, nodo }, 201);
+  if (r.status === "tope") {
+    return jsonResponse(
+      {
+        ok: false,
+        error: `El mapa ya tiene ${r.total} nodos y el máximo es ${r.maximo}. Borrá alguna rama descartada antes de agregar más.`,
+      },
+      409,
+    );
+  }
+  return jsonResponse({ ok: true, nodo: r.nodo }, 201);
 }
 
 // === PATCH /api/casos/[id]/mapa/nodos ===

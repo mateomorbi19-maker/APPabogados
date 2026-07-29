@@ -49,7 +49,7 @@ export function ListaMensajes({ casoId, mensajes, pensando = false }: Props) {
           m.rol === "usuario" ? (
             <MensajeUsuario key={m.id} casoId={casoId} mensaje={m} />
           ) : (
-            <MensajeAgente key={m.id} mensaje={m} />
+            <MensajeAgente key={m.id} casoId={casoId} mensaje={m} />
           ),
         )}
         {pensando ? <BurbujaPensando /> : null}

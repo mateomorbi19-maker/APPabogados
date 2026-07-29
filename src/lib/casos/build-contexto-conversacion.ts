@@ -80,11 +80,49 @@ function textoMensajeUsuario(msg: MensajeRow): string {
   return partes.join("\n");
 }
 
+// Resumen en texto de las acciones sobre el mapa de un turno viejo. Sin esto,
+// el agente no recuerda que YA creó ese nodo y lo vuelve a crear en el turno
+// siguiente (o insiste con un cambio que se le rechazó). Va como nota fuera
+// del JSON, y etiquetada como del sistema, para no enseñarle que `acciones`
+// forma parte de su formato de respuesta (no lo es: lo arma el servidor).
+function notaAccionesMapa(fuente: Record<string, unknown>): string {
+  const crudas = fuente.acciones;
+  if (!Array.isArray(crudas) || crudas.length === 0) return "";
+
+  const items: string[] = [];
+  for (const a of crudas) {
+    if (typeof a !== "object" || a === null) continue;
+    const o = a as Record<string, unknown>;
+    const accion = typeof o.accion === "string" ? o.accion : "acción";
+    const titulo = typeof o.titulo === "string" ? o.titulo : "(sin título)";
+    if (o.ok === true) {
+      const creados = Array.isArray(o.creados) ? o.creados.length : 0;
+      items.push(
+        creados > 0
+          ? `${accion} sobre "${titulo}" → OK (${creados} ${creados === 1 ? "rama creada" : "ramas creadas"})`
+          : `${accion} sobre "${titulo}" → OK`,
+      );
+    } else {
+      const motivo = typeof o.motivo === "string" ? o.motivo : "sin motivo";
+      items.push(`${accion} sobre "${titulo}" → RECHAZADA: ${motivo}`);
+    }
+  }
+  if (items.length === 0) return "";
+  return (
+    "\n\n[NOTA DEL SISTEMA — no forma parte de tu formato de respuesta] " +
+    "En ese turno se registraron estas acciones sobre el mapa procesal:\n" +
+    items.map((i) => `  - ${i}`).join("\n")
+  );
+}
+
 function textoMensajeAgente(msg: MensajeRow): string {
   // Solo enviamos el contenido semántico (no búsquedas / ejecucion_id /
-  // degraded_response — son metadata de auditoría, no contenido).
+  // degraded_response — son metadata de auditoría, no contenido). Excepción:
+  // las acciones sobre el mapa SÍ van, porque son cambios de estado del caso
+  // que el agente tiene que recordar haber hecho.
   const fuente = msg.respuesta_estructurada;
   if (fuente && typeof fuente === "object") {
+    const nota = notaAccionesMapa(fuente);
     // Modo conversacional (y fallback del parser): el contenido real
     // vive en `respuesta`; analisis/recomendaciones son null. Antes se
     // reinyectaba {analisis:null,recomendaciones:null} y el modelo
@@ -92,12 +130,14 @@ function textoMensajeAgente(msg: MensajeRow): string {
     // de la auditoría) — encima viendo ejemplos malformados de su
     // propio formato de salida.
     if (typeof fuente.respuesta === "string" && fuente.respuesta.trim()) {
-      return JSON.stringify({
-        modo: "conversacional",
-        respuesta: fuente.respuesta,
-        analisis: null,
-        recomendaciones: null,
-      });
+      return (
+        JSON.stringify({
+          modo: "conversacional",
+          respuesta: fuente.respuesta,
+          analisis: null,
+          recomendaciones: null,
+        }) + nota
+      );
     }
     const obj = {
       modo: "analisis",
@@ -105,7 +145,7 @@ function textoMensajeAgente(msg: MensajeRow): string {
       analisis: fuente.analisis,
       recomendaciones: fuente.recomendaciones,
     };
-    return JSON.stringify(obj);
+    return JSON.stringify(obj) + nota;
   }
   // Fallback: si por alguna razón el respuesta_estructurada está null
   // (mensaje creado defensivamente sin parsear), volvemos al contenido
@@ -121,7 +161,10 @@ export async function buildContextoConversacion(
   const supabase = createServerClient();
 
   // Contexto del caso (markdown + adjuntos históricos del timeline).
-  const caso = await buildContextoCaso(casoId);
+  // incluirMapa: el chat es el único consumidor donde el agente puede LEER y
+  // MODIFICAR el mapa procesal, así que es el único que necesita su estado en
+  // el contexto.
+  const caso = await buildContextoCaso(casoId, { incluirMapa: true });
 
   // Mensajes de la conversación. Si se pasa excluirMensajeId, lo
   // filtramos — sirve para el flujo donde el endpoint INSERTA el

@@ -2,7 +2,7 @@
 // dagre como sembrador inicial + conversión a formato ReactFlow.
 import dagre from "@dagrejs/dagre";
 import type { Edge, Node } from "@xyflow/react";
-import { ETAPA_ANCHOR_POR_TITULO, type Etapa } from "./etapas";
+import { etapaAncla, type Etapa } from "./etapas";
 import type { EstadoNodo, NodoProcesalDB, TipoNodo } from "./types";
 
 // Data que viaja a los componentes custom de nodo/edge.
@@ -191,7 +191,8 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
     hijosPorPadre.set(n.padre_id, arr);
   }
 
-  // Etapa (1-6) por nodo: ancla por título de etapa troncal, o herencia del
+  // Etapa (1-6) por nodo: ancla por título de etapa troncal (vía `etapaAncla`,
+  // la misma derivación que usa el validador de coherencia), o herencia del
   // ancestro más cercano. Memoizado; el guard `enCurso` corta ante un ciclo
   // (imposible por construcción, pero mejor degradar a 1 que colgar el render).
   const porId = new Map(nodos.map((n) => [n.id, n]));
@@ -205,8 +206,7 @@ export function calcularLayout(nodos: NodoProcesalDB[]): {
     const n = porId.get(id);
     const etapa: Etapa = !n
       ? 1
-      : ETAPA_ANCHOR_POR_TITULO[n.titulo] ??
-        (n.padre_id ? resolverEtapa(n.padre_id) : 1);
+      : etapaAncla(n.titulo) ?? (n.padre_id ? resolverEtapa(n.padre_id) : 1);
     enCurso.delete(id);
     etapaPorId.set(id, etapa);
     return etapa;
