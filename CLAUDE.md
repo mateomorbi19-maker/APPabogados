@@ -109,10 +109,72 @@ El agente de chat ([src/lib/agent/run-agent-consulta.ts](src/lib/agent/run-agent
 
 **Deuda técnica:** el loop está duplicado casi verbatim entre `run-agent.ts` y `run-agent-consulta.ts`.
 
+**El chat puede mutar el mapa procesal del caso.** El contexto incluye una sección
+`## Mapa procesal` con el árbol actual y el esquema canónico del fuero, y el agente
+tiene 5 tools de escritura (`mapa_crear_nodo`, `mapa_editar_nodo`, `mapa_eliminar_nodo`,
+`mapa_marcar_ocurrido`, `mapa_simular_ramas`) declaradas en
+[src/lib/agent/mapa-tools.ts](src/lib/agent/mapa-tools.ts). Invariantes:
+
+- **Toda mutación pasa antes por [coherencia.ts](src/lib/mapa-procesal/coherencia.ts)**,
+  un validador puro de 12 reglas (R1–R12) derivadas del briefing del mapa y de
+  `FLUJO_POR_FUERO`. Un rechazo no es una excepción: vuelve como `tool_result` para que
+  el agente se lo explique al abogado y proponga la alternativa correcta.
+- Los rechazos con `requiere_confirmacion` solo se levantan con `confirmar: true`, y
+  eso **solo se acepta si el mismo rechazo ya se emitió en un turno anterior** (se
+  siembra desde las `acciones` persistidas del último mensaje del agente). Sin eso el
+  modelo podría auto-confirmarse y saltear la advertencia.
+- `casoId` y `usuarioId` salen del contexto del servidor, **nunca del input del
+  modelo**: el chat de un caso no puede tocar el mapa de otro.
+- El array `acciones[]` lo arma el servidor desde las tool calls reales (no lo emite el
+  modelo) y se persiste en `mensajes_conversacion.respuesta_estructurada` y en
+  `ejecuciones.metadata`. Se re-inyecta al historial para que el agente no duplique
+  nodos en el turno siguiente.
+- Cap de 8 acciones de mapa por turno, `maxIterations = 20`, y la última iteración sale
+  siempre sin tools para garantizar la síntesis final.
+
+Verificación contra la base real (solo lectura):
+`DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-coherencia-mapa.ts`
+
 Rutas relacionadas del chat:
 - `GET/POST /api/casos/[id]/conversaciones` — lista y crea conversaciones.
 - `GET/PATCH /api/casos/[id]/conversaciones/[conv_id]` — detalle y renombrar.
 - Máximo 1 conversación activa por caso (enforced por partial unique index en DB; la ruta archiva la activa previa antes de crear una nueva).
+
+### Bandeja de entrada — `/api/bandeja/*` (Gmail)
+
+Cliente de correo sobre la Gmail API. **No usa secretos nuevos**: el token sale del
+OAuth de Google que administra Clerk, igual que la Agenda (helper compartido en
+[src/lib/google/token.ts](src/lib/google/token.ts)). Requiere los scopes
+`gmail.modify` y `gmail.send` — ver [SETUP_GOOGLE_BANDEJA_REPOSITORIO.md](SETUP_GOOGLE_BANDEJA_REPOSITORIO.md).
+
+- `GET /api/bandeja/estado` — `{conectado, vinculado, email}`.
+- `GET /api/bandeja/hilos` — lista por buzón (`INBOX|SENT|STARRED|TRASH`) con búsqueda y paginación.
+- `GET|PATCH /api/bandeja/hilos/[id]` — detalle del hilo / flags (leído, destacado, archivar).
+- `POST /api/bandeja/hilos/[id]/papelera` — `threads.trash`. **Nunca hay borrado permanente.**
+- `POST /api/bandeja/mensajes` — enviar o responder (MIME armado a mano en `gmail/parse.ts`).
+- `GET /api/bandeja/adjuntos/[mensaje_id]/[adjunto_id]` — stream del adjunto.
+
+Sin scopes concedidos, las lecturas devuelven datos de ejemplo con `demo: true` y las
+escrituras 409. El HTML de cada correo se sanitiza server-side por allowlist y se
+renderiza en un `<iframe srcDoc>` con CSP propia y sin `allow-scripts`; las imágenes
+remotas se bloquean por defecto (tracking pixels). **La IA no tiene ninguna tool de
+email**: enviar siempre es una acción manual del abogado.
+
+### Repositorio — `/api/repositorio/*` (jurisprudencia y doctrina)
+
+Biblioteca de 345 documentos (fallos y doctrina penal) alojados en una carpeta de
+Google Drive del estudio. El catálogo **no vive en Supabase**: es un módulo generado y
+versionado ([src/lib/repositorio/catalogo.ts](src/lib/repositorio/catalogo.ts)), así que
+la sección funciona sin migraciones y la búsqueda es en memoria. El PDF se streamea
+desde Drive con el token del usuario (scope `drive.readonly`); sin ese scope la app
+ofrece abrir el archivo en Drive.
+
+- `GET /api/repositorio/documentos` — búsqueda + filtros + facetas.
+- `GET /api/repositorio/documentos/[id]/archivo` — stream del PDF (`?descargar=1` para bajarlo).
+- `GET /api/repositorio/estado` — `{conectado, total_documentos}`.
+
+Regenerar el catálogo: `npx tsx scripts/construir-catalogo-repositorio.ts` (lee
+`scripts/data/drive-catalogo.json`).
 
 ### `GET /api/consumo`
 Sin maxDuration custom. Devuelve consumo del mes en curso + historial (top 20 por `ejecutado_en DESC`).
@@ -186,6 +248,13 @@ La RPC `match_documents(query_embedding vector, match_count int DEFAULT 5, filte
 - Distancia coseno (operador `<=>`)
 - Umbral hardcodeado en la función SQL: `WHERE 1 - (embedding <=> query_embedding) > 0.55` (evolución: 0.5 → 0.6 → 0.55; con 0.6 el 50% de búsquedas daban 0 resultados)
 - `LIMIT match_count` — el call site siempre pasa `match_count=5`
+- ⚠️ **El umbral es un parámetro `match_threshold` en el repo pero NO en la DB.** La
+  migración `20260627003911` figura como aplicada en `MIGRATION_LOG.md` y no lo está:
+  PostgREST devolvía `PGRST202` y el error se tragaba como "0 resultados", así que el
+  RAG estuvo devolviendo cero chunks en silencio entre el 2026-06-27 y el 2026-07-29.
+  [match-documents.ts](src/lib/rag/match-documents.ts) ahora reintenta con la firma vieja
+  ante `PGRST202`. **Aplicar la migración en el SQL Editor sigue pendiente** para poder
+  recalibrar el umbral desde el código.
 - El parámetro `filter jsonb` existe en la firma pero **no se usa en el cuerpo** — no hay filtrado por metadata.
 
 En la app ([src/lib/agent/run-agent.ts](src/lib/agent/run-agent.ts)): no hay re-ranking ni filtrado post-RPC. Los docs (ya ordenados y filtrados por Postgres) se serializan crudos como `tool_result` — JSON array de `{content, metadata, similarity}`. Si el RPC devuelve 0 resultados, se inyecta un array vacío y el modelo continúa sin fallback ni señal al usuario.
