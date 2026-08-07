@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdjuntosUploader, type AdjuntoUI } from "@/components/mis-casos/adjuntos-uploader";
+import { DictadoVoz } from "./dictado-voz";
 import {
   NIVELES_MODELO,
   NIVEL_DEFAULT,
@@ -127,10 +128,12 @@ export function InputMensaje({
 }: Props) {
   const [contenido, setContenido] = useState("");
   const [adjuntos, setAdjuntos] = useState<AdjuntoUI[]>([]);
-  // true mientras hay una grabación de nota de voz en curso: bloquea el
-  // envío para que el audio no quede fuera del mensaje (o descartado si
-  // se entregara con un POST en vuelo).
-  const [grabando, setGrabando] = useState(false);
+  // true mientras se está dictando o transcribiendo: bloquea el envío para
+  // que el texto que está por llegar no se pierda al vaciarse el input.
+  const [dictando, setDictando] = useState(false);
+  // Referencia al textarea, para devolverle el foco y dejar el cursor al final
+  // después de insertar lo dictado.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   // null = el usuario todavía no eligió en esta sesión → usar el
   // guardado (o el default). La elección autoritativa viaja per-mensaje.
   const [nivelElegido, setNivelElegido] = useState<NivelModelo | null>(null);
@@ -161,7 +164,27 @@ export function InputMensaje({
   const adjuntosListos = adjuntos.every((a) => a.status === "done");
   const demasiadosAdjuntos = adjuntos.length > ADJUNTOS_MAX;
   const hayAudio = adjuntos.some((a) => a.mime_type.startsWith("audio/"));
-  const formOk = ok && adjuntosListos && !demasiadosAdjuntos && !grabando;
+  const formOk = ok && adjuntosListos && !demasiadosAdjuntos && !dictando;
+
+  // Lo dictado se AGREGA a lo que ya había escrito, no lo pisa: es normal
+  // escribir media idea, dictar el resto, y seguir editando. Se separa con un
+  // espacio salvo que el texto previo termine en salto de línea.
+  const insertarDictado = (texto: string) => {
+    setContenido((prev) => {
+      const base = prev.trimEnd();
+      if (base.length === 0) return texto;
+      const separador = prev.endsWith("\n") ? "\n" : " ";
+      return `${base}${separador}${texto}`.slice(0, PREGUNTA_MAX);
+    });
+    // El foco vuelve al textarea con el cursor al final para poder corregir de
+    // una — Whisper se equivoca con apellidos y números de artículo.
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    });
+  };
 
   const enviar = async () => {
     if (loading || !formOk) return;
@@ -323,12 +346,13 @@ export function InputMensaje({
     // el ChatShell; acá solo va el contenido del input.
     <div className="space-y-2">
       <Textarea
+        ref={textareaRef}
         value={contenido}
         onChange={(e) => setContenido(e.target.value)}
         disabled={loading}
         rows={3}
         maxLength={PREGUNTA_MAX}
-        placeholder="Escribí tu pregunta o lo que pasó. Adjuntá archivos si querés que el agente los analice."
+        placeholder="Escribí o dictá tu pregunta. Adjuntá archivos si querés que el agente los analice."
       />
       <AdjuntosUploader
         casoId={casoId}
@@ -336,18 +360,11 @@ export function InputMensaje({
         onChange={setAdjuntos}
         disabled={loading}
         conAudio
-        onGrabandoChange={setGrabando}
       />
-
-      {grabando ? (
-        <p className="text-xs text-amber-600 dark:text-amber-500">
-          Terminá (o cancelá) la grabación para poder enviar el mensaje.
-        </p>
-      ) : null}
 
       {hayAudio ? (
         <p className="text-xs text-muted-foreground">
-          Los audios se transcriben automáticamente: el agente lee la
+          Los audios adjuntos se transcriben automáticamente: el agente lee la
           transcripción, no escucha el audio.
         </p>
       ) : null}
@@ -374,7 +391,12 @@ export function InputMensaje({
       <div className="flex items-center justify-between gap-2">
         {/* Selector de nivel de modelo. Labels Bajo/Medio/Alto — la UI
             nunca muestra los nombres oficiales de los modelos. */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
+          <DictadoVoz
+            disabled={loading}
+            onTexto={insertarDictado}
+            onOcupadoChange={setDictando}
+          />
           <span className="text-xs text-muted-foreground">Nivel:</span>
           {/* items={NIVEL_LABEL}: sin este mapa, el SelectValue de
               base-ui renderiza el value crudo del enum ("medio") en el

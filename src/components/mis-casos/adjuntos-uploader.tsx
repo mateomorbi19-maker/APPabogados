@@ -45,7 +45,6 @@ import {
   validarAdjunto,
   type MimeTypePermitido,
 } from "@/lib/casos/adjuntos";
-import { GrabadorAudio } from "@/components/mis-casos/chat/grabador-audio";
 
 const DESCRIPCION_MAX = 200;
 
@@ -84,13 +83,15 @@ type Props = {
   value: AdjuntoUI[];
   onChange: (items: AdjuntoUI[]) => void;
   disabled?: boolean;
-  // Habilita audio: suma los mimes de audio al picker y muestra el botón
-  // de grabar nota de voz. Solo el chat lo usa (los audios se transcriben
-  // con Whisper server-side); en eventos del timeline queda apagado.
+  // Habilita audio: suma los mimes de audio al picker. Solo el chat lo usa
+  // (los audios se transcriben con Whisper server-side); en eventos del
+  // timeline queda apagado.
+  //
+  // Es para audios que le MANDARON al abogado (la nota de voz del cliente por
+  // WhatsApp, el audio de una audiencia). El dictado propio ya no pasa por
+  // acá: vive en el input del chat y lo que viaja es el texto, no el archivo
+  // (ver chat/dictado-voz.tsx).
   conAudio?: boolean;
-  // Notifica al padre cuando hay una grabación de audio en curso (para
-  // bloquear el envío del mensaje mientras tanto).
-  onGrabandoChange?: (grabando: boolean) => void;
 };
 
 // accept combina mimes + extensiones: en Windows el browser reporta
@@ -110,7 +111,6 @@ export function AdjuntosUploader({
   onChange,
   disabled = false,
   conAudio = false,
-  onGrabandoChange,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // AbortControllers por tempId para poder cancelar el upload en curso
@@ -339,13 +339,6 @@ export function AdjuntosUploader({
           <Paperclip className="size-3.5" />
           Agregar archivo
         </Button>
-        {conAudio ? (
-          <GrabadorAudio
-            disabled={disabled}
-            onAudioListo={(f) => void subirArchivo(f)}
-            onGrabandoChange={onGrabandoChange}
-          />
-        ) : null}
         <input
           ref={fileInputRef}
           type="file"

@@ -256,6 +256,28 @@ acordada en `nota_jurisprudencia`. El mismo texto se le repite en el
 `tool_result` cuando la búsqueda vuelve vacía, que es el momento en que la
 tentación es máxima.
 
+### `POST /api/transcribir` — dictado por voz del chat
+
+Recibe el audio recién grabado (multipart, campo `audio`, ≤10 MB) y devuelve
+`{ ok: true, texto }`. **No persiste nada**: transcribe en memoria con Whisper y
+descarta el audio. Lo que queda en la conversación es el texto que el abogado
+revisó y envió.
+
+Es distinto del camino de los audios ADJUNTOS (que sí se suben al bucket y los
+transcribe la ruta de mensajes): un adjunto de audio es un documento del caso
+—la nota de voz que le mandó el cliente—, mientras que el dictado es sólo la
+forma en que el abogado escribió el mensaje.
+
+En el UI ([dictado-voz.tsx](src/components/mis-casos/chat/dictado-voz.tsx)) el
+botón "Dictar" vive al lado de Enviar: grabás, y el texto se inserta en el
+textarea para editarlo antes de mandarlo. **No se autoenvía**: Whisper se
+equivoca con apellidos, carátulas y números de artículo, que es justo lo que más
+importa en un mensaje sobre un expediente.
+
+No pasa por `enforceTokenLimit` (Whisper no gasta tokens de Anthropic; se
+factura aparte en OpenAI, ~USD 0,006 el minuto). El control es la whitelist, el
+tope de tamaño y el corte automático de la grabación a los 10 minutos.
+
 ### `GET /api/consumo`
 Sin maxDuration custom. Devuelve consumo del mes en curso + historial (top 20 por `ejecutado_en DESC`).
 
