@@ -44,7 +44,7 @@ export function MensajeBloque({
         type="button"
         onClick={() => onToggle(mensaje.id)}
         aria-expanded={abierto}
-        className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left outline-none transition-colors hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/60"
+        className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left outline-none transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/60"
       >
         <span
           aria-hidden
@@ -114,7 +114,7 @@ export function MensajeBloque({
                     <span
                       key={a.id}
                       title="Los adjuntos de ejemplo no se pueden descargar"
-                      className="inline-flex max-w-full cursor-not-allowed items-center gap-1.5 rounded-lg border border-[var(--el-border-soft)] bg-white/[0.02] px-2.5 py-1.5 text-xs text-[var(--el-text-muted)] opacity-60"
+                      className="inline-flex max-w-full cursor-not-allowed items-center gap-1.5 rounded-lg border border-[var(--el-border-soft)] bg-black/[0.02] dark:bg-white/[0.02] px-2.5 py-1.5 text-xs text-[var(--el-text-muted)] opacity-60"
                     >
                       <Paperclip className="size-3.5 shrink-0" />
                       <span className="truncate">{etiqueta}</span>
@@ -127,7 +127,7 @@ export function MensajeBloque({
                     href={`/api/bandeja/adjuntos/${encodeURIComponent(mensaje.id)}/${encodeURIComponent(a.id)}`}
                     download={a.filename}
                     aria-label={`Descargar ${a.filename}`}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[var(--el-border-soft)] bg-white/[0.02] px-2.5 py-1.5 text-xs text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/50 hover:text-[var(--el-text)]"
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[var(--el-border-soft)] bg-black/[0.02] dark:bg-white/[0.02] px-2.5 py-1.5 text-xs text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/50 hover:text-[var(--el-text)]"
                   >
                     <Download className="size-3.5 shrink-0" />
                     <span className="truncate">{etiqueta}</span>

@@ -167,7 +167,7 @@ export function CuerpoMensaje({ mensaje }: { mensaje: MensajeCompleto }) {
   return (
     <div className="space-y-2">
       {!mostrarTexto && hayRemotas && !verImagenes ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--el-border-soft)] bg-white/[0.02] px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--el-border-soft)] bg-black/[0.02] dark:bg-white/[0.02] px-3 py-2">
           <ImageOff
             aria-hidden
             className="size-3.5 shrink-0 text-[var(--el-text-muted)]"

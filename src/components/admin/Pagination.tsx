@@ -93,7 +93,7 @@ export function Pagination({ page, pageSize, total }: Props) {
             className={cn(
               baseBtn,
               p === page
-                ? "bg-orange-500/20 text-orange-300 border-orange-500/40"
+                ? "bg-orange-500/20 text-orange-800 dark:text-orange-300 border-orange-500/40"
                 : "hover:bg-muted/50",
             )}
             aria-current={p === page ? "page" : undefined}

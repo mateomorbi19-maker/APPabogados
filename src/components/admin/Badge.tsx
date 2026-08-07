@@ -14,11 +14,11 @@ export type BadgeVariant =
   | "admin";
 
 const VARIANTS: Record<BadgeVariant, string> = {
-  ok: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  warning: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  error: "bg-red-500/15 text-red-400 border-red-500/30",
+  ok: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  warning: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  error: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
   neutral: "bg-muted text-muted-foreground border-border",
-  admin: "bg-orange-500/20 text-orange-400 border-orange-500/40",
+  admin: "bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/40",
 };
 
 export function Badge({

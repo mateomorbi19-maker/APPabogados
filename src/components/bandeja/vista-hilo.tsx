@@ -177,7 +177,7 @@ export function VistaHilo({
             className={cn(
               "size-4",
               destacado
-                ? "fill-[#fcd34d] text-[#fcd34d]"
+                ? "fill-amber-600 dark:fill-[#fcd34d] text-amber-700 dark:text-[#fcd34d]"
                 : "text-[var(--el-text-muted)]",
             )}
           />
@@ -228,7 +228,7 @@ export function VistaHilo({
         <div className="flex-1" />
 
         {demo ? (
-          <span className="rounded-4xl border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.12)] px-2 py-0.5 text-[10px] font-medium text-[#fcd34d]">
+          <span className="rounded-4xl border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.12)] px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-[#fcd34d]">
             Mensaje de ejemplo
           </span>
         ) : null}
@@ -247,7 +247,7 @@ export function VistaHilo({
           </div>
         ) : estado.status === "error" ? (
           <div className="mt-4 rounded-xl border border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.08)] p-4">
-            <p className="text-sm font-medium text-[#fca5a5]">
+            <p className="text-sm font-medium text-red-700 dark:text-[#fca5a5]">
               No se pudo abrir el hilo
             </p>
             <p className="mt-1 text-xs leading-relaxed text-[var(--el-text-soft)]">

@@ -122,7 +122,7 @@ function Contenido({
 
       <div className="px-5 py-4 space-y-5">
         {isDegraded ? (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
             Esta respuesta fue parcial: el agente alcanzó el límite de
             búsquedas y sintetizó con la información ya recopilada
             (<code className="font-mono">degraded_response = true</code>).
@@ -253,7 +253,7 @@ function Contenido({
                   <td className="px-2 py-1.5 align-top text-muted-foreground">
                     error
                   </td>
-                  <td className="px-2 py-1.5 font-mono whitespace-pre-wrap text-red-400">
+                  <td className="px-2 py-1.5 font-mono whitespace-pre-wrap text-red-700 dark:text-red-400">
                     {errorMsg}
                   </td>
                 </tr>
@@ -382,7 +382,7 @@ function CopyBtn({
         className="inline-flex items-center justify-center rounded h-5 w-5 text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
       >
         {copiado ? (
-          <Check className="size-3 text-emerald-400" />
+          <Check className="size-3 text-emerald-700 dark:text-emerald-400" />
         ) : (
           <Copy className="size-3" />
         )}
@@ -398,7 +398,7 @@ function CopyBtn({
     >
       {copiado ? (
         <>
-          <Check className="size-3 text-emerald-400" />
+          <Check className="size-3 text-emerald-700 dark:text-emerald-400" />
           Copiado
         </>
       ) : (

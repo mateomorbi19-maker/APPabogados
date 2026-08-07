@@ -318,7 +318,7 @@ export function RepositorioView({
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
                 activo
                   ? "bg-[var(--el-violet)]/20 text-[var(--el-text)]"
-                  : "text-[var(--el-text-soft)] hover:bg-white/5 hover:text-[var(--el-text)]",
+                  : "text-[var(--el-text-soft)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--el-text)]",
               )}
             >
               <Icono className="size-4" aria-hidden />

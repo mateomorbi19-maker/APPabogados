@@ -90,7 +90,7 @@ export function ChipsEmails({
         {valores.map((v) => (
           <span
             key={v}
-            className="inline-flex max-w-full items-center gap-1 rounded-4xl bg-[rgba(139,92,246,0.18)] py-0.5 pr-1 pl-2 text-xs text-[#c4b5fd]"
+            className="inline-flex max-w-full items-center gap-1 rounded-4xl bg-[rgba(139,92,246,0.18)] py-0.5 pr-1 pl-2 text-xs text-violet-800 dark:text-[#c4b5fd]"
           >
             <span className="truncate">{v}</span>
             <button
@@ -98,7 +98,7 @@ export function ChipsEmails({
               disabled={disabled}
               aria-label={`Quitar ${v}`}
               onClick={() => quitar(v)}
-              className="rounded-full p-0.5 transition-colors hover:bg-white/15"
+              className="rounded-full p-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/15"
             >
               <X className="size-3" />
             </button>

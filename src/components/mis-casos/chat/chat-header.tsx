@@ -56,7 +56,7 @@ export function ChatHeader({
           conversaciones={conversaciones}
         />
         {archivada ? (
-          <span className="text-[10px] uppercase tracking-wider rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5">
+          <span className="text-[10px] uppercase tracking-wider rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5">
             Archivada
           </span>
         ) : null}

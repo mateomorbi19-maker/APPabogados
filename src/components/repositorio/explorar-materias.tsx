@@ -75,7 +75,7 @@ export function ExplorarMaterias({
                     <span className="min-w-0 flex-1 truncate text-sm text-[var(--el-text)]">
                       {m.label}
                     </span>
-                    <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] tabular-nums text-[var(--el-text-muted)]">
+                    <span className="shrink-0 rounded-md bg-black/5 dark:bg-white/5 px-1.5 py-0.5 text-[11px] tabular-nums text-[var(--el-text-muted)]">
                       {fmtNumber(m.cantidad)}
                     </span>
                   </button>

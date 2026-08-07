@@ -58,7 +58,7 @@ function Fila({
         "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs transition-colors",
         activo
           ? "bg-[var(--el-violet)]/18 text-[var(--el-text)]"
-          : "text-[var(--el-text-soft)] hover:bg-white/5 hover:text-[var(--el-text)]",
+          : "text-[var(--el-text-soft)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--el-text)]",
       )}
     >
       {dot ? (

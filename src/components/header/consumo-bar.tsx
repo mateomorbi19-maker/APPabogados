@@ -35,7 +35,7 @@ export function ConsumoBar() {
     <div className="hidden md:flex items-center gap-3 min-w-0 w-64">
       <Progress
         value={pct}
-        className="flex-1 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-[rgba(255,255,255,0.14)] [&_[data-slot=progress-indicator]]:bg-[var(--el-violet)]"
+        className="flex-1 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-[rgba(18,18,26,0.12)] dark:[&_[data-slot=progress-track]]:bg-[rgba(255,255,255,0.14)] [&_[data-slot=progress-indicator]]:bg-[var(--el-violet)]"
       />
       <span className="font-display text-xs text-[var(--el-text-soft)] whitespace-nowrap">
         {fmtNumber(tokens_usados_mes)}/{fmtNumber(limite_tokens_mensual)}

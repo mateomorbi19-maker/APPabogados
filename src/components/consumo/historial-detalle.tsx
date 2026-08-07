@@ -169,8 +169,8 @@ function CuerpoAnalizarCaso({ meta }: { meta: EjecucionMetadata }) {
       ) : !tieneResultado ? (
         <Card className="p-4 border-amber-500/40 bg-amber-500/5">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-500" />
-            <p className="text-sm text-amber-200">
+            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" />
+            <p className="text-sm text-amber-800 dark:text-amber-200">
               Resultado no disponible. La ejecución no llegó a generar
               estrategias.
             </p>
@@ -296,8 +296,8 @@ function CuerpoPreAnalisis({ meta }: { meta: EjecucionMetadata }) {
       ) : !tieneResultado ? (
         <Card className="p-4 border-amber-500/40 bg-amber-500/5">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-500" />
-            <p className="text-sm text-amber-200">Resultado no disponible.</p>
+            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" />
+            <p className="text-sm text-amber-800 dark:text-amber-200">Resultado no disponible.</p>
           </div>
         </Card>
       ) : (
@@ -311,9 +311,9 @@ function ResultadoMalformado({ raw }: { raw: unknown }) {
   return (
     <Card className="p-4 border-amber-500/40 bg-amber-500/5">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-500" />
+        <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" />
         <div className="space-y-2 min-w-0 flex-1">
-          <p className="text-sm text-amber-200 font-medium">
+          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
             Resultado en formato inesperado
           </p>
           <pre className="text-xs overflow-x-auto bg-background/50 p-2 rounded border border-border max-h-64">

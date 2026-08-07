@@ -84,7 +84,7 @@ export function ListaHilos({
     return (
       <div className="flex-1 overflow-y-auto p-4">
         <div className="rounded-xl border border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.08)] p-4">
-          <p className="text-sm font-medium text-[#fca5a5]">
+          <p className="text-sm font-medium text-red-700 dark:text-[#fca5a5]">
             No se pudieron cargar los mensajes
           </p>
           <p className="mt-1 text-xs leading-relaxed text-[var(--el-text-soft)]">

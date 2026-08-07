@@ -84,7 +84,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
             <div className="min-w-0">
               <p className="text-sm font-medium">
                 Simulador de audiencias
-                <span className="ml-2 text-[10px] uppercase tracking-wider rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 align-middle">
+                <span className="ml-2 text-[10px] uppercase tracking-wider rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 align-middle">
                   Beta
                 </span>
               </p>

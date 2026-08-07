@@ -353,7 +353,7 @@ export function AgendaView({ casos }: Props) {
             Agenda
           </h1>
           {googleConnected ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
               <CalendarCheck2 className="size-3" /> Sincronizado
             </span>
           ) : null}

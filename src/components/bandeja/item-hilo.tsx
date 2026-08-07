@@ -51,7 +51,7 @@ export function ItemHilo({
           "focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/60 focus-visible:ring-inset",
           seleccionado
             ? "border-[var(--el-violet)] bg-[rgba(139,92,246,0.12)]"
-            : "border-transparent hover:bg-white/[0.04]",
+            : "border-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.04]",
         )}
       >
         {/* Punto de no leído: columna fija para que los asuntos queden alineados */}
@@ -110,7 +110,7 @@ export function ItemHilo({
           </p>
 
           {demo ? (
-            <span className="mt-1.5 inline-flex items-center rounded-4xl border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.12)] px-1.5 py-px text-[10px] font-medium text-[#fcd34d]">
+            <span className="mt-1.5 inline-flex items-center rounded-4xl border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.12)] px-1.5 py-px text-[10px] font-medium text-amber-700 dark:text-[#fcd34d]">
               Ejemplo
             </span>
           ) : null}
@@ -130,7 +130,7 @@ export function ItemHilo({
             "flex items-center justify-center",
             "focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/60",
             puedeModificar
-              ? "hover:bg-white/10"
+              ? "hover:bg-black/10 dark:hover:bg-white/10"
               : "cursor-not-allowed opacity-40",
           )}
         >
@@ -138,7 +138,7 @@ export function ItemHilo({
             className={cn(
               "size-3.5",
               hilo.destacado
-                ? "fill-[#fcd34d] text-[#fcd34d]"
+                ? "fill-amber-600 dark:fill-[#fcd34d] text-amber-700 dark:text-[#fcd34d]"
                 : "text-[var(--el-text-muted)]",
             )}
           />

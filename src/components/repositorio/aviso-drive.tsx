@@ -48,8 +48,8 @@ export function AvisoDrive({ error, motivo, viewUrl, onReintentar }: Props) {
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-xl border border-[rgba(251,191,36,0.28)] bg-[rgba(251,191,36,0.06)] px-6 py-12 text-center">
-      <Icono className="size-8 text-[#fcd34d]" aria-hidden />
-      <h2 className="mt-3 font-display text-base font-semibold text-[#fde68a]">
+      <Icono className="size-8 text-amber-700 dark:text-[#fcd34d]" aria-hidden />
+      <h2 className="mt-3 font-display text-base font-semibold text-amber-800 dark:text-[#fde68a]">
         No se puede abrir el PDF acá adentro
       </h2>
       <p className="mt-1.5 max-w-md text-sm leading-relaxed text-[var(--el-text-soft)]">
@@ -99,9 +99,9 @@ export function AvisoDrive({ error, motivo, viewUrl, onReintentar }: Props) {
 export function BannerDrive({ vinculado }: { vinculado: boolean }) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-[rgba(251,191,36,0.28)] bg-[rgba(251,191,36,0.07)] px-4 py-3 md:flex-row md:items-center">
-      <ShieldAlert className="size-5 shrink-0 text-[#fcd34d]" aria-hidden />
+      <ShieldAlert className="size-5 shrink-0 text-amber-700 dark:text-[#fcd34d]" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="font-display text-sm font-semibold text-[#fde68a]">
+        <p className="font-display text-sm font-semibold text-amber-800 dark:text-[#fde68a]">
           Podés explorar toda la biblioteca, pero no abrir los PDF acá adentro
         </p>
         <p className="mt-0.5 text-xs leading-relaxed text-[var(--el-text-soft)]">

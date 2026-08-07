@@ -30,9 +30,9 @@ export type EventoProximo = {
 // badges de tipo de evento de la agenda. Clases literales completas porque
 // Tailwind v4 escanea strings (no construye `bg-${x}` en runtime).
 const ROL_BADGE: Record<string, string> = {
-  defensor: "bg-[rgba(59,130,246,0.22)] text-[#A9CDFF] border-transparent",
-  querellante: "bg-[rgba(245,158,11,0.22)] text-[#FFE0A3] border-transparent",
-  ambos: "bg-[rgba(139,92,246,0.22)] text-[#CDBEFF] border-transparent",
+  defensor: "bg-[rgba(59,130,246,0.22)] text-blue-800 dark:text-[#A9CDFF] border-transparent",
+  querellante: "bg-[rgba(245,158,11,0.22)] text-amber-800 dark:text-[#FFE0A3] border-transparent",
+  ambos: "bg-[rgba(139,92,246,0.22)] text-violet-800 dark:text-[#CDBEFF] border-transparent",
 };
 
 function capitalizar(s: string): string {
@@ -44,7 +44,7 @@ function RolBadge({ rol }: { rol: string }) {
     <span
       className={cn(
         "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
-        ROL_BADGE[rol] ?? "bg-zinc-500/10 text-zinc-300 border-zinc-500/20",
+        ROL_BADGE[rol] ?? "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
       )}
     >
       {capitalizar(rol)}
@@ -72,7 +72,7 @@ export function InicioDashboard({
     <div className="space-y-8">
       {/* 1. Saludo */}
       <div>
-        <h1 className="font-display text-[25px] font-semibold text-[#FAFAFC]">
+        <h1 className="font-display text-[25px] font-semibold text-[var(--el-text)]">
           Hola, {nombre}
         </h1>
         <p className="mt-1 text-[var(--el-text-soft)]">¿Qué querés hacer hoy?</p>
@@ -185,7 +185,7 @@ export function InicioDashboard({
               <li key={e.id}>
                 <Link
                   href="/dashboard/agenda"
-                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5"
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-[var(--el-text)]">

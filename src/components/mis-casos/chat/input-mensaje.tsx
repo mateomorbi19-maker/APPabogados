@@ -340,7 +340,7 @@ export function InputMensaje({
       />
 
       {grabando ? (
-        <p className="text-xs text-amber-500">
+        <p className="text-xs text-amber-600 dark:text-amber-500">
           Terminá (o cancelá) la grabación para poder enviar el mensaje.
         </p>
       ) : null}
@@ -353,13 +353,13 @@ export function InputMensaje({
       ) : null}
 
       {!adjuntosListos ? (
-        <p className="text-xs text-amber-500">
+        <p className="text-xs text-amber-600 dark:text-amber-500">
           Esperá a que los archivos terminen de subir (o quitá los que fallaron) para enviar.
         </p>
       ) : null}
 
       {demasiadosAdjuntos ? (
-        <p className="text-xs text-amber-500">
+        <p className="text-xs text-amber-600 dark:text-amber-500">
           Máximo {ADJUNTOS_MAX} adjuntos por mensaje. Quitá{" "}
           {adjuntos.length - ADJUNTOS_MAX} para poder enviar.
         </p>

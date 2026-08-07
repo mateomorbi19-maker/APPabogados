@@ -54,12 +54,115 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ===========================================================================
+   TEMA — dos paletas.
+
+   `:root` es el tema CLARO y `.dark` el OSCURO. `<html>` lleva la clase `.dark`
+   salvo que el abogado elija "Sistema" y su sistema operativo esté en claro
+   (ver src/components/tema/). El default sigue siendo oscuro: la app se diseñó
+   así y es lo que se ve al entrar por primera vez.
+
+   Todo lo que sea color de superficie, borde o texto se consume por TOKEN
+   (`var(--el-*)` o las vars de shadcn), nunca por un literal de la paleta de
+   Tailwind. Esa disciplina es lo que hace que agregar el tema claro haya sido
+   definir esta segunda paleta y no repintar 30 componentes.
+
+   Excepción deliberada: el Mapa procesal y el Simulador de sala se fuerzan
+   SIEMPRE en oscuro (montan su propio `.dark`, ver los layouts de esas rutas).
+   Son vistas inmersivas cuyo tratamiento visual —orbes con glow, vidrio,
+   escenario— está construido sobre un fondo negro; en claro no se degradan,
+   se rompen.
+   =========================================================================== */
+
+/* --- TEMA CLARO --- */
+:root {
+  --background: #ffffff;
+  --foreground: #12121a;
+  --card: #ffffff;
+  --card-foreground: #12121a;
+  --popover: #ffffff;
+  --popover-foreground: #12121a;
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f2f6;
+  --secondary-foreground: #12121a;
+  --muted: #f1f2f6;
+  --muted-foreground: #5c5c6b;
+  --accent: #f1f2f6;
+  --accent-foreground: #12121a;
+  --destructive: #dc2626;
+  --border: #e3e4ea;
+  --input: #e3e4ea;
+  --ring: #7c3aed;
+  --chart-1: #7c3aed;
+  --chart-2: #2563eb;
+  --chart-3: #16a34a;
+  --chart-4: #ca8a04;
+  --chart-5: #dc2626;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #12121a;
+  --sidebar-primary: #7c3aed;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f2f6;
+  --sidebar-accent-foreground: #12121a;
+  --sidebar-border: #e3e4ea;
+  --sidebar-ring: #7c3aed;
+
+  /* Jerarquía de 3 superficies, espejo de la oscura: el canvas es el tono más
+     apagado y las tarjetas van en blanco, para que la elevación se lea igual
+     que en oscuro (donde el canvas es el más negro y las tarjetas aclaran). */
+  --el-canvas: #f4f5f8;
+  --el-surface-side: #ffffff;
+  --el-surface-card: #ffffff;
+  --el-border: rgba(18, 18, 26, 0.13);
+  --el-border-soft: rgba(18, 18, 26, 0.09);
+  --el-shadow-card:
+    0 1px 2px rgba(18, 18, 26, 0.05), 0 2px 8px rgba(18, 18, 26, 0.06);
+  --el-text: #12121a;
+  --el-text-soft: #4d4d5c;
+  --el-text-muted: #6c6c7b;
+  --el-violet: #7c3aed;
+  /* En oscuro el "light" es más claro que el base para destacar sobre el fondo;
+     en claro tiene que ir al revés, o el link queda ilegible sobre blanco. */
+  --el-violet-light: #6d28d9;
+  --el-cta: #6d43f5;
+
+  --el-glass: rgba(255, 255, 255, 0.82);
+  --el-glass-border: rgba(18, 18, 26, 0.1);
+  --el-glass-border-hover: rgba(124, 58, 237, 0.4);
+
+  /* Estados del mapa. El mapa se fuerza en oscuro, pero estos tokens también
+     los usan la línea de tiempo y las tarjetas del caso, que sí cambian. */
+  --el-estado-ejecutada: #059669;
+  --el-estado-posible: #2563eb;
+  --el-estado-decision: #b45309;
+  --el-estado-riesgo: #dc2626;
+  --el-estado-ejecutada-icon: #047857;
+  --el-estado-ejecutada-label: #047857;
+  --el-estado-posible-icon: #1d4ed8;
+  --el-estado-posible-label: #1d4ed8;
+  --el-estado-decision-icon: #b45309;
+  --el-estado-decision-label: #92400e;
+  --el-estado-riesgo-icon: #b91c1c;
+  --el-estado-riesgo-label: #b91c1c;
+
+  /* Roles del simulador: la sala se fuerza en oscuro, así que estos valores
+     sólo aparecen en leyendas y transcripts fuera de la sala. */
+  --el-sala-juez: #b45309;
+  --el-sala-secretario: #475569;
+  --el-sala-fiscal: #dc2626;
+  --el-sala-defensa: #6d28d9;
+  --el-sala-imputado: #0f766e;
+  --el-sala-querellante: #be185d;
+  --el-sala-testigo: #1d4ed8;
+  --el-sala-perito: #0e7490;
+}
+
 /*
-  Dark-only theme. `<html>` siempre lleva la clase `.dark` (ver src/app/layout.tsx),
-  así que estos son los únicos valores que aplican. Los valores de `:root` son fallback.
+  --- TEMA OSCURO (el default de la app) ---
   Paleta: base #0a0e17 (del sistema legacy), acento violeta #8b5cf6.
 */
-:root,
 .dark {
   --background: #0a0e17;
   --foreground: #e5e7eb;
@@ -161,11 +264,15 @@
   }
   html {
     @apply font-sans;
-    /* Le dice al browser que use paleta dark para los popups y controles
-       nativos (opciones de <select>, calendario de <input type="date">,
-       scrollbars, color picker, etc). Sin esto los popups quedan ilegibles
-       (texto claro sobre fondo blanco) — bug detectado en producción tras
-       PR2 al desplegar el select de categoría del evento. */
+    /* Le dice al browser qué paleta usar para los popups y controles nativos
+       (opciones de <select>, calendario de <input type="date">, scrollbars,
+       color picker, etc). Sin esto los popups quedan ilegibles — bug detectado
+       en producción tras PR2 al desplegar el select de categoría del evento.
+       El script anti-flash de layout.tsx también lo setea inline para que el
+       primer paint ya salga con la paleta correcta. */
+    color-scheme: light;
+  }
+  html.dark {
     color-scheme: dark;
   }
   /* Items del popup del <select>. color-scheme: dark de arriba ya da

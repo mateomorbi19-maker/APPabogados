@@ -138,7 +138,7 @@ export function TimelineProcesal({ casoId, eventos, setEventos }: Props) {
 
 function bulletClassesPorEvento(evento: EventoCaso): string {
   if (evento.tipo === "sistema") return "bg-muted-foreground/40";
-  return evento.estado === "sucedido" ? "bg-emerald-500" : "bg-amber-400";
+  return evento.estado === "sucedido" ? "bg-emerald-500" : "bg-amber-500 dark:bg-amber-400";
 }
 
 function bordeIzqClassesPorEvento(evento: EventoCaso): string {
@@ -211,7 +211,7 @@ function EventoItem({
                 · {fmtFecha(evento.ocurrido_en)}
               </span>
               {evento.estado === "pendiente" ? (
-                <span className="text-[10px] uppercase tracking-wider text-amber-500">
+                <span className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-500">
                   · pendiente
                 </span>
               ) : null}

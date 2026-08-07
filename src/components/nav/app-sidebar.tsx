@@ -97,14 +97,14 @@ export function AppSidebar({
               className={cn(
                 "flex items-center gap-3 rounded-[9px] px-3 py-2 text-sm transition-colors",
                 activo
-                  ? "bg-[rgba(139,92,246,0.22)] font-medium text-[#CDBEFF]"
-                  : "text-[var(--el-text-soft)] hover:bg-white/5 hover:text-[var(--el-text)]",
+                  ? "bg-[rgba(139,92,246,0.22)] font-medium text-violet-800 dark:text-[#CDBEFF]"
+                  : "text-[var(--el-text-soft)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--el-text)]",
               )}
             >
               <Icon
                 className={cn(
                   "size-[18px] shrink-0",
-                  !activo && "text-[#9494A2]",
+                  !activo && "text-[var(--el-text-muted)]",
                 )}
               />
               {item.label}

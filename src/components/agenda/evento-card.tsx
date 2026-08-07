@@ -121,7 +121,7 @@ export function EventoCard({
           ) : null}
           {evento.google_calendar_event_id ? (
             <CalendarCheck2
-              className="size-[13px] text-emerald-400"
+              className="size-[13px] text-emerald-700 dark:text-emerald-400"
               aria-label="Sincronizado con Google Calendar"
             />
           ) : null}

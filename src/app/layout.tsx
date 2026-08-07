@@ -3,6 +3,8 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/themes";
 import { esES } from "@clerk/localizations";
+import { TemaProvider } from "@/components/tema/tema-provider";
+import { SCRIPT_ANTI_FLASH } from "@/components/tema/tema";
 import "./globals.css";
 
 // Stack del proyecto (rediseño jun 2026):
@@ -56,12 +58,23 @@ export default function RootLayout({
         },
       }}
     >
+      {/* `dark` en el HTML del servidor porque oscuro es el default de la app.
+          El script de abajo lo saca antes del primer paint si el abogado eligió
+          "Sistema" y su sistema está en claro. `suppressHydrationWarning` es
+          necesario justamente por eso: el className del <html> que ve React al
+          hidratar puede no ser el que renderizó el servidor. */}
       <html
         lang="es"
+        suppressHydrationWarning
         className={`dark ${inter.variable} ${display.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col bg-background text-foreground">
-          {children}
+          <script
+            // Primer nodo del body: corre sincrónicamente antes de que el
+            // browser pinte nada del contenido.
+            dangerouslySetInnerHTML={{ __html: SCRIPT_ANTI_FLASH }}
+          />
+          <TemaProvider>{children}</TemaProvider>
         </body>
       </html>
     </ClerkProvider>

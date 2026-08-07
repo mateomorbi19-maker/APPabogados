@@ -99,16 +99,16 @@ function AccionItem({ accion }: { accion: AccionMapa }) {
     >
       <div className="flex items-start gap-1.5">
         {accion.ok ? (
-          <Check className="size-3.5 shrink-0 mt-0.5 text-emerald-400" />
+          <Check className="size-3.5 shrink-0 mt-0.5 text-emerald-700 dark:text-emerald-400" />
         ) : (
-          <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-amber-400" />
+          <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
         )}
         <div className="min-w-0 flex-1">
           <p className="text-xs">
             <span
               className={cn(
                 "font-medium",
-                accion.ok ? "text-emerald-300" : "text-amber-300",
+                accion.ok ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300",
               )}
             >
               {accion.ok
@@ -142,7 +142,7 @@ function AccionItem({ accion }: { accion: AccionMapa }) {
       ) : null}
 
       {!accion.ok && accion.sugerencia ? (
-        <p className="text-[11px] text-amber-200/80 italic pl-5 break-words">
+        <p className="text-[11px] text-amber-800/90 dark:text-amber-200/80 italic pl-5 break-words">
           {accion.sugerencia}
         </p>
       ) : null}

@@ -246,7 +246,7 @@ export function AgregarEventoSheet({
           </div>
 
           {!adjuntosListos ? (
-            <p className="text-xs text-amber-500">
+            <p className="text-xs text-amber-600 dark:text-amber-500">
               Esperá a que los archivos terminen de subir (o quitá los que fallaron) para guardar.
             </p>
           ) : null}

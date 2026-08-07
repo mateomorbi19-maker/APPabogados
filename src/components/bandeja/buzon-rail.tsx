@@ -37,8 +37,8 @@ export function BuzonRail({ activo, onChange }: Props) {
             className={cn(
               "inline-flex shrink-0 items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-xs transition-colors",
               esActivo
-                ? "bg-[rgba(139,92,246,0.22)] font-medium text-[#CDBEFF]"
-                : "text-[var(--el-text-soft)] hover:bg-white/5 hover:text-[var(--el-text)]",
+                ? "bg-[rgba(139,92,246,0.22)] font-medium text-violet-800 dark:text-[#CDBEFF]"
+                : "text-[var(--el-text-soft)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--el-text)]",
             )}
           >
             <Icon className="size-3.5 shrink-0" />

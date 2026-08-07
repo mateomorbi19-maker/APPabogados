@@ -20,9 +20,9 @@ export function BannerConexion({ estado }: Props) {
     return (
       <div className="border-b border-[rgba(251,191,36,0.28)] bg-[rgba(251,191,36,0.08)]">
         <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4 md:px-6">
-          <MailWarning className="size-5 shrink-0 text-[#fcd34d]" />
+          <MailWarning className="size-5 shrink-0 text-amber-700 dark:text-[#fcd34d]" />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-sm font-semibold text-[#fde68a]">
+            <p className="font-display text-sm font-semibold text-amber-800 dark:text-[#fde68a]">
               La conexión con Gmail todavía no está habilitada
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-[var(--el-text-soft)]">
@@ -46,8 +46,8 @@ export function BannerConexion({ estado }: Props) {
         {/* Segunda línea, deliberadamente redundante: nadie tiene que poder
             confundir un mail de ejemplo con uno real. */}
         <div className="flex items-center gap-2 border-t border-[rgba(251,191,36,0.2)] bg-[rgba(251,191,36,0.06)] px-4 py-1.5 md:px-6">
-          <AlertTriangle className="size-3.5 shrink-0 text-[#fcd34d]" />
-          <p className="text-[11px] leading-tight text-[#fcd34d]">
+          <AlertTriangle className="size-3.5 shrink-0 text-amber-700 dark:text-[#fcd34d]" />
+          <p className="text-[11px] leading-tight text-amber-700 dark:text-[#fcd34d]">
             Todo lo que se ve abajo son <strong>datos de ejemplo</strong>: ningún
             mensaje, remitente ni expediente es real.
           </p>
@@ -59,7 +59,7 @@ export function BannerConexion({ estado }: Props) {
   if (!estado.puede_enviar) {
     return (
       <div className="flex items-center gap-3 border-b border-[rgba(96,165,250,0.28)] bg-[rgba(96,165,250,0.08)] px-4 py-2.5 md:px-6">
-        <ShieldAlert className="size-4 shrink-0 text-[#93c5fd]" />
+        <ShieldAlert className="size-4 shrink-0 text-blue-700 dark:text-[#93c5fd]" />
         <p className="min-w-0 flex-1 text-xs leading-relaxed text-[var(--el-text-soft)]">
           Estás leyendo tu correo real, pero falta el permiso para{" "}
           <strong className="text-[var(--el-text)]">enviar</strong>. Volvé a

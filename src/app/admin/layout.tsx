@@ -20,7 +20,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-orange-500/30 bg-orange-950/10 sticky top-0 z-30 backdrop-blur">
+      <header className="border-b border-orange-500/30 bg-orange-50 dark:bg-orange-950/10 sticky top-0 z-30 backdrop-blur">
         <div className="container max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
           <Link
             href="/admin"
