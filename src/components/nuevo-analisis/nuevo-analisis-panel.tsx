@@ -35,6 +35,11 @@ type FormCtx = {
   data: PreAnalisisOutput;
   respuestas: Record<string, RespuestaValor>;
   rol: Rol;
+  // Autorización del abogado para que el agente use el Repositorio interno en
+  // ESTA corrida. Vive en el contexto del formulario (y no en un estado suelto)
+  // para que sobreviva a "Volver" y al reintento tras un error, igual que las
+  // respuestas.
+  usarRepositorio: boolean;
 };
 
 type ErrorAnalisisTipo =
@@ -253,6 +258,10 @@ export function NuevoAnalisisPanel() {
           data,
           respuestas: inicializarRespuestas(data.preguntas),
           rol,
+          // Viene marcado: es lo que el estudio quiere por defecto. Sigue
+          // siendo una autorización porque está a la vista y se puede sacar
+          // antes de disparar el análisis.
+          usarRepositorio: true,
         },
       });
     } catch (e) {
@@ -287,7 +296,12 @@ export function NuevoAnalisisPanel() {
       const res = await fetch("/api/analizar-caso", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ caso, rol: ctx.rol, contexto }),
+        body: JSON.stringify({
+          caso,
+          rol: ctx.rol,
+          contexto,
+          usar_repositorio: ctx.usarRepositorio,
+        }),
         signal: controller.signal,
       });
       const json = (await res.json().catch(() => null)) as unknown;
@@ -432,6 +446,14 @@ export function NuevoAnalisisPanel() {
             )
           }
           rol={ctx.rol}
+          usarRepositorio={ctx.usarRepositorio}
+          onUsarRepositorioChange={(v) =>
+            setFase((prev) =>
+              prev.kind === "form"
+                ? { ...prev, ctx: { ...prev.ctx, usarRepositorio: v } }
+                : prev,
+            )
+          }
           onVolver={() =>
             setFase({ kind: "input", caso: fase.caso, rol: ctx.rol })
           }
@@ -479,6 +501,14 @@ export function NuevoAnalisisPanel() {
             )
           }
           rol={fase.ctx.rol}
+          usarRepositorio={fase.ctx.usarRepositorio}
+          onUsarRepositorioChange={(v) =>
+            setFase((prev) =>
+              prev.kind === "error-analisis"
+                ? { ...prev, ctx: { ...prev.ctx, usarRepositorio: v } }
+                : prev,
+            )
+          }
           onVolver={() =>
             setFase({ kind: "input", caso: fase.caso, rol: fase.ctx.rol })
           }

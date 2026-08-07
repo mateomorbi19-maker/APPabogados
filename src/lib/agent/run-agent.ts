@@ -5,6 +5,12 @@ import {
   buscarDocumentosTool,
   BUSCAR_DOCUMENTOS_TOOL_NAME,
 } from "@/lib/agent/tools";
+import {
+  ejecutarToolRepositorio,
+  esToolDeRepositorio,
+  repositorioTools,
+  type ConsultaRepositorio,
+} from "@/lib/agent/repositorio-tools";
 import { calcularCosto } from "@/lib/agent/pricing";
 import { embedQuery } from "@/lib/rag/embed";
 import { buscarDocumentos } from "@/lib/rag/match-documents";
@@ -32,6 +38,12 @@ export type RunAgentInput = {
   userPrompt: string;
   systemPrompt: string;
   maxIterations?: number;
+  // Autorización del abogado para que el agente consulte el Repositorio interno
+  // del estudio (jurisprudencia y doctrina). Va apagado por defecto a
+  // propósito: es material privado del estudio y quién lo usa para fundar una
+  // estrategia es una decisión del abogado, no del sistema. Sin esto las tools
+  // del repositorio ni siquiera se le declaran al modelo.
+  usarRepositorio?: boolean;
 };
 
 export type RunAgentUsage = {
@@ -76,6 +88,10 @@ export type RunAgentResult = {
   // True si hubo búsquedas pero NINGUNA recuperó chunks (cero grounding total).
   // Opcional por el mismo motivo que chunks_recuperados.
   sin_grounding?: boolean;
+  // Consultas al Repositorio interno (jurisprudencia y doctrina). Vacío cuando
+  // el abogado no autorizó su uso. Se persiste en metadata para poder medir si
+  // el agente encuentra precedentes o busca al vacío.
+  consultas_repositorio?: ConsultaRepositorio[];
 };
 
 // Códigos estables para distinguir tipos de fallo del loop. El message es
@@ -119,6 +135,14 @@ export class AgentError extends Error {
 // futuro vemos que se sigue alcanzando seguido, evaluamos antes de
 // volver a subirlo: el problema podría ser de prompt o de corpus.
 const HARD_CAP_BUSQUEDAS = 10;
+
+// Tope de operaciones sobre el Repositorio interno (búsquedas + lecturas) por
+// ejecución. Es más chico que el del RAG normativo a propósito: la
+// jurisprudencia entra al final del razonamiento, para respaldar una hipótesis
+// ya construida, y seis consultas cubren de sobra las tres estrategias por rol.
+// Un cap alto invitaría al modelo a "pescar" precedentes, que es exactamente lo
+// que la regla de orden del system prompt busca evitar.
+const HARD_CAP_REPOSITORIO = 6;
 
 // Largo del preview de `contenido` que guardamos por chunk en
 // chunks_recuperados. El texto que ve el modelo en el tool_result NO se trunca;
@@ -173,11 +197,14 @@ export async function runAgent(
   input: RunAgentInput,
 ): Promise<RunAgentResult> {
   const { userPrompt, systemPrompt } = input;
-  // Margen sobre HARD_CAP_BUSQUEDAS=10: si el modelo hace 1 búsqueda por
-  // iteración, con maxIterations=cap saldríamos del while justo cuando
-  // toca el cap, sin oportunidad de correr la "iteración final sin tools"
-  // que garantiza síntesis. Con +2 de margen siempre queda lugar.
-  const maxIterations = input.maxIterations ?? 12;
+  const usarRepositorio = input.usarRepositorio === true;
+  // Margen sobre los caps: si el modelo hace una sola llamada por iteración,
+  // con maxIterations=cap saldríamos del while justo cuando toca el cap, sin
+  // oportunidad de correr la "iteración final sin tools" que garantiza
+  // síntesis. Con +2 de margen siempre queda lugar. Con el repositorio
+  // autorizado el presupuesto de herramientas es mayor (10 + 6), así que el
+  // techo sube en consecuencia.
+  const maxIterations = input.maxIterations ?? (usarRepositorio ? 18 : 12);
 
   const client = getAnthropic();
   const messages: Anthropic.MessageParam[] = [
@@ -192,6 +219,24 @@ export async function runAgent(
   };
   const busquedas: Busqueda[] = [];
   const chunksRecuperados: ChunkRecuperado[] = [];
+  const consultasRepositorio: ConsultaRepositorio[] = [];
+  // Cuenta búsquedas Y lecturas del repositorio: las dos gastan una vuelta del
+  // loop, así que el presupuesto tiene que ser común.
+  let usosRepositorio = 0;
+  let sintesisForzada = false;
+
+  // Herramientas vigentes en este momento del loop. Se recalcula antes de cada
+  // request: la que agotó su cap desaparece, y `tools` se omite sólo si no
+  // quedó ninguna.
+  const toolsDisponibles = (): Anthropic.Tool[] => {
+    const t: Anthropic.Tool[] = [];
+    if (busquedas.length < HARD_CAP_BUSQUEDAS) t.push(buscarDocumentosTool);
+    if (usarRepositorio && usosRepositorio < HARD_CAP_REPOSITORIO) {
+      t.push(...repositorioTools);
+    }
+    return t;
+  };
+
   let iterations = 0;
   let costoUsd = 0;
 
@@ -199,6 +244,11 @@ export async function runAgent(
   // tool_choice fuerza la búsqueda RAG en este primer turno para garantizar
   // grounding antes de generar contenido. SOLO acá: los calls del loop usan el
   // default `auto` (o van sin `tools` al agotar el cap) para poder sintetizar.
+  //
+  // Las tools del repositorio NO se declaran en este primer call aunque estén
+  // autorizadas, y eso refuerza la regla de orden: el primer movimiento del
+  // agente tiene que ser encuadrar el caso en la normativa, nunca salir a
+  // buscar un precedente. Aparecen recién en la segunda vuelta.
   let response = await client.messages.create({
     model: MODEL_ID,
     max_tokens: 16000,
@@ -277,6 +327,38 @@ export async function runAgent(
               };
             }
           }
+          if (esToolDeRepositorio(tu.name)) {
+            // Mismo criterio de cap que arriba: se chequea ANTES de ejecutar,
+            // el contador se incrementa síncronamente (para que los otros
+            // tool_use de esta misma iteración lo vean) y ningún error de la
+            // tool sale del loop.
+            if (usosRepositorio >= HARD_CAP_REPOSITORIO) {
+              return {
+                type: "tool_result",
+                tool_use_id: tu.id,
+                content: `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}). No se ejecutó esta consulta. Cerrá el análisis con los precedentes que ya recuperaste.`,
+              };
+            }
+            usosRepositorio++;
+            try {
+              const r = await ejecutarToolRepositorio(tu.name, tu.input);
+              if (r.consulta) consultasRepositorio.push(r.consulta);
+              return {
+                type: "tool_result",
+                tool_use_id: tu.id,
+                content: r.contentJSON,
+              };
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              console.error(`[run-agent] ${tu.name} falló:`, msg);
+              return {
+                type: "tool_result",
+                tool_use_id: tu.id,
+                content: `Error consultando el repositorio: ${msg}. Seguí sin él.`,
+                is_error: true,
+              };
+            }
+          }
           return {
             type: "tool_result",
             tool_use_id: tu.id,
@@ -293,41 +375,52 @@ export async function runAgent(
     // viejo (mensaje sintético + esperar que el modelo obedezca) que fallaba
     // cuando el modelo lo ignoraba (caso real: ejec 68dbc170... 2026-05-07).
     //
+    // ÚLTIMA VUELTA: el request que sale con `iterations === maxIterations` es
+    // el último que el while llega a hacer, así que va SIN tools sí o sí. Es la
+    // garantía ESTRUCTURAL de síntesis, y no depende de que los caps se agoten
+    // — con dos presupuestos (10 búsquedas + 6 consultas al repositorio) eso
+    // podía no pasar nunca. Mismo mecanismo que runAgentConsulta.
+    //
     // Además, agregamos un text block adicional al user message para que el
     // modelo entienda explícitamente por qué desaparecen las herramientas.
     // Mezclamos tool_results + text en el mismo content array (válido por
     // contrato Anthropic: user messages aceptan text + tool_result).
-    const capAgotado = busquedas.length >= HARD_CAP_BUSQUEDAS;
-    const userContent: Anthropic.MessageParam["content"] = capAgotado
-      ? [
-          ...toolResults,
-          {
-            type: "text" as const,
-            text: `Has alcanzado el límite de búsquedas (${HARD_CAP_BUSQUEDAS}). Generá ahora la respuesta final completa basada en el material recolectado. No vas a poder hacer más búsquedas.`,
-          },
-        ]
-      : toolResults;
+    const ultimaVuelta = iterations >= maxIterations;
+    if (ultimaVuelta) sintesisForzada = true;
+    const tools = ultimaVuelta ? [] : toolsDisponibles();
+
+    const avisos: string[] = [];
+    if (busquedas.length >= HARD_CAP_BUSQUEDAS) {
+      avisos.push(
+        `Alcanzaste el límite de búsquedas en el corpus normativo (${HARD_CAP_BUSQUEDAS}): no vas a poder hacer más.`,
+      );
+    }
+    if (usarRepositorio && usosRepositorio >= HARD_CAP_REPOSITORIO) {
+      avisos.push(
+        `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}).`,
+      );
+    }
+    if (tools.length === 0) {
+      avisos.push(
+        "No te queda ninguna herramienta: generá ahora la respuesta final completa basada en el material recolectado.",
+      );
+    }
+    const userContent: Anthropic.MessageParam["content"] =
+      avisos.length > 0
+        ? [...toolResults, { type: "text" as const, text: avisos.join(" ") }]
+        : toolResults;
 
     messages.push({ role: "assistant", content: response.content });
     messages.push({ role: "user", content: userContent });
 
     try {
-      response = await client.messages.create(
-        capAgotado
-          ? {
-              model: MODEL_ID,
-              max_tokens: 16000,
-              system: systemPrompt,
-              messages,
-            }
-          : {
-              model: MODEL_ID,
-              max_tokens: 16000,
-              system: systemPrompt,
-              tools: [buscarDocumentosTool],
-              messages,
-            },
-      );
+      response = await client.messages.create({
+        model: MODEL_ID,
+        max_tokens: 16000,
+        system: systemPrompt,
+        messages,
+        ...(tools.length > 0 ? { tools } : {}),
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       throw new AgentError(
@@ -350,7 +443,7 @@ export async function runAgent(
     // Defensivo: con `tools` removidas en el call anterior, el modelo no
     // debería poder responder con tool_use. Si por algún cambio del SDK o
     // un escenario inesperado lo hiciera, este branch corta limpio.
-    if (capAgotado && response.stop_reason === "tool_use") {
+    if (tools.length === 0 && response.stop_reason === "tool_use") {
       throw new AgentError(
         "CAP_EXCEEDED_NO_SYNTHESIS",
         "CAP_EXCEEDED_NO_SYNTHESIS",
@@ -384,12 +477,15 @@ export async function runAgent(
     costo_usd: Number(costoUsd.toFixed(6)),
     busquedas,
     chunks_recuperados: chunksRecuperados,
+    consultas_repositorio: consultasRepositorio,
     iterations,
     // Marcamos degraded cualquier ejecución que tocó el cap, sea por
-    // bloqueo de búsqueda extra (>cap) o por consumo exacto (==cap):
-    // en ambos casos forzamos síntesis sin tools, lo que limita la
-    // capacidad del modelo de re-evaluar. El panel admin lo expone.
-    degraded_response: busquedas.length >= HARD_CAP_BUSQUEDAS,
+    // bloqueo de búsqueda extra (>cap) o por consumo exacto (==cap), y también
+    // la que necesitó la última vuelta sin herramientas para cerrar: en todos
+    // esos casos forzamos síntesis, lo que limita la capacidad del modelo de
+    // re-evaluar. El panel admin lo expone.
+    degraded_response:
+      busquedas.length >= HARD_CAP_BUSQUEDAS || sintesisForzada,
     // True si hubo búsquedas pero ninguna recuperó chunks: la respuesta no
     // pudo fundamentarse en el corpus (cero grounding total).
     sin_grounding:

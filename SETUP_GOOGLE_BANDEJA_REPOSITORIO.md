@@ -124,3 +124,76 @@ npx tsx scripts/construir-catalogo-repositorio.ts
 El script lee `scripts/data/drive-catalogo.json`. Ese JSON hoy se generó
 enumerando Drive desde afuera de la app; falta automatizar ese paso (queda como
 pendiente).
+
+---
+
+## Que la IA pueda CITAR el repositorio (dos pasos, una sola vez)
+
+Navegar la biblioteca funciona con el catálogo. Para que el agente del chat y de
+las estrategias pueda **citar** un fallo hace falta indexar el contenido de los
+PDF. Son dos pasos y se corren una sola vez; después la ingesta es incremental.
+
+### Paso A — aplicar la migración
+
+En el **SQL Editor de Supabase**, pegar y ejecutar entero el archivo:
+
+```
+supabase/migrations/20260807120000_repositorio_rag.sql
+```
+
+Crea dos tablas (`repositorio_documentos`, `repositorio_chunks`) y dos funciones
+de búsqueda. Es puramente aditiva: no toca `documentos` ni el RAG que ya existe.
+
+### Paso B — correr la ingesta
+
+```bash
+npm run repo:ingesta
+```
+
+Baja los 345 PDF de Drive (con tu propio permiso de Google, sin credenciales
+nuevas), extrae el texto, le pide al modelo una ficha por documento y guarda todo
+con embeddings. Tarda ~20 minutos y cuesta **~USD 3,30 la primera vez** (las
+fichas, medido sobre fallos reales). Las corridas siguientes saltean lo que no
+cambió y salen centavos.
+
+Si algún día querés re-generar el fichero con el modelo más caro (Sonnet, ~USD 13
+la corrida completa), `--modelo preciso`. En la comparación sobre los mismos
+fallos las fichas salieron equivalentes, así que no vale la pena de entrada.
+
+Si el presupuesto es cero, `--sin-ficha` hace la corrida sólo con embeddings
+(centavos). El agente igual puede citar pasajes textuales, pero elige peor qué
+fallo traer, porque el ranking pasa a apoyarse en el título y la primera página
+en vez de en un resumen de lo que el fallo resolvió.
+
+Antes de gastar la corrida completa conviene mirar qué está extrayendo:
+
+```bash
+npm run repo:ingesta -- --dry-run --con-ficha --limite 3
+```
+
+**Ojo con el disco:** el corpus completo agrega ~240 MB a la base (vectores +
+índice). Si el proyecto de Supabase está en el plan Free (500 MB), ingerí primero
+sólo los fallos y medí antes de sumar la doctrina:
+
+```bash
+npm run repo:ingesta -- --coleccion jurisprudencia
+```
+
+### Cómo verificar
+
+`GET /api/repositorio/estado` devuelve `documentos_indexados`:
+
+| Valor | Significa |
+|---|---|
+| `null` | La migración del paso A no está aplicada. |
+| `0` | Migración aplicada, ingesta sin correr. |
+| ~300 | Listo: el agente puede citar. |
+
+### Los 45 documentos que no van a entrar
+
+45 de los 345 son **escaneos sin capa de texto** (varios leading cases de la CSJN:
+Fiorentino, Rayford, Mattei...) más 3 archivos `.doc` viejos. Quedan registrados
+con `estado = 'sin_texto'`: se siguen viendo y descargando en el Repositorio, pero
+el agente no los puede citar porque no tiene su texto. Si alguno importa mucho,
+pasarlo por OCR (Drive lo hace al abrirlo con Google Docs) y volver a subirlo:
+la próxima corrida lo incorpora solo.

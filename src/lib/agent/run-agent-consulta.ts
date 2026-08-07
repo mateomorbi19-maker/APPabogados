@@ -24,6 +24,12 @@ import {
   type ContextoMapaTools,
   type RechazoConfirmable,
 } from "@/lib/agent/mapa-tools";
+import {
+  ejecutarToolRepositorio,
+  esToolDeRepositorio,
+  repositorioTools,
+  type ConsultaRepositorio,
+} from "@/lib/agent/repositorio-tools";
 import type { AccionMapa } from "@/lib/schemas";
 
 // Variante del agente para consultas continuas sobre un caso. Mismo
@@ -129,6 +135,7 @@ export type RunAgentConsultaInput = {
 // de consulta devuelve un superset con las acciones del turno.
 export type RunAgentConsultaResult = RunAgentResult & {
   acciones: AccionMapa[];
+  consultas_repositorio: ConsultaRepositorio[];
 };
 
 // Misma idea para el error: AgentError es común a los dos agentes, así que las
@@ -165,6 +172,12 @@ const HARD_CAP_BUSQUEDAS = 10;
 // antes de responder. Cuenta también los rechazos, porque cada intento gasta
 // una vuelta del loop.
 const MAX_ACCIONES_MAPA = 8;
+
+// Tope de consultas al Repositorio interno (búsquedas + lecturas) por turno.
+// Igual que en /analizar-caso: la jurisprudencia entra al final del
+// razonamiento, para respaldar una hipótesis ya construida. En el chat el
+// abogado puede volver a preguntar, así que el cap por turno puede ser bajo.
+const HARD_CAP_REPOSITORIO = 6;
 
 function isToolUseBlock(
   block: Anthropic.ContentBlock,
@@ -296,9 +309,11 @@ function buildPrimerUserContent(
 export async function runAgentConsulta(
   input: RunAgentConsultaInput,
 ): Promise<RunAgentConsultaResult> {
-  // 10 búsquedas + 8 acciones de mapa + 2 de margen. El margen es holgura, no
-  // la garantía: la garantía de síntesis es que la última vuelta va sin tools.
-  const maxIterations = input.maxIterations ?? 20;
+  // 10 búsquedas + 8 acciones de mapa + 6 consultas al repositorio, con techo
+  // de 22 vueltas. El techo NO cubre la suma de los caps a propósito: el modelo
+  // agrupa varias tool calls por iteración, y la garantía de síntesis no es el
+  // margen sino que la última vuelta sale sin tools.
+  const maxIterations = input.maxIterations ?? 22;
   const modelId = input.modelId;
   const maxTokens = input.maxTokens ?? 16000;
 
@@ -323,6 +338,9 @@ export async function runAgentConsulta(
   };
   const busquedas: Busqueda[] = [];
   const acciones: AccionMapa[] = [];
+  const consultasRepositorio: ConsultaRepositorio[] = [];
+  // Cuenta búsquedas Y lecturas del repositorio: las dos gastan una vuelta.
+  let usosRepositorio = 0;
   let iterations = 0;
   let costoUsd = 0;
 
@@ -349,6 +367,7 @@ export async function runAgentConsulta(
   const toolsDisponibles = (): Anthropic.Tool[] => {
     const t: Anthropic.Tool[] = [];
     if (busquedas.length < HARD_CAP_BUSQUEDAS) t.push(buscarDocumentosTool);
+    if (usosRepositorio < HARD_CAP_REPOSITORIO) t.push(...repositorioTools);
     if (input.mapaHabilitado && acciones.length < MAX_ACCIONES_MAPA) {
       t.push(...mapaTools);
     }
@@ -415,6 +434,35 @@ export async function runAgentConsulta(
         type: "tool_result",
         tool_use_id: tu.id,
         content: `Error: ${msg}`,
+        is_error: true,
+      };
+    }
+  };
+
+  const ejecutarRepositorio = async (
+    tu: Anthropic.ToolUseBlock,
+  ): Promise<Anthropic.ToolResultBlockParam> => {
+    if (usosRepositorio >= HARD_CAP_REPOSITORIO) {
+      return {
+        type: "tool_result",
+        tool_use_id: tu.id,
+        content: `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}) en este mensaje. No se ejecutó esta consulta. Respondé con los precedentes que ya recuperaste; si hace falta más, el abogado puede volver a preguntar.`,
+      };
+    }
+    // Incremento síncrono: los otros tool_use de esta misma iteración tienen
+    // que ver el contador actualizado antes de que este await resuelva.
+    usosRepositorio++;
+    try {
+      const r = await ejecutarToolRepositorio(tu.name, tu.input);
+      if (r.consulta) consultasRepositorio.push(r.consulta);
+      return { type: "tool_result", tool_use_id: tu.id, content: r.contentJSON };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[run-agent-consulta] ${tu.name} falló:`, msg);
+      return {
+        type: "tool_result",
+        tool_use_id: tu.id,
+        content: `Error consultando el repositorio: ${msg}. Seguí sin él y avisale al abogado en una línea.`,
         is_error: true,
       };
     }
@@ -516,16 +564,26 @@ export async function runAgentConsulta(
     iterations++;
     const toolUseBlocks = response.content.filter(isToolUseBlock);
 
-    // Las búsquedas son de solo lectura y van en paralelo. Las acciones del
-    // mapa van EN SERIE, sí o sí: cada una hace leer-validar-escribir, y dos
-    // en paralelo validarían ambas contra el mismo snapshot (el duplicado que
-    // crea la segunda nunca vería al que creó la primera).
+    // Las búsquedas (corpus normativo y repositorio del estudio) son de solo
+    // lectura y van en paralelo. Las acciones del mapa van EN SERIE, sí o sí:
+    // cada una hace leer-validar-escribir, y dos en paralelo validarían ambas
+    // contra el mismo snapshot (el duplicado que crea la segunda nunca vería al
+    // que creó la primera).
     const resultadosPorId = new Map<string, Anthropic.ToolResultBlockParam>();
     await Promise.all(
       toolUseBlocks
-        .filter((tu) => tu.name === BUSCAR_DOCUMENTOS_TOOL_NAME)
+        .filter(
+          (tu) =>
+            tu.name === BUSCAR_DOCUMENTOS_TOOL_NAME ||
+            esToolDeRepositorio(tu.name),
+        )
         .map(async (tu) => {
-          resultadosPorId.set(tu.id, await ejecutarBusqueda(tu));
+          resultadosPorId.set(
+            tu.id,
+            tu.name === BUSCAR_DOCUMENTOS_TOOL_NAME
+              ? await ejecutarBusqueda(tu)
+              : await ejecutarRepositorio(tu),
+          );
         }),
     );
     for (const tu of toolUseBlocks.filter((t) => esToolDeMapa(t.name))) {
@@ -566,6 +624,11 @@ export async function runAgentConsulta(
     if (busquedas.length >= HARD_CAP_BUSQUEDAS) {
       avisos.push(
         `Alcanzaste el límite de búsquedas (${HARD_CAP_BUSQUEDAS}): no vas a poder hacer más en este mensaje.`,
+      );
+    }
+    if (usosRepositorio >= HARD_CAP_REPOSITORIO) {
+      avisos.push(
+        `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}) en este mensaje.`,
       );
     }
     if (input.mapaHabilitado && acciones.length >= MAX_ACCIONES_MAPA) {
@@ -633,6 +696,7 @@ export async function runAgentConsulta(
     // puede declarar cambios que nunca ejecutó, y el contrato JSON de salida
     // queda intacto.
     acciones,
+    consultas_repositorio: consultasRepositorio,
     iterations,
     // Degradada si el modelo se quedó sin búsquedas o si el loop le cortó las
     // herramientas para forzar el cierre: en los dos casos respondió con menos

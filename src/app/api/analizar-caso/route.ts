@@ -7,7 +7,7 @@ import {
   AgentError,
   type AgentErrorCode,
 } from "@/lib/agent/run-agent";
-import { armarPrompt, SYSTEM_PROMPT } from "@/lib/agent/prompts";
+import { armarPrompt, systemPromptAnalisis } from "@/lib/agent/prompts";
 import { parseWithRecovery } from "@/lib/agent/parse";
 import { MODEL_ID } from "@/lib/anthropic";
 import { createServerClient } from "@/lib/supabase/server";
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const { caso, rol } = parsedBody.data;
   const contexto = parsedBody.data.contexto ?? {};
+  const usarRepositorio = parsedBody.data.usar_repositorio;
 
   // 2. Auth + whitelist
   const wl = await requireUsuarioOr403();
@@ -76,12 +77,16 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   // 4. runAgent
-  const userPrompt = armarPrompt(caso, rol, contexto);
+  const userPrompt = armarPrompt(caso, rol, contexto, usarRepositorio);
   const t0 = Date.now();
   let agentResult: Awaited<ReturnType<typeof runAgent>> | null = null;
   let agentError: AgentError | null = null;
   try {
-    agentResult = await runAgent({ userPrompt, systemPrompt: SYSTEM_PROMPT });
+    agentResult = await runAgent({
+      userPrompt,
+      systemPrompt: systemPromptAnalisis(usarRepositorio),
+      usarRepositorio,
+    });
   } catch (e) {
     if (e instanceof AgentError) {
       agentError = e;
@@ -117,6 +122,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         caso,
         contexto,
         rol,
+        usar_repositorio: usarRepositorio,
         resultado: null,
         busquedas: agentError.partialBusquedas,
         parseo_intento: null,
@@ -179,6 +185,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       caso,
       contexto,
       rol,
+      usar_repositorio: usarRepositorio,
+      consultas_repositorio: agentResult.consultas_repositorio ?? [],
       resultado: parsed.ok ? parsed.resultado : null,
       busquedas: agentResult.busquedas,
       parseo_intento: parsed.ok ? parsed.parseo_intento : null,
@@ -234,6 +242,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       ...parsed.resultado,
       busquedas: agentResult.busquedas,
       sin_grounding: agentResult.sin_grounding ?? false,
+      consultas_repositorio: agentResult.consultas_repositorio ?? [],
       // Para debug/medición (no para UI de usuario final).
       chunks_recuperados: agentResult.chunks_recuperados ?? [],
     },

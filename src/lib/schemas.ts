@@ -20,6 +20,11 @@ export const analizarCasoInputSchema = z.object({
   caso: z.string().min(20, "El caso debe tener al menos 20 caracteres"),
   rol: rolSchema,
   contexto: contextoSchema.optional(),
+  // Autorización explícita del abogado para que el agente funde las estrategias
+  // en el Repositorio interno del estudio (jurisprudencia y doctrina). Default
+  // false: el material del estudio se usa cuando el abogado lo decide, no por
+  // omisión. El formulario lo ofrece marcado, pero la decisión viaja igual.
+  usar_repositorio: z.boolean().default(false),
 });
 export type AnalizarCasoInput = z.infer<typeof analizarCasoInputSchema>;
 
@@ -86,6 +91,22 @@ export const tipoEstrategiaSchema = z.enum([
 ]);
 export type TipoEstrategia = z.infer<typeof tipoEstrategiaSchema>;
 
+// Cita al Repositorio interno del estudio dentro de una estrategia. El
+// `documento_id` es el slug del catálogo, así que el UI puede linkear a
+// /dashboard/repositorio/<id> y el abogado verifica el fallo en un click —
+// que es lo que distingue esto de una cita de memoria del modelo.
+export const citaRepositorioSchema = z.object({
+  documento_id: z.string().default(""),
+  /** Cita ya formateada por el servidor al devolver el resultado de la tool. */
+  cita: z.string().min(1),
+  tipo: z.enum(["fallo", "doctrina"]).default("fallo"),
+  /** La regla que el documento sienta, en las palabras del propio documento. */
+  holding: z.string().default(""),
+  /** Qué le aporta a ESTA estrategia en particular. */
+  aporte: z.string().default(""),
+});
+export type CitaRepositorio = z.infer<typeof citaRepositorioSchema>;
+
 const baseEstrategiaSchema = z.object({
   numero: z.union([z.number(), z.string()]).transform((v) => Number(v)),
   nombre: z.string(),
@@ -104,6 +125,15 @@ const baseEstrategiaSchema = z.object({
   fortalezas: z.array(z.string()).default([]),
   riesgos: z.array(z.string()).default([]),
   pasos_procesales: z.array(z.string()).default([]),
+  // Precedentes del Repositorio interno que respaldan esta estrategia. Vacío
+  // cuando el abogado no autorizó el repositorio, o cuando lo autorizó y no hay
+  // nada con ratio aplicable — que es un resultado legítimo y no una falla.
+  jurisprudencia_aplicable: z.array(citaRepositorioSchema).default([]),
+  // Se completa SÓLO cuando `jurisprudencia_aplicable` queda vacía: la frase
+  // que explica que no se recuperaron fallos con ratio directamente aplicable.
+  // Está separada del array para que el UI pueda distinguir "no se buscó" de
+  // "se buscó y no había".
+  nota_jurisprudencia: z.string().default(""),
 });
 
 // Preprocess para compatibilidad con ejecuciones viejas (pre-rediseño)
@@ -179,6 +209,28 @@ export const chunkRecuperadoSchema = z.object({
 });
 export type ChunkRecuperado = z.infer<typeof chunkRecuperadoSchema>;
 
+// Registro de cada consulta al Repositorio interno, espejo de `busquedaSchema`
+// para el RAG normativo. Se persiste en metadata para poder medir si el agente
+// encuentra precedentes o busca al vacío.
+export const fuenteRepositorioSchema = z.object({
+  documento_id: z.string(),
+  cita: z.string(),
+  tipo: z.enum(["fallo", "doctrina"]),
+});
+export type FuenteRepositorio = z.infer<typeof fuenteRepositorioSchema>;
+
+export const consultaRepositorioSchema = z.object({
+  consulta: z.string(),
+  coleccion: z.enum(["jurisprudencia", "doctrina"]).nullable(),
+  documentos_devueltos: z.number(),
+  similitud_top: z.number().nullable(),
+  documento_ids: z.array(z.string()).default([]),
+  documentos: z.array(fuenteRepositorioSchema).default([]),
+});
+export type ConsultaRepositorioRegistro = z.infer<
+  typeof consultaRepositorioSchema
+>;
+
 export const analizarCasoResponseSchema = z.object({
   ok: z.literal(true),
   // Opcional para tolerar respuestas previas a la incorporación del campo
@@ -194,6 +246,10 @@ export const analizarCasoResponseSchema = z.object({
   // debug/medición. Ambos opcionales para tolerar respuestas viejas.
   sin_grounding: z.boolean().optional(),
   chunks_recuperados: z.array(chunkRecuperadoSchema).optional(),
+  // Consultas al Repositorio interno. Array vacío cuando el abogado no lo
+  // autorizó; el cliente lo usa para distinguir "no se consultó" de
+  // "se consultó y no había nada aplicable".
+  consultas_repositorio: z.array(consultaRepositorioSchema).default([]),
 });
 export type AnalizarCasoResponse = z.infer<typeof analizarCasoResponseSchema>;
 
@@ -363,6 +419,11 @@ const respuestaConversacionalSchema = z.object({
   // de las claves que no declara, así que sin esta línea la UI nunca las vería
   // aunque el server las persista.
   acciones: z.array(accionMapaSchema).optional(),
+  // Documentos del Repositorio que el agente CONSULTÓ en este turno. Lo arma el
+  // servidor con lo que la búsqueda devolvió de verdad — el modelo no puede
+  // agregar una fuente que no existe. Ojo: consultados, no necesariamente
+  // usados; el label de la UI lo dice así.
+  fuentes_repositorio: z.array(fuenteRepositorioSchema).optional(),
   // Si el parser falló y el server cayó al fallback con texto crudo,
   // este flag aparece true en el panel admin para investigación.
   parser_fallback: z.boolean().optional(),
@@ -381,6 +442,11 @@ const respuestaAnalisisSchema = z.object({
   ejecucion_id: z.string().uuid().optional(),
   busquedas: z.array(busquedaSchema).optional(),
   acciones: z.array(accionMapaSchema).optional(),
+  // Documentos del Repositorio que el agente CONSULTÓ en este turno. Lo arma el
+  // servidor con lo que la búsqueda devolvió de verdad — el modelo no puede
+  // agregar una fuente que no existe. Ojo: consultados, no necesariamente
+  // usados; el label de la UI lo dice así.
+  fuentes_repositorio: z.array(fuenteRepositorioSchema).optional(),
   parser_fallback: z.boolean().optional(),
 });
 

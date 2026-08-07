@@ -1,7 +1,8 @@
 "use client";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import type { PreAnalisisOutput } from "@/lib/schemas";
 import { PreguntaField, type RespuestaValor } from "./pregunta-field";
@@ -23,6 +24,11 @@ type Props = {
   // análisis). Para cambiarlo el usuario debe "Volver" al input y
   // re-disparar el pre-análisis.
   rol: Rol;
+  // Autorización del abogado para que el agente funde las estrategias en el
+  // Repositorio interno del estudio. Es una decisión suya, no un default del
+  // sistema: el material es privado y quién lo usa importa.
+  usarRepositorio: boolean;
+  onUsarRepositorioChange: (v: boolean) => void;
   onVolver: () => void;
   onAnalizar: () => void;
   loading: boolean;
@@ -50,6 +56,8 @@ export function FormularioDinamico({
   respuestas,
   onRespuestasChange,
   rol,
+  usarRepositorio,
+  onUsarRepositorioChange,
   onVolver,
   onAnalizar,
   loading,
@@ -138,6 +146,36 @@ export function FormularioDinamico({
           />
         ))}
       </div>
+
+      <Separator />
+
+      {/* Autorización del repositorio. Va acá, pegada al botón de analizar, y
+          no en la pantalla del caso: es lo último que el abogado decide antes
+          de gastar el análisis, y verla junto al botón deja claro que aplica a
+          ESTA corrida. */}
+      <Card className="p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <Checkbox
+            checked={usarRepositorio}
+            onCheckedChange={(v) => onUsarRepositorioChange(v === true)}
+            disabled={loading}
+            className="mt-0.5"
+          />
+          <span className="space-y-1">
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              <Scale className="size-4 text-primary" />
+              Fundar las estrategias con el repositorio del estudio
+            </span>
+            <span className="block text-sm leading-relaxed text-muted-foreground">
+              El agente va a poder buscar en la biblioteca interna de
+              jurisprudencia y doctrina para respaldar cada estrategia. La
+              jurisprudencia entra al final: primero los hechos de la causa y el
+              encuadre, después el precedente que los sostiene. Cada cita queda
+              linkeada al fallo para que lo puedas verificar.
+            </span>
+          </span>
+        </label>
+      </Card>
 
       <div className="flex flex-col items-end gap-1.5 pt-2">
         <Button onClick={onAnalizar} disabled={!puedeAnalizar}>

@@ -53,6 +53,8 @@ src/
 supabase/migrations/              # SQL aplicado vía SQL Editor (ver MIGRATION_LOG.md)
 scripts/
   ingestar-cppf.ts                # ingestor del CPPF (PDF local → documentos). Destructivo: delete-before-insert.
+  ingestar-repositorio.ts         # Drive → texto → ficha (IA) → embeddings → repositorio_*. Incremental, no destructivo.
+  construir-catalogo-repositorio.ts # drive-catalogo.json → catalogo.ts (módulo generado)
   test-agent.ts                   # smoke test del agente RAG end-to-end
   count-system-tokens.ts          # mide tokens del system prompt + tool descriptions
 
@@ -89,8 +91,14 @@ Response: `{ ok: true, resumen_preliminar, datos_detectados, preguntas[] }`
 ### `POST /api/analizar-caso`
 Tool-use loop con RAG. `maxDuration = 120` (latencia medida ~87-90s).
 
-Body: `{ caso, rol: "defensor" | "querellante" | "ambos", contexto: {...} }`
-Response: `{ ok: true, defensor?, querellante?, metadata, busquedas[] }`
+Body: `{ caso, rol: "defensor" | "querellante" | "ambos", contexto: {...}, usar_repositorio?: boolean }`
+Response: `{ ok: true, defensor?, querellante?, metadata, busquedas[], consultas_repositorio[] }`
+
+`usar_repositorio` (default `false`) es la **autorización del abogado** para que el
+agente funde las estrategias en el Repositorio interno. Sin ella las tools de
+jurisprudencia ni se le declaran al modelo y el prompt le prohíbe citar fallos de
+memoria. El formulario del análisis la ofrece marcada, pero la decisión viaja en
+el body y queda registrada en `ejecuciones.metadata.usar_repositorio`.
 
 El loop ([src/lib/agent/run-agent.ts](src/lib/agent/run-agent.ts)):
 - `maxIterations = 12` por defecto (HARD_CAP + 2 de margen para garantizar iteración final sin tools).
@@ -105,7 +113,15 @@ Tool-use loop con RAG sobre el historial multi-turno del caso. `maxDuration = 12
 
 Body: `{ contenido: string, adjuntos?: [...] }`
 
-El agente de chat ([src/lib/agent/run-agent-consulta.ts](src/lib/agent/run-agent-consulta.ts)) usa el mismo loop que `analizar-caso` (`HARD_CAP_BUSQUEDAS = 10`, `maxIterations = 12`, tool `buscar_documentos_legales`). La única diferencia es el primer user message: incluye adjuntos como content blocks. El historial se reconstruye desde `mensajes_conversacion` antes de cada turno.
+El agente de chat ([src/lib/agent/run-agent-consulta.ts](src/lib/agent/run-agent-consulta.ts)) usa el mismo loop que `analizar-caso` (`HARD_CAP_BUSQUEDAS = 10`, `HARD_CAP_REPOSITORIO = 6`, `maxIterations = 22`, tools `buscar_documentos_legales` + las del repositorio + las del mapa). La única diferencia es el primer user message: incluye adjuntos como content blocks. El historial se reconstruye desde `mensajes_conversacion` antes de cada turno.
+
+**El chat siempre tiene acceso al Repositorio** (a diferencia del análisis, que
+lo pide por autorización explícita): la pregunta que motivó la feature —
+"¿qué jurisprudencia se puede aplicar a este caso?"— es del chat, y pedir un
+permiso por mensaje sería fricción sin sentido. Las fuentes efectivamente
+consultadas se devuelven en `fuentes_repositorio` de la respuesta, **armadas por
+el servidor** (mismo criterio que `acciones`): el modelo no puede sumar a esa
+lista un fallo que no existe, y el abogado tiene el link para verificarlo.
 
 **Deuda técnica:** el loop está duplicado casi verbatim entre `run-agent.ts` y `run-agent-consulta.ts`.
 
@@ -171,10 +187,74 @@ ofrece abrir el archivo en Drive.
 
 - `GET /api/repositorio/documentos` — búsqueda + filtros + facetas.
 - `GET /api/repositorio/documentos/[id]/archivo` — stream del PDF (`?descargar=1` para bajarlo).
-- `GET /api/repositorio/estado` — `{conectado, total_documentos}`.
+- `GET /api/repositorio/estado` — `{conectado, vinculado, total_documentos, documentos_indexados}`.
 
 Regenerar el catálogo: `npx tsx scripts/construir-catalogo-repositorio.ts` (lee
 `scripts/data/drive-catalogo.json`).
+
+### RAG del Repositorio — la IA cita jurisprudencia
+
+El catálogo de arriba sólo conoce NOMBRES DE ARCHIVO. Para que el agente conteste
+"¿qué jurisprudencia aplica a este caso?" hace falta el CONTENIDO de los PDF, y eso
+vive en dos tablas propias (migración `20260807120000_repositorio_rag.sql`,
+**pendiente de aplicar**):
+
+- `repositorio_documentos` — una fila por documento con una **ficha** generada
+  offline por Claude al ingerir: `holding` (la regla que sienta), `sumario`,
+  `temas`, `normas`, `utilidad_defensa`, `utilidad_acusacion`, y su embedding.
+- `repositorio_chunks` — los pasajes citables, con embedding.
+
+**Búsqueda en dos etapas** ([src/lib/repositorio/rag.ts](src/lib/repositorio/rag.ts)):
+primero se rankea sobre las ~345 fichas (decide QUÉ documento sirve), y sólo para
+los 4 primeros se buscan pasajes textuales (decide QUÉ CITAR). Buscar directo
+sobre los ~16.700 chunks rankearía peor —los "VISTOS" de todos los fallos se
+parecen entre sí más que las ratios— y costaría ~8.000 tokens por búsqueda en vez
+de ~1.500.
+
+**Tools del agente** ([src/lib/agent/repositorio-tools.ts](src/lib/agent/repositorio-tools.ts)):
+`buscar_jurisprudencia` y `leer_jurisprudencia`. Son distintas de
+`buscar_documentos_legales` a propósito: la norma dice qué se puede hacer, el
+precedente muestra que ya se hizo. La `cita` la formatea el servidor para que el
+modelo no la invente, y cada resultado trae el `documento_id` con el que el UI
+linkea al fallo.
+
+**Ingesta** (`npm run repo:ingesta`, ver
+[scripts/ingestar-repositorio.ts](scripts/ingestar-repositorio.ts)): baja cada PDF
+de Drive con el token de Clerk, extrae texto con `pdfjs-dist`, chunkea por página,
+genera la ficha y embeddea todo. **Incremental** por hash del texto y
+**no destructiva** (a diferencia de `ingestar-cppf.ts`). Modos útiles:
+`--dry-run`, `--con-ficha` (imprime la ficha sin escribir), `--limite N`,
+`--solo <id>`, `--coleccion jurisprudencia|doctrina`, `--forzar`,
+`--modelo preciso`, `--sin-ficha`.
+
+**La ficha se genera con Haiku 4.5, no con Sonnet.** Es una tarea de extracción
+—leer un fallo y decir qué resolvió y con qué regla—, no de razonamiento
+estratégico. Medido sobre los mismos dos fallos: Haiku USD 0,011 por documento
+(~USD 3,30 la corrida completa) contra Sonnet USD 0,043 (~USD 13), con fichas
+equivalentes: mismo holding, mismas normas, misma utilidad por lado.
+`--modelo preciso` vuelve a Sonnet.
+
+Estado medido del corpus: **300 documentos con texto, 45 sin** (escaneos sin OCR
+—varios leading cases de la CSJN— y 3 `.doc` viejos). Esos 45 se registran con
+`estado='sin_texto'`: siguen navegables en el Repositorio pero el agente no los
+puede citar. Pasarlos por OCR y volver a subirlos los incorpora en la próxima
+corrida.
+
+### Orden de construcción de las estrategias
+
+Regla dura del system prompt, redactada por Gonzalo y espejada en la descripción
+de la tool (`ORDEN_DE_CONSTRUCCION` en [src/lib/agent/prompts.ts](src/lib/agent/prompts.ts)):
+**(1) hechos de la causa → (2) marco jurídico-dogmático → (3) hipótesis táctica →
+(4) jurisprudencia que la respalda.** La jurisprudencia confirma y refuerza el
+análisis; nunca lo reemplaza ni lo origina. Con acceso a una base de fallos el
+modelo tiende a arrancar por ahí y acomodarle los hechos encima, que es cómo se
+producen estrategias genéricas.
+
+Complemento obligatorio (`SIN_JURISPRUDENCIA_APLICABLE`): si no hay precedente
+aplicable, el agente **no** fuerza una cita tangencial — escribe la fórmula
+acordada en `nota_jurisprudencia`. El mismo texto se le repite en el
+`tool_result` cuando la búsqueda vuelve vacía, que es el momento en que la
+tentación es máxima.
 
 ### `GET /api/consumo`
 Sin maxDuration custom. Devuelve consumo del mes en curso + historial (top 20 por `ejecutado_en DESC`).
@@ -285,8 +365,19 @@ npm run dev                              # :3000
 npx tsc --noEmit                         # type-check
 npm run lint                             # eslint
 npx tsx scripts/test-agent.ts            # smoke test del agente RAG end-to-end
-npx tsx scripts/count-system-tokens.ts   # mide system+tool tokens (decisión de prompt caching)
+npm run repo:ingesta -- --dry-run        # ingesta del Repositorio, sin escribir nada
+npm run repo:ingesta                     # ingesta real (requiere la migración del RAG aplicada)
+
+# mide system+tool tokens (decisión de prompt caching). Necesita el combo
+# --conditions=react-server + dotenv preloaded (ver la nota de scripts abajo):
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/count-system-tokens.ts
 ```
+
+Medición al 2026-08-07 (Sonnet 4.5): system solo **2.181** tokens · con la tool de
+RAG **3.043** · análisis con Repositorio autorizado **4.592** · chat del caso
+**5.938**. El prefijo estático ya supera holgadamente el mínimo de caché (1.024),
+así que **el prompt caching sigue siendo la optimización pendiente más obvia** —
+hoy esos ~6.000 tokens se pagan enteros en cada turno del chat.
 
 ## Convenciones
 
@@ -298,7 +389,9 @@ npx tsx scripts/count-system-tokens.ts   # mide system+tool tokens (decisión de
 - Validar todo input con Zod en el borde.
 - **Tabla `documentos` inmutable** (vector store ya cargado; `ingestar-cppf.ts` es destructivo — no correrlo salvo que sea necesario recargar el corpus procesal explícitamente).
 - **`notas-migracion/` jamás se commitea** (gitignored, datos sensibles y workflows de n8n).
-- **Paleta:** `--background: #0a0e17`, `--card: #0f172a`, acento `#8b5cf6`. Fuente: Inter (UI y display, sin serif).
+- **Paleta:** dos temas en [globals.css](src/app/globals.css) — `:root` es el claro y `.dark` el oscuro. Oscuro es el **default**: `--background: #0a0e17`, `--card: #0f172a`, acento `#8b5cf6`. Fuente: Inter (UI y display, sin serif).
+- **Tema:** el engranaje de la top bar abre Ajustes con dos opciones, **Oscuro** (default) y **Sistema**. Se guarda en `localStorage["el-tema"]` y lo aplica un script inline anti-flash antes del primer paint ([src/components/tema/](src/components/tema/)). El **Mapa procesal** y el **Simulador** se fuerzan siempre en oscuro (montan su propio `.dark` desde el `layout.tsx` de su ruta): su tratamiento visual —orbes con glow, vidrio, escenario iluminado— está construido sobre fondo negro.
+- **Color por token, nunca por literal.** Todo lo que sea superficie, borde o texto va por `var(--el-*)` o por las vars de shadcn. Un literal de la paleta de Tailwind (`text-amber-400`, `bg-white/5`) sólo se acepta con su contraparte clara (`text-amber-700 dark:text-amber-400`). Excepción: los componentes del mapa y del simulador, que corren siempre en oscuro.
 - **Formato es-AR:** números con `toLocaleString('es-AR')`, fechas `DD/MM/YYYY HH:MM`.
 - **El prompt al modelo exige JSON puro** (sin markdown ni backticks). El parser limpia backticks defensivamente.
 

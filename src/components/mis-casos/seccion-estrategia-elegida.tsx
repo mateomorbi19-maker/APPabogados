@@ -9,6 +9,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { COLORES_TIPO } from "@/components/nuevo-analisis/resultados-analisis";
+import { JurisprudenciaEstrategia } from "@/components/nuevo-analisis/jurisprudencia-estrategia";
 import { cn } from "@/lib/utils";
 import type { Caso } from "@/lib/types";
 
@@ -38,7 +39,9 @@ export function SeccionEstrategiaElegida({ caso }: Props) {
     e.fortalezas.length > 0 ||
     e.riesgos.length > 0 ||
     e.pasos_procesales.length > 0 ||
-    e.doctrina_aplicable.length > 0;
+    e.doctrina_aplicable.length > 0 ||
+    e.jurisprudencia_aplicable.length > 0 ||
+    e.nota_jurisprudencia.length > 0;
 
   return (
     <Card className="p-6 space-y-4 border-primary/40">
@@ -97,6 +100,11 @@ export function SeccionEstrategiaElegida({ caso }: Props) {
               </div>
             ) : null}
 
+            <JurisprudenciaEstrategia
+              citas={e.jurisprudencia_aplicable}
+              nota={e.nota_jurisprudencia}
+            />
+
             {(e.fortalezas.length > 0 || e.riesgos.length > 0) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {e.fortalezas.length > 0 ? (
@@ -107,7 +115,7 @@ export function SeccionEstrategiaElegida({ caso }: Props) {
                     <ul className="text-sm space-y-1.5">
                       {e.fortalezas.map((f, i) => (
                         <li key={i} className="flex gap-2">
-                          <CheckCircle className="size-4 mt-0.5 shrink-0 text-emerald-500" />
+                          <CheckCircle className="size-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-500" />
                           <span>{f}</span>
                         </li>
                       ))}
@@ -122,7 +130,7 @@ export function SeccionEstrategiaElegida({ caso }: Props) {
                     <ul className="text-sm space-y-1.5">
                       {e.riesgos.map((r, i) => (
                         <li key={i} className="flex gap-2">
-                          <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-500" />
+                          <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" />
                           <span>{r}</span>
                         </li>
                       ))}

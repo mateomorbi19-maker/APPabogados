@@ -38,6 +38,7 @@ import type {
 } from "@/lib/schemas";
 import { sugerirTitulo } from "@/lib/nuevo-analisis/sugerir-titulo";
 import { BusquedasRag } from "./busquedas-rag";
+import { JurisprudenciaEstrategia } from "./jurisprudencia-estrategia";
 
 // === Paleta por perfil de estrategia ============================================
 // Cada perfil tiene un color de acento que vive en:
@@ -61,19 +62,19 @@ export const COLORES_TIPO: Record<TipoEstrategia, ColoresTipo> = {
   conservadora: {
     borde: "border-t-emerald-500",
     badge:
-      "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/15",
+      "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/15",
     label: "Conservadora",
   },
   moderada: {
     borde: "border-t-amber-500",
     badge:
-      "bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/15",
+      "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/15",
     label: "Moderada",
   },
   agresiva: {
     borde: "border-t-rose-500",
     badge:
-      "bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/15",
+      "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/15",
     label: "Agresiva",
   },
 };
@@ -154,8 +155,8 @@ export function ResultadosAnalisis({
       {warning ? (
         <Card className="p-4 border-amber-500/40 bg-amber-500/5">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-500" />
-            <p className="text-sm text-amber-200">{warning}</p>
+            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" />
+            <p className="text-sm text-amber-800 dark:text-amber-200">{warning}</p>
           </div>
         </Card>
       ) : null}
@@ -273,8 +274,8 @@ function Seccion({
       {cantidadInesperada ? (
         <Card className="p-3 border-amber-500/40 bg-amber-500/5">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-500" />
-            <p className="text-xs text-amber-200">
+            <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" />
+            <p className="text-xs text-amber-800 dark:text-amber-200">
               El modelo devolvió {cantidad}{" "}
               {cantidad === 1 ? "estrategia" : "estrategias"} para este rol en
               lugar de las 3 esperadas (una por perfil). Mostramos lo recibido.
@@ -408,6 +409,14 @@ function ContenidoEstrategia({ estrategia }: { estrategia: Estrategia }) {
         </div>
       ) : null}
 
+      {/* Va DESPUÉS del fundamento normativo y la doctrina, no antes: es el
+          orden en el que se construye la estrategia (hechos → dogmática →
+          hipótesis → precedente) y el orden en que conviene leerla. */}
+      <JurisprudenciaEstrategia
+        citas={e.jurisprudencia_aplicable}
+        nota={e.nota_jurisprudencia}
+      />
+
       {(e.fortalezas.length > 0 || e.riesgos.length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {e.fortalezas.length > 0 ? (
@@ -418,7 +427,7 @@ function ContenidoEstrategia({ estrategia }: { estrategia: Estrategia }) {
               <ul className="text-sm space-y-1.5">
                 {e.fortalezas.map((f, i) => (
                   <li key={i} className="flex gap-2">
-                    <CheckCircle className="size-4 mt-0.5 shrink-0 text-emerald-500" />
+                    <CheckCircle className="size-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-500" />
                     <span>{f}</span>
                   </li>
                 ))}
@@ -433,7 +442,7 @@ function ContenidoEstrategia({ estrategia }: { estrategia: Estrategia }) {
               <ul className="text-sm space-y-1.5">
                 {e.riesgos.map((r, i) => (
                   <li key={i} className="flex gap-2">
-                    <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-500" />
+                    <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" />
                     <span>{r}</span>
                   </li>
                 ))}

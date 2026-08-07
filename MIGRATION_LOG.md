@@ -405,3 +405,46 @@ Calcado de `uq_conversacion_activa_por_caso` (`20260507180000:71-73`).
 **Acoplamiento código ↔ migración:** **bajo, pero no nulo.** Las tres rutas del simulador funcionan igual sin el índice (la exclusión mutua ya está en código); lo que se pierde sin él es la protección contra la race de dos requests simultáneos. No hay `SELECT` nuevo de columnas, así que no aplica el patrón "500 en todos los reads" de `riesgo_alto` / `clase`.
 
 **Aplicación:** la corrió Mateo a mano vía SQL Editor el **2026-07-22**, inmediatamente después de `20260721120000` (el índice referencia la tabla que crea aquella, así que el orden es obligatorio).
+
+---
+
+## 2026-08-07 · 12:00:00 UTC — `20260807120000_repositorio_rag.sql` · ⏳ PENDIENTE DE APLICAR
+
+**Contexto:** el Repositorio de jurisprudencia y doctrina existía como **catálogo** (345 documentos en un módulo TS generado, `src/lib/repositorio/catalogo.ts`) construido a partir de los NOMBRES DE ARCHIVO de Drive. Eso alcanza para que el abogado navegue la biblioteca, pero no para que el agente conteste "¿qué jurisprudencia se puede aplicar a este caso?": para eso hace falta el CONTENIDO de los PDF. Esta migración crea las dos tablas donde vive ese contenido.
+
+**Tipo:** migración SQL de schema, **puramente aditiva**. Dos tablas nuevas, dos RPC nuevas, cero cambios sobre lo existente. No toca `documentos` ni `match_documents`.
+
+**Cambio:**
+
+| Objeto | Qué es |
+|---|---|
+| `repositorio_documentos` | Una fila por documento del catálogo. Guarda la **ficha** generada por IA durante la ingesta (holding, sumario, temas, normas, utilidad para cada lado) + su `embedding vector(1536)` + trazabilidad de la ingesta (`estado`, `texto_hash`, `paginas`). PK = el slug del catálogo (no un uuid nuevo): es el id con el que el frontend linkea a `/dashboard/repositorio/<id>`. |
+| `repositorio_chunks` | Los pasajes citables de cada documento, con embedding. FK a `repositorio_documentos` con `ON DELETE CASCADE`. |
+| `match_repositorio_documentos(...)` | Etapa 1 de la búsqueda: sobre las fichas. Decide QUÉ documentos sirven. |
+| `match_repositorio_chunks(...)` | Etapa 2: sobre los pasajes, acotada por `filtro_documentos`. Decide QUÉ CITAR. |
+
+Índices HNSW cosine en ambos embeddings, iguales a `documentos_embedding_idx`. RLS deny-by-default + `REVOKE` a `anon`/`authenticated`, consistente con el hardening de la Fase 5.5.
+
+**Decisión — dos niveles y no uno:** buscar directo sobre los ~16.700 chunks sería más simple y peor por dos motivos. (1) Ranking: los párrafos de trámite de todos los fallos se parecen entre sí más que las ratios, así que dominan los resultados. (2) Tokens: devolver 20 chunks crudos son ~8.000 tokens por búsqueda. Con fichas + pasajes acotados una búsqueda entra en ~1.500 tokens y trae la información con la que un abogado realmente decide si un precedente aplica.
+
+**Decisión — tabla nueva y no reusar `documentos`:** aquel corpus es NORMATIVA y su metadata es libro/título/artículo; un fallo tiene tribunal/año/carátula y una relación 1:N con sus pasajes que ese schema no modela. Además, mezclarlos rompería el RAG existente: `buscar_documentos_legales` empezaría a devolver sentencias donde se le piden artículos.
+
+**Decisión — umbrales bajos (0.25 fichas / 0.2 pasajes):** la consulta del agente es una hipótesis jurídica y la ficha es una regla abstracta; la similitud coseno entre ambas rara vez pasa de 0.5 aunque el precedente sea el correcto. Lo que hace el trabajo es el ORDEN, no el corte. Subir el umbral devuelve cero resultados en consultas legítimas — el mismo error que dejó el RAG normativo mudo entre 2026-06-27 y 2026-07-29.
+
+**Acoplamiento código ↔ migración:** **nulo en el sentido peligroso.** Ninguna ruta existente agrega un `SELECT` a estas tablas, así que la app corre igual sin la migración: `src/lib/repositorio/rag.ts` detecta `PGRST202`/`PGRST205`, lo cachea 5 minutos para no gastar embeddings contra un 404, y las tools del agente le contestan al modelo "el índice todavía no está construido". El chat y el análisis siguen funcionando sin repositorio.
+
+**Costo de disco (medido en dry-run sobre el corpus real):** 300 documentos con texto (45 son escaneos sin OCR), ~16.700 chunks → **~100 MB de vectores + ~140 MB de índice HNSW**. Si el proyecto está en el plan Free (500 MB) conviene ingerir primero `--coleccion jurisprudencia` y medir antes de sumar la doctrina.
+
+**Aplicación:** ⏳ **pendiente.** La tiene que correr Mateo a mano en el SQL Editor (Claude Code no la ejecutó: el MCP de Supabase de esta sesión sigue scopeado a otra organización — devuelve dos proyectos de `mateomrb19@gmail.com`, ninguno es `xvdlnevcvcsgxbngwliv`). Después de aplicarla hay que correr la ingesta:
+
+```bash
+npm run repo:ingesta
+```
+
+La ingesta genera la ficha de cada documento con **Haiku 4.5** (~USD 3,30 la
+corrida completa). Es una tarea de extracción, no de razonamiento: comparada con
+Sonnet sobre los mismos fallos dio fichas equivalentes por un cuarto del costo.
+`--modelo preciso` fuerza Sonnet; `--sin-ficha` la saltea (centavos, pero la
+etapa 1 de la búsqueda pierde su mejor señal).
+
+Verificación: `GET /api/repositorio/estado` devuelve `documentos_indexados` (`null` = migración sin aplicar, un número = cuántos documentos puede citar el agente).

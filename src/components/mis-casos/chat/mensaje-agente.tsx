@@ -19,7 +19,14 @@
 // (jsonb persistido) sobre el `contenido` string (JSON-string fallback).
 
 import { useState } from "react";
-import { ChevronDown, Sparkles, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertTriangle,
+  BookOpen,
+  ChevronDown,
+  Gavel,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -69,11 +76,11 @@ const PRIORIDAD_VARIANT: Record<
 > = {
   alta: {
     label: "Alta",
-    classes: "bg-red-500/15 text-red-400 border-red-500/30",
+    classes: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
   },
   media: {
     label: "Media",
-    classes: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    classes: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
   },
   baja: {
     label: "Baja",
@@ -115,8 +122,46 @@ export function MensajeAgente({ mensaje, casoId }: Props) {
           el mapa respondiendo en cualquiera de los dos. */}
       <AccionesMapa acciones={respuesta.acciones ?? []} casoId={casoId} />
 
+      <FuentesRepositorio fuentes={respuesta.fuentes_repositorio ?? []} />
+
       <BusquedasColapsable busquedas={respuesta.busquedas ?? []} />
     </article>
+  );
+}
+
+// Documentos del Repositorio que el agente miró en este turno. La lista la arma
+// el servidor con lo que la búsqueda devolvió de verdad, así que sirve como
+// control: si el agente cita un fallo que no está acá, lo sacó de su memoria y
+// no del repositorio del estudio.
+function FuentesRepositorio({
+  fuentes,
+}: {
+  fuentes: NonNullable<RespuestaConsulta["fuentes_repositorio"]>;
+}) {
+  if (fuentes.length === 0) return null;
+  return (
+    <div className="rounded-md border border-border bg-muted/10 px-3 py-2">
+      <p className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+        Consultado en el repositorio del estudio
+      </p>
+      <ul className="space-y-1">
+        {fuentes.map((f) => {
+          const Icono = f.tipo === "doctrina" ? BookOpen : Gavel;
+          return (
+            <li key={f.documento_id} className="flex items-start gap-1.5">
+              <Icono className="mt-0.5 size-3 shrink-0 text-primary" />
+              <Link
+                href={`/dashboard/repositorio/${f.documento_id}`}
+                target="_blank"
+                className="text-[11px] leading-snug hover:text-primary hover:underline"
+              >
+                {f.cita}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -142,14 +187,14 @@ function Header({
       </span>
       <span className="text-[10px] text-muted-foreground">· {fmtFecha(fecha)}</span>
       {respuesta.degraded_response ? (
-        <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 text-[10px]">
+        <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px]">
           <AlertTriangle className="size-3" />
           Análisis parcial
         </span>
       ) : null}
       {respuesta.parser_fallback ? (
         <span
-          className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-400 px-1.5 py-0.5 text-[10px]"
+          className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px]"
           title="El modelo respondió en formato libre y el server lo guardó como prosa. Caso reportado al admin."
         >
           <AlertTriangle className="size-3" />

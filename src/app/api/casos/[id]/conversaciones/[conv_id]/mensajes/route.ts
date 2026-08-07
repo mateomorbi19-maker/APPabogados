@@ -621,6 +621,7 @@ export async function POST(
       contexto_usado: contextoMarkdown,
       resultado: parseado.ok ? parseado.resultado : null,
       busquedas: agentResult.busquedas,
+      consultas_repositorio: agentResult.consultas_repositorio,
       acciones: agentResult.acciones,
       parseo_intento: parseado.ok ? parseado.parseo_intento : null,
       iterations: agentResult.iterations,
@@ -649,6 +650,18 @@ export async function POST(
     );
   }
 
+  // Fuentes del repositorio efectivamente consultadas en este turno,
+  // deduplicadas por documento. Las arma el SERVIDOR a partir de lo que las
+  // búsquedas devolvieron, igual que `acciones`: el modelo no puede sumar a
+  // esta lista un fallo que no existe.
+  const fuentesRepositorio = [
+    ...new Map(
+      agentResult.consultas_repositorio
+        .flatMap((c) => c.documentos)
+        .map((d) => [d.documento_id, d]),
+    ).values(),
+  ];
+
   // 7. Construir respuesta enriquecida (modo conversacional fallback
   // si el parser falló). Mantiene el shape del schema discriminado
   // para que el cliente la pueda renderizar uniformemente.
@@ -668,6 +681,7 @@ export async function POST(
         // También en el camino de fallback: si el parser falló pero el agente
         // alcanzó a tocar el mapa, el abogado tiene que ver esos cambios.
         acciones: agentResult.acciones,
+        fuentes_repositorio: fuentesRepositorio,
       }
     : {
         ...parseado.resultado,
@@ -675,6 +689,7 @@ export async function POST(
         ejecucion_id: ejecInsertada.id,
         busquedas: agentResult.busquedas,
         acciones: agentResult.acciones,
+        fuentes_repositorio: fuentesRepositorio,
       };
 
   // 8. Crear mensaje del agente (siempre, incluso en fallback).
