@@ -15,10 +15,10 @@ import {
 import {
   inicializarRespuestas,
   serializarRespuestas,
-} from "@/lib/nuevo-analisis/serializar-respuestas";
+  type RespuestaValor,
+} from "@/lib/nuevo-analisis/respuestas";
 import { CasoInput } from "./caso-input";
 import { FormularioDinamico } from "./formulario-dinamico";
-import type { RespuestaValor } from "./pregunta-field";
 import { ProgresoAnalisis } from "./progreso-analisis";
 import { ResultadosAnalisis } from "./resultados-analisis";
 import type { Rol } from "./rol-selector";

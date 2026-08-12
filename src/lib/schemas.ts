@@ -28,13 +28,29 @@ export const analizarCasoInputSchema = z.object({
 });
 export type AnalizarCasoInput = z.infer<typeof analizarCasoInputSchema>;
 
+// Tipo de pregunta del pre-análisis. Solo hay dos, y ninguno es de respuesta
+// única: "opciones" siempre es multi-selección (más un campo "Otro" que agrega
+// el formulario, no el modelo) y "texto" es respuesta libre.
+//
+// El preprocess mapea los cuatro tipos del modelo viejo (select/radio/checkbox/
+// text) para que las ejecuciones ya guardadas en `ejecuciones.metadata` sigan
+// abriéndose en el historial. Es traducción de lectura: el prompt actual solo
+// emite los dos nuevos.
+export const tipoPreguntaSchema = z.preprocess((v) => {
+  if (v === "select" || v === "radio" || v === "checkbox") return "opciones";
+  if (v === "text") return "texto";
+  return v;
+}, z.enum(["opciones", "texto"]));
+export type TipoPregunta = z.infer<typeof tipoPreguntaSchema>;
+
 export const preguntaSchema = z.object({
   id: z.string(),
-  tipo: z.enum(["select", "radio", "text", "checkbox"]),
+  tipo: tipoPreguntaSchema,
   label: z.string(),
   opciones: z.array(z.string()).optional(),
   valor_sugerido: z.union([z.string(), z.null()]).optional(),
   requerido: z.boolean(),
+  /** El propósito diagnóstico: qué cambia en la estrategia según la respuesta. */
   motivo: z.string(),
 });
 
@@ -62,11 +78,15 @@ export const preAnalisisOutputSchema = z.object({
   // Default a [] para tolerar respuestas previas al modelo de 4 categorías
   // (filas viejas del historial no tienen este campo).
   flags_detectados: z.array(flagEstrategicoSchema).default([]),
-  // Cap 4-12 por contrato del prompt; .max(15) deja 3 de margen defensivo
-  // contra respuestas degeneradas del modelo. .min(1) es el mínimo absoluto
-  // para considerar el output utilizable; el server rechaza con 502 cualquier
-  // respuesta que no cumpla este shape.
-  preguntas: z.array(preguntaSchema).min(1).max(15),
+  // SIN piso: el protocolo de nudos de diagnóstico dice que si el relato ya
+  // alcanza para diagnosticar no se pregunta nada, y un array vacío es
+  // exactamente ese resultado — no una respuesta degenerada. El formulario sabe
+  // renderizarse sin preguntas.
+  //
+  // El techo del contrato es 8 (vive en el prompt); .max(15) es un margen
+  // defensivo contra un modelo desbocado y, de paso, deja seguir abriendo en el
+  // historial las ejecuciones del modelo viejo, que llegaban a 12.
+  preguntas: z.array(preguntaSchema).max(15),
 });
 export type PreAnalisisOutput = z.infer<typeof preAnalisisOutputSchema>;
 

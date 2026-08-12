@@ -1,11 +1,15 @@
 "use client";
-import { ArrowLeft, Loader2, Scale } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import type { PreAnalisisOutput } from "@/lib/schemas";
-import { PreguntaField, type RespuestaValor } from "./pregunta-field";
+import {
+  preguntaRequeridaCompleta,
+  type RespuestaValor,
+} from "@/lib/nuevo-analisis/respuestas";
+import { PreguntaField } from "./pregunta-field";
 import type { Rol } from "./rol-selector";
 
 const ROL_LABEL: Record<Rol, string> = {
@@ -33,23 +37,6 @@ type Props = {
   onAnalizar: () => void;
   loading: boolean;
 };
-
-// Una pregunta requerida está completa si:
-//   - text/select/radio: string non-vacío
-//   - checkbox sin opciones (toggle Sí/No): siempre completa, el default
-//     `false` ya es respuesta válida ("el usuario respondió No")
-//   - checkbox con opciones (multi): al menos una opción seleccionada
-function preguntaRequeridaCompleta(
-  p: PreAnalisisOutput["preguntas"][number],
-  v: RespuestaValor | undefined,
-): boolean {
-  if (!p.requerido) return true;
-  if (p.tipo === "checkbox") {
-    if (Array.isArray(v)) return v.length > 0;
-    return typeof v === "boolean";
-  }
-  return typeof v === "string" && v.trim() !== "";
-}
 
 export function FormularioDinamico({
   data,
@@ -131,21 +118,47 @@ export function FormularioDinamico({
 
       <Separator />
 
-      <div className="space-y-5">
-        <h3 className="font-medium text-xs uppercase tracking-wider text-muted-foreground">
-          Preguntas
-        </h3>
-        {data.preguntas.map((p) => (
-          <PreguntaField
-            key={p.id}
-            pregunta={p}
-            value={respuestas[p.id]}
-            onChange={(v) =>
-              onRespuestasChange({ ...respuestas, [p.id]: v })
-            }
-          />
-        ))}
-      </div>
+      {/* Sin preguntas NO es un error: el protocolo de nudos de diagnóstico
+          dice que si el relato ya alcanza, no se pregunta nada. Igual queda un
+          paso intermedio antes de disparar el análisis — el abogado tiene que
+          poder revisar lo que se detectó y decidir sobre el repositorio antes
+          de gastar la corrida. */}
+      {data.preguntas.length === 0 ? (
+        <Card className="p-6">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">No hacen falta más datos</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Con lo que contaste alcanza para armar la estrategia: no hay
+                ningún dato faltante que cambie la dirección del análisis. Si
+                querés agregar algo, volvé y sumalo al relato.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <div className="space-y-5">
+          <div className="space-y-1">
+            <h3 className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
+              Preguntas
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Solo lo que cambia la dirección de la estrategia. Podés marcar
+              varias opciones en cada una, y usar “Otro” para aclarar.
+            </p>
+          </div>
+          {data.preguntas.map((p) => (
+            <PreguntaField
+              key={p.id}
+              pregunta={p}
+              value={respuestas[p.id]}
+              onChange={(v) => onRespuestasChange({ ...respuestas, [p.id]: v })}
+              disabled={loading}
+            />
+          ))}
+        </div>
+      )}
 
       <Separator />
 
