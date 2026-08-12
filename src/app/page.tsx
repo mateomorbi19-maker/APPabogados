@@ -11,10 +11,15 @@ import {
 } from "@/components/inicio/inicio-dashboard";
 
 // Inicio (dashboard) — landing de la app. Trae data REAL server-side:
-//   - Casos recientes: tabla `casos`, ordenados por última actualización.
+//   - Casos: tabla `casos`, ordenados por última actualización.
 //   - Próximos eventos: agenda local (`eventos_agenda`), solo futuros, asc.
 // (La app no lee eventos DESDE Google Calendar; solo escribe hacia él. La
 // agenda local es la fuente canónica de eventos del usuario.)
+//
+// Traemos las listas COMPLETAS, no las 4 filas que el panel muestra: el saludo
+// contextual y los indicadores cuentan sobre el total, y con 3 usuarios en beta
+// eso son decenas de filas. Si esto crece, lo que hay que agregar es un COUNT
+// aparte, no paginar acá.
 export default async function InicioPage() {
   const result = await requireUsuarioOr403();
   if (!result.ok) {
@@ -27,18 +32,16 @@ export default async function InicioPage() {
     .from("casos")
     .select("id, titulo, rol, actualizado_en")
     .eq("usuario_id", result.usuario_id)
-    .order("actualizado_en", { ascending: false })
-    .limit(4);
+    .order("actualizado_en", { ascending: false });
   const casos: CasoReciente[] = (casosData ?? []) as CasoReciente[];
 
   // Eventos futuros: desde ahora, asc por fecha_inicio (la query ordena así).
-  // Tomamos los primeros 4.
   let eventos: EventoProximo[] = [];
   try {
     const futuros = await getEventosByUser(result.usuario_id, {
       desde: new Date().toISOString(),
     });
-    eventos = futuros.slice(0, 4).map((e) => ({
+    eventos = futuros.map((e) => ({
       id: e.id,
       titulo: e.titulo,
       tipo: e.tipo,

@@ -19,6 +19,56 @@ const FECHA_FORMATTER = new Intl.DateTimeFormat("es-AR", {
 export const fmtFecha = (iso: string): string =>
   FECHA_FORMATTER.format(new Date(iso));
 
+// === Renovación del cupo mensual ===
+//
+// La vista `v_consumo_mensual` agrega el mes EN CURSO en timezone de Argentina,
+// así que el cupo se renueva el día 1 del mes siguiente, hora de Argentina. Se
+// calcula acá y no en el server para que el medidor del header no necesite otro
+// campo del endpoint.
+
+const TZ_AR = "America/Argentina/Buenos_Aires";
+
+// "YYYY-MM-DD" del instante dado, en hora de Argentina.
+const CLAVE_DIA_AR = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ_AR,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const MES_LARGO_AR = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ_AR,
+  month: "long",
+});
+const MES_CORTO_AR = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ_AR,
+  month: "short",
+});
+
+// Primer día del mes siguiente al del instante dado (hora de Argentina). Se
+// construye a mediodía UTC = 09:00 ART, así el formateo en TZ AR nunca cae en
+// el día anterior por el offset de -3h.
+function primeroDelMesSiguiente(ahora: Date): Date {
+  const [y, m] = CLAVE_DIA_AR.format(ahora).split("-").map(Number);
+  // `m` es 1-based, así que pasarlo como índice 0-based apunta al mes
+  // siguiente; Date.UTC resuelve solo el rollover de diciembre a enero.
+  return new Date(Date.UTC(y, m, 1, 12));
+}
+
+/** "1 de agosto" — para el texto explicativo del tooltip. */
+export const fmtRenovacionLarga = (ahora: Date = new Date()): string =>
+  `1 de ${MES_LARGO_AR.format(primeroDelMesSiguiente(ahora))}`;
+
+/** "1 ago" — para la etiqueta compacta al lado de la barra. */
+export const fmtRenovacionCorta = (ahora: Date = new Date()): string =>
+  `1 ${MES_CORTO_AR.format(primeroDelMesSiguiente(ahora)).replace(".", "")}`;
+
+/** Porcentaje en formato es-AR con un decimal: 2.4 → "2,4". */
+export const fmtPorcentaje = (pct: number): string =>
+  pct.toLocaleString("es-AR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+
 const TIPOS: Record<string, string> = {
   analizar_caso: "Análisis",
   pre_analisis: "Pre-análisis",

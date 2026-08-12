@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BuscadorProvider } from "@/components/buscador/buscador-global";
 import { AppSidebar } from "./app-sidebar";
 import { TopBar } from "./top-bar";
 
@@ -28,19 +29,26 @@ export function NavShell({
   ancho?: "contenido" | "completo";
   children: ReactNode;
 }) {
+  // BuscadorProvider envuelve todo el shell: monta el diálogo del buscador
+  // global una sola vez y registra el atajo ⌘K / Ctrl+K, así el buscador se
+  // abre desde cualquier sección y no solo desde el Inicio.
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--el-canvas)] text-[var(--el-text)]">
-      <TopBar />
-      <div className="flex flex-1">
-        <AppSidebar nombreUsuario={nombreUsuario} isAdmin={isAdmin} />
-        <main className="min-w-0 flex-1 bg-[var(--el-canvas)]">
-          {ancho === "completo" ? (
-            children
-          ) : (
-            <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">{children}</div>
-          )}
-        </main>
+    <BuscadorProvider>
+      <div className="flex min-h-screen flex-col bg-[var(--el-canvas)] text-[var(--el-text)]">
+        <TopBar />
+        <div className="flex flex-1">
+          <AppSidebar nombreUsuario={nombreUsuario} isAdmin={isAdmin} />
+          <main className="min-w-0 flex-1 bg-[var(--el-canvas)]">
+            {ancho === "completo" ? (
+              children
+            ) : (
+              <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+                {children}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </BuscadorProvider>
   );
 }
