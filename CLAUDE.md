@@ -86,7 +86,33 @@ Nunca pisa `nombre` ni `email`. El identificador lógico del sistema es `usuario
 Single-shot, **sin RAG, sin tool-use**. Puro conocimiento paramétrico del modelo. `maxDuration = 60`.
 
 Body: `{ caso: string >= 20 chars }`
-Response: `{ ok: true, resumen_preliminar, datos_detectados, preguntas[] }`
+Response: `{ ok: true, resumen_preliminar, datos_detectados, flags_detectados, preguntas[] }`
+
+**Protocolo de nudos de diagnóstico** (redactado por Gonzalo, vive en
+`PRE_ANALISIS_SYSTEM_PROMPT`): extracción silenciosa → identificar nudos →
+preguntar con propósito. El criterio no es completitud de formulario sino
+diagnóstico: solo se pregunta lo que, si falta, hace que la estrategia cambie de
+**dirección**. El test es "si me contesta A recomiendo una cosa, si me contesta
+B recomiendo otra"; si las dos respuestas llevan a la misma estrategia, no es un
+nudo.
+
+**De 0 a 8 preguntas.** Cero es un resultado válido y preferible cuando el
+relato ya alcanza: el schema no tiene piso (`preguntas` sin `.min()`) y el
+formulario se renderiza con una tarjeta "No hacen falta más datos" que conserva
+el paso de autorización del repositorio antes de disparar el análisis.
+
+**Ninguna pregunta es de respuesta única.** Solo hay dos tipos, `opciones`
+(multi-selección) y `texto`; el formulario agrega siempre una opción "Otro" con
+campo libre, y el prompt le prohíbe al modelo generarla para que no se duplique.
+Un caso real tiene situaciones superpuestas (dos imputados con distinta
+situación de libertad, dos vicios en la misma detención) y obligar a elegir una
+opción fuerza al abogado a mentir o a no contestar. El estado de cada respuesta
+y su serialización viven en
+[src/lib/nuevo-analisis/respuestas.ts](src/lib/nuevo-analisis/respuestas.ts).
+
+`preguntaSchema` mapea los cuatro tipos del modelo viejo
+(`select`/`radio`/`checkbox`/`text`) a los dos nuevos, para que las ejecuciones
+ya guardadas se sigan abriendo en el historial.
 
 ### `POST /api/analizar-caso`
 Tool-use loop con RAG. `maxDuration = 120` (latencia medida ~87-90s).
@@ -277,6 +303,19 @@ importa en un mensaje sobre un expediente.
 No pasa por `enforceTokenLimit` (Whisper no gasta tokens de Anthropic; se
 factura aparte en OpenAI, ~USD 0,006 el minuto). El control es la whitelist, el
 tope de tamaño y el corte automático de la grabación a los 10 minutos.
+
+### `GET /api/buscar?q=` — buscador global
+
+Alimenta la paleta ⌘K / Ctrl+K (montada en `NavShell`, así que se abre desde
+cualquier sección) y la fila de búsqueda del Inicio. Busca **solo sobre los
+casos del usuario**: título, relato y las respuestas del formulario, todo
+normalizado sin tildes ([src/lib/casos/buscar.ts](src/lib/casos/buscar.ts)).
+
+No hay tabla de imputados: "buscar por imputado" funciona porque el nombre está
+en el relato, y el resultado devuelve el fragmento donde pegó para que se vea
+por qué apareció. El filtrado es **en memoria** — con 3 usuarios sale más barato
+que mantener un `tsvector` con su trigger e índice. No toca el LLM ni el RAG,
+así que puede correr a cada tecla.
 
 ### `GET /api/consumo`
 Sin maxDuration custom. Devuelve consumo del mes en curso + historial (top 20 por `ejecutado_en DESC`).
