@@ -1,16 +1,13 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropic } from "@/lib/anthropic";
+import { buscarDocumentosTool, ejecutarToolBuscar } from "@/lib/agent/tools";
 import {
-  buscarDocumentosTool,
-  BUSCAR_DOCUMENTOS_TOOL_NAME,
-} from "@/lib/agent/tools";
-import { calcularCosto } from "@/lib/agent/pricing";
-import { embedQuery } from "@/lib/rag/embed";
-import { buscarDocumentos } from "@/lib/rag/match-documents";
+  correrLoop,
+  MotorError,
+  type FamiliaTools,
+} from "@/lib/agent/motor";
 import {
   AgentError,
-  usageDeResponse,
   type AgentErrorCode,
   type Busqueda,
   type RunAgentResult,
@@ -19,14 +16,12 @@ import {
 import {
   claveRechazo,
   ejecutarToolMapa,
-  esToolDeMapa,
   mapaTools,
   type ContextoMapaTools,
   type RechazoConfirmable,
 } from "@/lib/agent/mapa-tools";
 import {
   ejecutarToolRepositorio,
-  esToolDeRepositorio,
   repositorioTools,
   type ConsultaRepositorio,
 } from "@/lib/agent/repositorio-tools";
@@ -179,39 +174,6 @@ const MAX_ACCIONES_MAPA = 8;
 // abogado puede volver a preguntar, así que el cap por turno puede ser bajo.
 const HARD_CAP_REPOSITORIO = 6;
 
-function isToolUseBlock(
-  block: Anthropic.ContentBlock,
-): block is Anthropic.ToolUseBlock {
-  return block.type === "tool_use";
-}
-
-function isTextBlock(
-  block: Anthropic.ContentBlock,
-): block is Anthropic.TextBlock {
-  return block.type === "text";
-}
-
-async function ejecutarToolBuscar(query: string): Promise<{
-  contentJSON: string;
-  chunks_devueltos: number;
-  similarity_top: number | null;
-}> {
-  const embedding = await embedQuery(query);
-  const docs = await buscarDocumentos(embedding, 5);
-  const contentJSON = JSON.stringify(
-    docs.map((d) => ({
-      content: d.content,
-      metadata: d.metadata,
-      similarity: Number(d.similarity.toFixed(4)),
-    })),
-  );
-  const top = docs[0]?.similarity ?? null;
-  return {
-    contentJSON,
-    chunks_devueltos: docs.length,
-    similarity_top: top !== null ? Number(top.toFixed(4)) : null,
-  };
-}
 
 // Arma el content array del primer user message: cada adjunto nuevo
 // va como bloque nativo precedido por una pequeña etiqueta de texto
@@ -309,45 +271,18 @@ function buildPrimerUserContent(
 export async function runAgentConsulta(
   input: RunAgentConsultaInput,
 ): Promise<RunAgentConsultaResult> {
-  // 10 búsquedas + 8 acciones de mapa + 6 consultas al repositorio, con techo
-  // de 22 vueltas. El techo NO cubre la suma de los caps a propósito: el modelo
-  // agrupa varias tool calls por iteración, y la garantía de síntesis no es el
-  // margen sino que la última vuelta sale sin tools.
-  const maxIterations = input.maxIterations ?? 22;
-  const modelId = input.modelId;
-  const maxTokens = input.maxTokens ?? 16000;
-
-  const client = getAnthropic();
-  // Mensajes previos del chat (si los hay) + el nuevo mensaje del
-  // usuario con contexto markdown + adjuntos nuevos como contenido
-  // nativo. El último mensaje del array siempre tiene que ser
-  // role='user' para que la API acepte la request — los chequeos
-  // del flujo del endpoint garantizan que mensajesPrevios termina en
-  // assistant (porque el último insertado es la respuesta agente
-  // anterior) o está vacío.
-  const messages: Anthropic.MessageParam[] = [
-    ...(input.mensajesPrevios ?? []),
-    { role: "user", content: buildPrimerUserContent(input) },
-  ];
-
-  const totalUsage: RunAgentUsage = {
-    input_tokens: 0,
-    output_tokens: 0,
-    cache_creation_input_tokens: 0,
-    cache_read_input_tokens: 0,
-  };
+  // Los registros de dominio los acumula el SERVIDOR por closure. El motor
+  // solo lleva la cuenta de usos por familia; qué significa cada uso —una
+  // búsqueda, un precedente consultado, una acción sobre el mapa— lo sabe
+  // este módulo. Por eso `acciones` sigue siendo imposible de inflar por el
+  // modelo: se llena desde las tool calls que realmente se ejecutaron.
   const busquedas: Busqueda[] = [];
   const acciones: AccionMapa[] = [];
   const consultasRepositorio: ConsultaRepositorio[] = [];
-  // Cuenta búsquedas Y lecturas del repositorio: las dos gastan una vuelta.
-  let usosRepositorio = 0;
-  let iterations = 0;
-  let costoUsd = 0;
 
-  // true cuando el loop tuvo que cortar las tools por llegar al techo de
-  // iteraciones (no por agotar un cap): la respuesta salió igual, pero forzada.
-  let sintesisForzada = false;
-
+  // casoId y usuarioId vienen SIEMPRE del contexto del servidor. El modelo no
+  // puede elegir sobre qué caso opera: ninguna tool del mapa tiene parámetro
+  // caso_id, y este objeto es lo único que se lo dice.
   const ctxMapa: ContextoMapaTools = {
     casoId: input.casoId,
     usuarioId: input.usuarioId,
@@ -360,347 +295,153 @@ export async function runAgentConsulta(
     ),
   };
 
-  // Tools disponibles EN ESTE MOMENTO. Se recalcula antes de cada request: una
-  // tool desaparece cuando su cap se agota, y la key `tools` se omite solo si
-  // no queda ninguna. (Antes el agotamiento del cap de RAG quitaba la key
-  // entera; con tools de mapa eso las dejaría inaccesibles.)
-  const toolsDisponibles = (): Anthropic.Tool[] => {
-    const t: Anthropic.Tool[] = [];
-    if (busquedas.length < HARD_CAP_BUSQUEDAS) t.push(buscarDocumentosTool);
-    if (usosRepositorio < HARD_CAP_REPOSITORIO) t.push(...repositorioTools);
-    if (input.mapaHabilitado && acciones.length < MAX_ACCIONES_MAPA) {
-      t.push(...mapaTools);
-    }
-    return t;
-  };
+  const familias: FamiliaTools<ContextoMapaTools>[] = [
+    {
+      nombre: "busquedas",
+      tools: [buscarDocumentosTool],
+      cap: HARD_CAP_BUSQUEDAS,
+      paralelizable: true,
+      mensajeCapAgotado: `Has alcanzado el límite de búsquedas permitidas (${HARD_CAP_BUSQUEDAS}). No se ejecutó esta búsqueda. Generá la mejor respuesta posible con la información ya recopilada.`,
+      avisoCapAgotado: `Alcanzaste el límite de búsquedas (${HARD_CAP_BUSQUEDAS}): no vas a poder hacer más en este mensaje.`,
+      ejecutar: async (tu) => {
+        const inputObj = (tu.input ?? {}) as { query?: unknown };
+        const query = typeof inputObj.query === "string" ? inputObj.query : "";
+        // Slot reservado SINCRÓNICAMENTE, antes de cualquier await. Las
+        // búsquedas de una misma iteración salen juntas en Promise.all y
+        // resuelven en el orden en que conteste OpenAI/pgvector, pero el
+        // registro tiene que conservar el orden en que el MODELO las pidió:
+        // es el que se numera en el chat ("1. …, 2. …") y el que queda en
+        // metadata.busquedas. Empujar al terminar dejaría ese orden atado a
+        // la latencia, y por lo tanto distinto entre dos corridas idénticas.
+        const idx = busquedas.length;
+        busquedas.push({ query, chunks_devueltos: 0, similarity_top: null });
+        try {
+          const r = await ejecutarToolBuscar(query);
+          busquedas[idx] = {
+            query,
+            chunks_devueltos: r.chunks_devueltos,
+            similarity_top: r.similarity_top,
+          };
+          return { contentJSON: r.contentJSON };
+        } catch (e) {
+          // El placeholder con ceros ya quedó registrado en `idx`: la búsqueda
+          // fallida se sigue viendo en metadata, que es la señal de que el
+          // agente sí intentó y el RAG no respondió.
+          const msg = e instanceof Error ? e.message : String(e);
+          return { contentJSON: `Error: ${msg}`, isError: true };
+        }
+      },
+    },
+    {
+      nombre: "repositorio",
+      tools: repositorioTools,
+      cap: HARD_CAP_REPOSITORIO,
+      paralelizable: true,
+      mensajeCapAgotado: `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}) en este mensaje. No se ejecutó esta consulta. Respondé con los precedentes que ya recuperaste; si hace falta más, el abogado puede volver a preguntar.`,
+      avisoCapAgotado: `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}) en este mensaje.`,
+      ejecutar: async (tu) => {
+        try {
+          const r = await ejecutarToolRepositorio(tu.name, tu.input);
+          if (r.consulta) consultasRepositorio.push(r.consulta);
+          return { contentJSON: r.contentJSON };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error(`[run-agent-consulta] ${tu.name} falló:`, msg);
+          return {
+            contentJSON: `Error consultando el repositorio: ${msg}. Seguí sin él y avisale al abogado en una línea.`,
+            isError: true,
+          };
+        }
+      },
+    },
+    {
+      nombre: "mapa",
+      tools: mapaTools,
+      cap: MAX_ACCIONES_MAPA,
+      // Las tools de escritura sobre el mapa se exponen SOLO si el caso ya
+      // tiene mapa inicializado.
+      habilitada: input.mapaHabilitado,
+      // EN SERIE, sí o sí: cada acción hace leer-validar-escribir, y dos en
+      // paralelo validarían ambas contra el mismo snapshot.
+      paralelizable: false,
+      mensajeCapAgotado: JSON.stringify({
+        ok: false,
+        motivo: `Alcanzaste el límite de ${MAX_ACCIONES_MAPA} acciones sobre el mapa por mensaje. Esta acción NO se ejecutó.`,
+        regla: "CAP_ACCIONES_MAPA",
+        sugerencia:
+          "Contale al abogado qué cambios sí quedaron aplicados y qué falta, y pedile que te lo confirme en el próximo mensaje para seguir.",
+      }),
+      mensajeDeshabilitada: JSON.stringify({
+        ok: false,
+        motivo:
+          "El mapa procesal de este caso no está inicializado, así que no se puede modificar.",
+        regla: "MAPA_NO_INICIALIZADO",
+        sugerencia:
+          'Explicale al abogado que primero tiene que inicializar el mapa desde la vista "Mapa procesal" del caso, eligiendo el fuero.',
+      }),
+      avisoCapAgotado: `Alcanzaste el límite de acciones sobre el mapa procesal (${MAX_ACCIONES_MAPA}) en este mensaje: contale al abogado qué quedó aplicado y qué falta.`,
+      ejecutar: async (tu, ctx) => {
+        const r = await ejecutarToolMapa(tu.name, tu.input, ctx);
+        acciones.push(r.accion);
+        // La simulación de ramas hace su propio call al modelo: sus tokens se
+        // suman al turno para que la ejecución los refleje.
+        return { contentJSON: r.contentJSON, usageExtra: r.usageExtra };
+      },
+    },
+  ];
 
-  const crearRequest = (
-    tools: Anthropic.Tool[],
-  ): Anthropic.MessageCreateParamsNonStreaming => ({
-    model: modelId,
-    max_tokens: maxTokens,
-    system: input.systemPrompt,
-    messages,
-    ...(tools.length > 0 ? { tools } : {}),
-  });
-
-  // Snapshot del estado parcial del turno para cualquier corte del loop. Se
-  // devuelve el error en vez de tirarlo acá adentro para que el `throw` quede
-  // visible en el call site (y el control-flow de TS lo entienda).
-  const errorParcial = (
-    message: string,
-    code: AgentErrorCode,
-  ): AgentConsultaError =>
-    new AgentConsultaError(
-      message,
-      code,
-      { ...totalUsage },
-      Number(costoUsd.toFixed(6)),
-      [...busquedas],
-      iterations,
-      [...acciones],
-    );
-
-  // === Dispatcher de tools ===
-  // Registry en vez del `if (tu.name === ...)` inline: agregar una tool ahora
-  // es agregar una entrada acá.
-  const ejecutarBusqueda = async (
-    tu: Anthropic.ToolUseBlock,
-  ): Promise<Anthropic.ToolResultBlockParam> => {
-    const inputObj = (tu.input ?? {}) as { query?: unknown };
-    const query = typeof inputObj.query === "string" ? inputObj.query : "";
-
-    if (busquedas.length >= HARD_CAP_BUSQUEDAS) {
-      return {
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: `Has alcanzado el límite de búsquedas permitidas (${HARD_CAP_BUSQUEDAS}). No se ejecutó esta búsqueda. Generá la mejor respuesta posible con la información ya recopilada.`,
-      };
-    }
-
-    const idx = busquedas.length;
-    busquedas.push({ query, chunks_devueltos: 0, similarity_top: null });
-    try {
-      const r = await ejecutarToolBuscar(query);
-      busquedas[idx] = {
-        query,
-        chunks_devueltos: r.chunks_devueltos,
-        similarity_top: r.similarity_top,
-      };
-      return { type: "tool_result", tool_use_id: tu.id, content: r.contentJSON };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return {
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: `Error: ${msg}`,
-        is_error: true,
-      };
-    }
-  };
-
-  const ejecutarRepositorio = async (
-    tu: Anthropic.ToolUseBlock,
-  ): Promise<Anthropic.ToolResultBlockParam> => {
-    if (usosRepositorio >= HARD_CAP_REPOSITORIO) {
-      return {
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}) en este mensaje. No se ejecutó esta consulta. Respondé con los precedentes que ya recuperaste; si hace falta más, el abogado puede volver a preguntar.`,
-      };
-    }
-    // Incremento síncrono: los otros tool_use de esta misma iteración tienen
-    // que ver el contador actualizado antes de que este await resuelva.
-    usosRepositorio++;
-    try {
-      const r = await ejecutarToolRepositorio(tu.name, tu.input);
-      if (r.consulta) consultasRepositorio.push(r.consulta);
-      return { type: "tool_result", tool_use_id: tu.id, content: r.contentJSON };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error(`[run-agent-consulta] ${tu.name} falló:`, msg);
-      return {
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: `Error consultando el repositorio: ${msg}. Seguí sin él y avisale al abogado en una línea.`,
-        is_error: true,
-      };
-    }
-  };
-
-  const ejecutarMapa = async (
-    tu: Anthropic.ToolUseBlock,
-  ): Promise<Anthropic.ToolResultBlockParam> => {
-    if (!input.mapaHabilitado) {
-      return {
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: JSON.stringify({
-          ok: false,
-          motivo:
-            "El mapa procesal de este caso no está inicializado, así que no se puede modificar.",
-          regla: "MAPA_NO_INICIALIZADO",
-          sugerencia:
-            'Explicale al abogado que primero tiene que inicializar el mapa desde la vista "Mapa procesal" del caso, eligiendo el fuero.',
-        }),
-      };
-    }
-    if (acciones.length >= MAX_ACCIONES_MAPA) {
-      return {
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: JSON.stringify({
-          ok: false,
-          motivo: `Alcanzaste el límite de ${MAX_ACCIONES_MAPA} acciones sobre el mapa por mensaje. Esta acción NO se ejecutó.`,
-          regla: "CAP_ACCIONES_MAPA",
-          sugerencia:
-            "Contale al abogado qué cambios sí quedaron aplicados y qué falta, y pedile que te lo confirme en el próximo mensaje para seguir.",
-        }),
-      };
-    }
-
-    // Misma invariante que `ejecutarBusqueda`: NINGUNA ejecución de tool puede
-    // tirar hacia afuera del loop. Un throw acá sube como Error común (no
-    // AgentError) y la route devuelve 500 sin persistir la ejecución — se
-    // pierden los tokens ya facturados y, si el agente venía de mutar el mapa,
-    // esos cambios quedan aplicados sin ninguna fila que los registre.
-    let r: Awaited<ReturnType<typeof ejecutarToolMapa>>;
-    try {
-      r = await ejecutarToolMapa(tu.name, tu.input, ctxMapa);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error(`[run-agent-consulta] ${tu.name} falló:`, msg);
-      return {
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: `Error: ${msg}`,
-        is_error: true,
-      };
-    }
-    acciones.push(r.accion);
-    // La simulación de ramas hace su propio call al modelo: sus tokens se
-    // suman al turno para que la ejecución los refleje (si no, quedarían sin
-    // trackear). El `modelo` de la fila sigue siendo el del chat — el detalle
-    // por acción queda en metadata.acciones.
-    if (r.usageExtra) {
-      totalUsage.input_tokens += r.usageExtra.usage.input_tokens;
-      totalUsage.output_tokens += r.usageExtra.usage.output_tokens;
-      totalUsage.cache_creation_input_tokens +=
-        r.usageExtra.usage.cache_creation_input_tokens ?? 0;
-      totalUsage.cache_read_input_tokens +=
-        r.usageExtra.usage.cache_read_input_tokens ?? 0;
-      costoUsd += r.usageExtra.costoUsd;
-    }
-    return { type: "tool_result", tool_use_id: tu.id, content: r.contentJSON };
-  };
-
-  // Primer call. Si falla acá no hay tokens cobrados, pero igual lo
-  // envolvemos en AgentError: antes bubbleaba como 500 crudo y el
-  // cliente no disparaba el recovery-polling ni mostraba un mensaje
-  // accionable (así se gatilló el incidente de la conversación
-  // brickeada del 25/06 — un fallo transitorio en el primer call de un
-  // turno con PDF).
-  let response: Anthropic.Message;
+  let res;
   try {
-    response = await client.messages.create(crearRequest(toolsDisponibles()));
+    res = await correrLoop<ContextoMapaTools>({
+      systemPrompt: input.systemPrompt,
+      // El último mensaje siempre tiene que ser role='user' para que la API
+      // acepte la request. Los chequeos del endpoint garantizan que
+      // mensajesPrevios termina en assistant o está vacío.
+      messages: [
+        ...(input.mensajesPrevios ?? []),
+        { role: "user", content: buildPrimerUserContent(input) },
+      ],
+      modelId: input.modelId,
+      maxTokens: input.maxTokens,
+      // 10 búsquedas + 6 repositorio + 8 acciones de mapa, con techo de 22
+      // vueltas. El techo NO cubre la suma de los caps a propósito: el modelo
+      // agrupa varias tool calls por iteración, y la garantía de síntesis no
+      // es el margen sino que la última vuelta sale sin tools.
+      maxIterations: input.maxIterations ?? 22,
+      familias,
+      contexto: ctxMapa,
+    });
   } catch (e) {
-    throw errorParcial(
-      e instanceof Error ? e.message : String(e),
-      "API_ERROR",
-    );
+    // El motor conoce tokens, costo e iteraciones; los arrays de dominio los
+    // tenemos acá. Se recombinan en el error que la route ya sabe leer
+    // (`e instanceof AgentError` sigue funcionando igual).
+    if (e instanceof MotorError) {
+      throw new AgentConsultaError(
+        e.message,
+        e.code,
+        e.partialUsage,
+        e.partialCostoUsd,
+        [...busquedas],
+        e.partialIterations,
+        [...acciones],
+      );
+    }
+    throw e;
   }
-  totalUsage.input_tokens += response.usage.input_tokens;
-  totalUsage.output_tokens += response.usage.output_tokens;
-  totalUsage.cache_creation_input_tokens +=
-    response.usage.cache_creation_input_tokens ?? 0;
-  totalUsage.cache_read_input_tokens +=
-    response.usage.cache_read_input_tokens ?? 0;
-  costoUsd += calcularCosto(modelId, usageDeResponse(response));
-
-  while (
-    response.stop_reason === "tool_use" &&
-    iterations < maxIterations
-  ) {
-    iterations++;
-    const toolUseBlocks = response.content.filter(isToolUseBlock);
-
-    // Las búsquedas (corpus normativo y repositorio del estudio) son de solo
-    // lectura y van en paralelo. Las acciones del mapa van EN SERIE, sí o sí:
-    // cada una hace leer-validar-escribir, y dos en paralelo validarían ambas
-    // contra el mismo snapshot (el duplicado que crea la segunda nunca vería al
-    // que creó la primera).
-    const resultadosPorId = new Map<string, Anthropic.ToolResultBlockParam>();
-    await Promise.all(
-      toolUseBlocks
-        .filter(
-          (tu) =>
-            tu.name === BUSCAR_DOCUMENTOS_TOOL_NAME ||
-            esToolDeRepositorio(tu.name),
-        )
-        .map(async (tu) => {
-          resultadosPorId.set(
-            tu.id,
-            tu.name === BUSCAR_DOCUMENTOS_TOOL_NAME
-              ? await ejecutarBusqueda(tu)
-              : await ejecutarRepositorio(tu),
-          );
-        }),
-    );
-    for (const tu of toolUseBlocks.filter((t) => esToolDeMapa(t.name))) {
-      resultadosPorId.set(tu.id, await ejecutarMapa(tu));
-    }
-    const toolResults: Anthropic.ToolResultBlockParam[] = toolUseBlocks.map(
-      (tu) =>
-        resultadosPorId.get(tu.id) ?? {
-          type: "tool_result",
-          tool_use_id: tu.id,
-          content: `Error: tool desconocida "${tu.name}"`,
-          is_error: true,
-        },
-    );
-
-    // Se recalcula DESPUÉS de ejecutar las tools: las que agotaron su cap
-    // desaparecen del próximo request. La key `tools` se omite solo si no
-    // quedó ninguna disponible.
-    //
-    // ÚLTIMA VUELTA: el request que sale con `iterations === maxIterations` es
-    // el último que el while llega a hacer, así que va SIN tools sí o sí. Es la
-    // garantía ESTRUCTURAL de síntesis: el modelo no puede técnicamente
-    // responder con tool_use, y el turno no puede morir en MAX_ITERATIONS
-    // tirando a la basura el trabajo (y las mutaciones del mapa) ya hechos.
-    // Antes esto dependía de que se agotaran los caps, cosa que con dos
-    // presupuestos (10 búsquedas + 8 acciones = 18 > 12 iteraciones) dejó de
-    // pasar en cuanto el caso tenía mapa.
-    const ultimaVuelta = iterations >= maxIterations;
-    if (ultimaVuelta) sintesisForzada = true;
-    const tools = ultimaVuelta ? [] : toolsDisponibles();
-
-    // Avisos de cap: cada tope agotado se le explica al modelo en el mismo
-    // user message, para que entienda por qué la herramienta desapareció. El
-    // "cerrá y respondé" va SOLO si no le quedó ninguna herramienta: agotar el
-    // cap de RAG no debe cortarle las acciones del mapa que todavía tiene
-    // disponibles (ni al revés).
-    const avisos: string[] = [];
-    if (busquedas.length >= HARD_CAP_BUSQUEDAS) {
-      avisos.push(
-        `Alcanzaste el límite de búsquedas (${HARD_CAP_BUSQUEDAS}): no vas a poder hacer más en este mensaje.`,
-      );
-    }
-    if (usosRepositorio >= HARD_CAP_REPOSITORIO) {
-      avisos.push(
-        `Alcanzaste el límite de consultas al repositorio del estudio (${HARD_CAP_REPOSITORIO}) en este mensaje.`,
-      );
-    }
-    if (input.mapaHabilitado && acciones.length >= MAX_ACCIONES_MAPA) {
-      avisos.push(
-        `Alcanzaste el límite de acciones sobre el mapa procesal (${MAX_ACCIONES_MAPA}) en este mensaje: contale al abogado qué quedó aplicado y qué falta.`,
-      );
-    }
-    if (tools.length === 0) {
-      avisos.push(
-        "No te queda ninguna herramienta disponible en este mensaje: generá ahora la respuesta final completa basada en lo que ya hiciste, y contale al abogado qué quedó pendiente.",
-      );
-    }
-    const userContent: Anthropic.MessageParam["content"] =
-      avisos.length > 0
-        ? [
-            ...toolResults,
-            { type: "text" as const, text: avisos.join(" ") },
-          ]
-        : toolResults;
-
-    messages.push({ role: "assistant", content: response.content });
-    messages.push({ role: "user", content: userContent });
-
-    try {
-      response = await client.messages.create(crearRequest(tools));
-    } catch (e) {
-      throw errorParcial(
-        e instanceof Error ? e.message : String(e),
-        "API_ERROR",
-      );
-    }
-    totalUsage.input_tokens += response.usage.input_tokens;
-    totalUsage.output_tokens += response.usage.output_tokens;
-    totalUsage.cache_creation_input_tokens +=
-      response.usage.cache_creation_input_tokens ?? 0;
-    totalUsage.cache_read_input_tokens +=
-      response.usage.cache_read_input_tokens ?? 0;
-    costoUsd += calcularCosto(modelId, usageDeResponse(response));
-
-    // Defensivo: sin ninguna tool en el request el modelo no debería poder
-    // responder con tool_use. Si por alguna razón lo hace, cortamos limpio.
-    if (tools.length === 0 && response.stop_reason === "tool_use") {
-      throw errorParcial(
-        "CAP_EXCEEDED_NO_SYNTHESIS",
-        "CAP_EXCEEDED_NO_SYNTHESIS",
-      );
-    }
-  }
-
-  if (response.stop_reason === "tool_use") {
-    throw errorParcial("MAX_ITERATIONS alcanzado", "MAX_ITERATIONS");
-  }
-
-  const rawText = response.content
-    .filter(isTextBlock)
-    .map((b) => b.text)
-    .join("");
 
   return {
-    rawText,
-    usage: totalUsage,
-    costo_usd: Number(costoUsd.toFixed(6)),
+    rawText: res.rawText,
+    usage: res.usage,
+    costo_usd: res.costo_usd,
     busquedas,
-    // Lo arma el SERVIDOR desde las tool calls reales, no el modelo: así no
-    // puede declarar cambios que nunca ejecutó, y el contrato JSON de salida
-    // queda intacto.
     acciones,
     consultas_repositorio: consultasRepositorio,
-    iterations,
+    iterations: res.iterations,
     // Degradada si el modelo se quedó sin búsquedas o si el loop le cortó las
     // herramientas para forzar el cierre: en los dos casos respondió con menos
-    // de lo que pedía.
-    degraded_response: busquedas.length >= HARD_CAP_BUSQUEDAS || sintesisForzada,
+    // de lo que pedía. El conteo sale del motor (cuenta dispatches, incluidos
+    // los que fallaron) y no de busquedas.length.
+    degraded_response:
+      res.usos.busquedas >= HARD_CAP_BUSQUEDAS || res.sintesisForzada,
   };
 }

@@ -4,6 +4,7 @@ import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
 import {
   buscarDocumentosTool,
   BUSCAR_DOCUMENTOS_TOOL_NAME,
+  ejecutarToolBuscar,
 } from "@/lib/agent/tools";
 import {
   ejecutarToolRepositorio,
@@ -12,8 +13,6 @@ import {
   type ConsultaRepositorio,
 } from "@/lib/agent/repositorio-tools";
 import { calcularCosto } from "@/lib/agent/pricing";
-import { embedQuery } from "@/lib/rag/embed";
-import { buscarDocumentos } from "@/lib/rag/match-documents";
 
 // Usage de UNA respuesta de la API (no la acumulada del loop). El costo
 // se calcula POR RESPUESTA y se suma: el tier long-context de pricing
@@ -144,11 +143,6 @@ const HARD_CAP_BUSQUEDAS = 10;
 // que la regla de orden del system prompt busca evitar.
 const HARD_CAP_REPOSITORIO = 6;
 
-// Largo del preview de `contenido` que guardamos por chunk en
-// chunks_recuperados. El texto que ve el modelo en el tool_result NO se trunca;
-// esto es solo la copia liviana para medición/debug.
-const CHUNK_PREVIEW_CHARS = 500;
-
 function isToolUseBlock(
   block: Anthropic.ContentBlock,
 ): block is Anthropic.ToolUseBlock {
@@ -161,37 +155,6 @@ function isTextBlock(
   return block.type === "text";
 }
 
-async function ejecutarToolBuscar(query: string): Promise<{
-  contentJSON: string;
-  chunks_devueltos: number;
-  similarity_top: number | null;
-  chunks: ChunkRecuperado[];
-}> {
-  const embedding = await embedQuery(query);
-  const docs = await buscarDocumentos(embedding, 5);
-  // El JSON que ve el modelo conserva el contenido íntegro de cada chunk.
-  const contentJSON = JSON.stringify(
-    docs.map((d) => ({
-      content: d.content,
-      metadata: d.metadata,
-      similarity: Number(d.similarity.toFixed(4)),
-    })),
-  );
-  // Copia liviana para medición/debug: contenido truncado + metadata clave.
-  const chunks: ChunkRecuperado[] = docs.map((d) => ({
-    contenido: d.content.slice(0, CHUNK_PREVIEW_CHARS),
-    articulo: d.metadata?.articulo ?? null,
-    tipo_documento: d.metadata?.tipo_documento ?? null,
-    similarity: Number(d.similarity.toFixed(4)),
-  }));
-  const top = docs[0]?.similarity ?? null;
-  return {
-    contentJSON,
-    chunks_devueltos: docs.length,
-    similarity_top: top !== null ? Number(top.toFixed(4)) : null,
-    chunks,
-  };
-}
 
 export async function runAgent(
   input: RunAgentInput,
