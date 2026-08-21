@@ -448,3 +448,57 @@ Sonnet sobre los mismos fallos dio fichas equivalentes por un cuarto del costo.
 etapa 1 de la búsqueda pierde su mejor señal).
 
 Verificación: `GET /api/repositorio/estado` devuelve `documentos_indexados` (`null` = migración sin aplicar, un número = cuántos documentos puede citar el agente).
+
+---
+
+## 2026-08-19 · 12:00:00 UTC — `20260819120000_lexie_tipo_ejecucion.sql` · ⏳ PENDIENTE DE APLICAR
+
+**Contexto:** Fase 8 / sub-paso 8.0. Primera pieza de LEXIE, el asistente global de la app. Va **antes** que cualquier línea de código del agente, a propósito.
+
+**Tipo:** recreación de un CHECK constraint + dos tablas nuevas. Puramente aditiva sobre lo existente. Idempotente (`IF NOT EXISTS` en todo lo nuevo).
+
+**Cambios:**
+
+1. `ejecuciones.tipo` pasa a aceptar un sexto valor, `'lexie'`.
+2. `conversaciones_lexie` — un hilo de conversación con la asistente global, por usuario. Sin `caso_id`: LEXIE no cuelga de ninguna causa.
+3. `mensajes_lexie` — los mensajes de cada hilo (`usuario` | `agente`), con `metadata jsonb` para búsquedas, consultas al repositorio y herramientas usadas.
+
+Más un índice por hilo activo, uno por conversación+fecha, RLS deny-by-default y `REVOKE` a `anon`/`authenticated` (consistente con el hardening de la Fase 5.5).
+
+**Decisión — tablas propias y no reusar `conversaciones_caso` con `caso_id` nullable:** (a) esa tabla tiene un partial unique index que garantiza UNA conversación activa por caso, y con `caso_id NULL` esa invariante se pierde en silencio para las filas nuevas; (b) `mensajes_conversacion.respuesta_estructurada` guarda las `acciones` del mapa procesal, un concepto que en LEXIE no existe; (c) los dos agentes van a evolucionar por separado —el del caso hacia la escritura del mapa, LEXIE hacia agenda y correo— y compartir tabla los ata sin que nada lo pida. El costo es duplicar dos tablas chicas; el beneficio es que ninguna feature puede romper a la otra por schema.
+
+**Por qué primero y no después:** el CHECK es lo único que separa un turno de LEXIE de un 500. La ruta persiste la ejecución *después* de que Anthropic ya facturó los tokens, así que un INSERT rechazado por el constraint no es cosmético: son tokens cobrados que no quedan en ninguna fila, no descuentan del cupo mensual y no aparecen en `/api/consumo`. El precedente exacto es `riesgo_alto` del mapa — agregar la columna al `SELECT` sin correr la migración primero dejó 500 en todos los reads.
+
+**Por qué `'lexie'` y no `'consulta_global'`:** los otros cinco valores nombran la ACCIÓN (`pre_analisis`, `analizar_caso`). LEXIE no es una acción, es un interlocutor: un turno suyo puede haber sido una consulta a la agenda, una búsqueda de jurisprudencia, o las dos. Lo que tienen en común es quién lo atendió. El desglose de qué hizo el turno va en `metadata`.
+
+**Estado previo verificado contra la base real** (2026-08-19, proyecto `xvdlnevcvcsgxbngwliv`, vía PostgREST con la service_role key — no copiado del repo):
+
+| tipo | filas |
+|---|---|
+| `pre_analisis` | 62 |
+| `analizar_caso` | 48 |
+| `consulta_caso` | 19 |
+| `simular_audiencia` | 7 |
+| `simular_mapa` | 6 |
+
+Los cinco están **en uso**, así que ninguno se puede omitir al recrear el CHECK. El `DO` block borra el constraint vigente **por definición** y no por nombre, igual que `20260706190000` y `20260721120000`: hay drift repo↔DB y el nombre puede no ser el default.
+
+**Independiente de `20260807120000_repositorio_rag.sql`** (la otra pendiente): tocan objetos distintos y se pueden correr en cualquier orden.
+
+**Aplicación:** ⏳ **pendiente.** La corre Mateo a mano en el SQL Editor. Claude Code no la ejecutó: el MCP de Supabase de esta sesión sigue scopeado a otra organización (devuelve dos proyectos de `mateomrb19@gmail.com`, ninguno es `xvdlnevcvcsgxbngwliv`).
+
+**Bloquea:** `POST /api/lexie` y `GET /api/lexie` fallan con "relation does not exist" hasta que se aplique. El resto de la app no se entera: nada más consulta estas tablas, y `'lexie'` no se inserta desde ningún otro lado.
+
+**Verificación** (el CHECK con los 6 valores + las dos tablas):
+
+```sql
+SELECT pg_get_constraintdef(con.oid)
+FROM pg_constraint con
+JOIN pg_class rel ON rel.oid = con.conrelid
+WHERE rel.relname = 'ejecuciones' AND con.contype = 'c'
+  AND pg_get_constraintdef(con.oid) ILIKE '%tipo%';
+
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN ('conversaciones_lexie', 'mensajes_lexie');
+```
