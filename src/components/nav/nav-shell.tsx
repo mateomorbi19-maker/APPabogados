@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BuscadorProvider } from "@/components/buscador/buscador-global";
+import { LexieLauncher } from "@/components/lexie/lexie-launcher";
 import { AppSidebar } from "./app-sidebar";
 import { TopBar } from "./top-bar";
 
@@ -48,6 +49,10 @@ export function NavShell({
             )}
           </main>
         </div>
+        {/* LEXIE va acá y no dentro de <main>: es global a la app, tiene que
+            poder abrirse desde cualquier sección y quedar por encima del
+            contenido sin que el ancho del main la recorte. */}
+        <LexieLauncher />
       </div>
     </BuscadorProvider>
   );
