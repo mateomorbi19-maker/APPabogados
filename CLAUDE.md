@@ -317,6 +317,112 @@ por qué apareció. El filtrado es **en memoria** — con 3 usuarios sale más b
 que mantener un `tsvector` con su trigger e índice. No toca el LLM ni el RAG,
 así que puede correr a cada tecla.
 
+### LEXIE — `/api/lexie` (asistente global)
+
+LEXIE es el agente conversacional GLOBAL de la app: a diferencia del chat del
+caso, no cuelga de ninguna causa. Sabe quién es el abogado, qué causas tiene y
+qué hay en su agenda, y contesta preguntas de trabajo diario ("¿qué tengo
+mañana?", "¿de qué se trata la causa de Ferreyra?", "¿qué jurisprudencia tenemos
+sobre requisa sin orden?").
+
+- `GET /api/lexie` — saludo + hilo abierto. Lo llama el panel al abrirse.
+- `POST /api/lexie` — un turno. Body `{ mensaje, nivel? }`. `maxDuration = 120`.
+
+**La v1 es de SOLO LECTURA.** Cinco tools, ninguna escribe:
+`mi_agenda`, `buscar_mis_casos`, `leer_caso`
+([lexie-tools.ts](src/lib/agent/lexie-tools.ts)) más `buscar_jurisprudencia` /
+`leer_jurisprudencia` y `buscar_documentos_legales`, reusadas tal cual. El
+system prompt le prohíbe decir que hizo algo que no hizo y le pide mandar al
+abogado a la sección correspondiente (Agenda, Bandeja, chat del caso).
+
+**El aislamiento entre abogados es la regla dura de esta feature.** En el chat
+del caso el `casoId` sale de la URL y ninguna tool tiene parámetro `caso_id`:
+el modelo no puede elegir sobre qué causa opera. LEXIE rompe eso por diseño, y
+abajo no hay red — el server usa `service_role`, que bypassa RLS. Por eso
+**todo `caso_id` que venga del modelo pasa por `casoEsDelUsuario` antes de leer
+nada**, y `usuarioId` viaja en el contexto del servidor, nunca en un
+`input_schema`. `buildContextoCaso` no valida propiedad (está documentada
+asumiendo que "el caller ya autenticó"), así que el caller que autentica es la
+tool.
+
+**El contexto va en el primer mensaje, no en el system prompt**
+([contexto.ts](src/lib/lexie/contexto.ts)): causas con un extracto de 160
+caracteres del relato, agenda de 7 días y fecha/hora argentina. La lista de
+causas va completa en vez de detrás de una tool porque evita el viaje de ida y
+vuelta más común (el abogado nombra una causa, LEXIE tiene que buscar su id). El
+extracto existe porque **las carátulas reales son malas**: varias son la primera
+línea del relato, así que sin él LEXIE no puede decir de qué se trata una causa
+sin abrir el expediente entero (~2.300 tokens contra ~40).
+
+**El saludo NO lo escribe el modelo** ([saludo.ts](src/lib/lexie/saludo.ts)):
+son string templates sobre datos ya calculados, con la prioridad que fijó
+Gonzalo — urgencias a 48 h > eventos de hoy > rapport personal. Cero tokens por
+apertura de sesión, instantáneo, y la aritmética de plazos no queda en manos de
+una inferencia.
+
+**Lo que LEXIE dice que no puede hacer, y por qué:** no toca la agenda (v1 sin
+escrituras), no manda correos (decisión de producto vigente), no calcula plazos
+procesales (esos salen de una tabla por fuero que firma Gonzalo, que todavía no
+existe) y **avisa que la agenda que ve es parcial** — el pull de Google es
+update-only, así que un evento creado desde el celular no está en la app. Sin
+ese aviso, "no tenés nada" sería correcto respecto de la base y falso respecto
+de la realidad.
+
+Verificación (lo gratis + un turno pago de ~USD 0,04; `--sin-modelo` saltea el pago):
+`DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie.ts`
+
+### Motor del agente — [motor.ts](src/lib/agent/motor.ts)
+
+El tool-use loop, sin dominio. Estaba duplicado casi verbatim entre
+`run-agent.ts` y `run-agent-consulta.ts` y las dos copias ya habían divergido;
+LEXIE habría sido la tercera. Hoy lo usan `run-agent-consulta.ts` (chat del
+caso) y `run-lexie.ts`. **`run-agent.ts` (`/analizar-caso`) todavía tiene su
+propio loop** — migrarlo es deuda pendiente.
+
+La unidad de presupuesto es la **familia** de tools, no la tool suelta: "10
+búsquedas" y "6 consultas al repositorio" son topes de grupo. Cada familia
+declara su cap, si es paralelizable (lecturas sí, mutaciones NO) y qué decir
+cuando se agota. Dos invariantes que no se pueden romper: ninguna ejecución de
+tool puede tirar hacia afuera del loop, y la última vuelta sale siempre sin
+tools (garantía estructural de síntesis).
+
+**Prompt caching activo**, con dos breakpoints: uno sobre el system (que por el
+orden canónico de la request cubre tools + system) y otro al final del historial
+previo. Medido: un turno de chat con 3 búsquedas pasó de USD 0,0517 a 0,0362, y
+una repregunta sobre ese hilo sale USD 0,0091.
+
+**Contabilidad:** `ejecuciones` no tiene columnas de caché, así que
+`input_tokens` guarda la SUMA de los tres buckets de entrada
+(`inputTokensParaCuota` en [queries.ts](src/lib/lexie/queries.ts)). Si guardara
+solo el bucket fresco, un turno que lee 10.000 tokens de caché registraría 128 y
+el tope mensual de 1.000.000 dejaría de proteger de un día para el otro. El
+desglose real queda en `metadata.usage`; el costo lo calcula `pricing.ts` con
+los cuatro buckets por separado.
+
+### App instalable (PWA)
+
+La app se puede agregar a la pantalla de inicio en iPhone y Android y abre sin
+barra de navegador. Piezas: [manifest.ts](src/app/manifest.ts) (`display:
+standalone`, íconos 192/512 + uno `maskable` con padding porque Android recorta
+hasta un 20% de cada borde), las meta de Apple en
+[layout.tsx](src/app/layout.tsx) y [public/sw.js](public/sw.js).
+
+**El service worker no cachea NADA a propósito.** Existe solo porque Chrome lo
+exige para ofrecer "Instalar" en Android. Cachear sería peligroso: cada página
+está detrás de Clerk y muestra expedientes penales de UN abogado; un SW que
+guarde respuestas puede servir una vista de otra sesión o dejar el relato de una
+causa en el disco del dispositivo después de cerrar sesión. Solo intercepta
+navegaciones y, si la red falla, muestra un cartel de sin conexión.
+
+`apple-mobile-web-app-capable` se agrega a mano vía `metadata.other`: Next 16
+emite el nombre moderno del W3C (`mobile-web-app-capable`) y no el de Apple.
+iOS 15.4+ ya respeta el `display` del manifest, pero en los anteriores esa meta
+es lo único que separa una app de un acceso directo.
+
+El middleware de Clerk ya deja pasar `/sw.js`, `/manifest.webmanifest` y los
+`.png` (el matcher de [proxy.ts](src/proxy.ts) excluye esas extensiones), así
+que la instalación no requiere sesión.
+
 ### `GET /api/consumo`
 Sin maxDuration custom. Devuelve consumo del mes en curso + historial (top 20 por `ejecutado_en DESC`).
 
@@ -474,11 +580,24 @@ Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; **
 - 5.1 ✅ historial drill-down con modal de detalle.
 - 5.2 ✅ legacy movido a `/legacy/`.
 - 5.3 ✅ este documento + auditoría arquitectónica del RAG.
-- 5.4 ⏳ Dockerfile nuevo en raíz (Next 16 standalone, multi-stage).
+- 5.4 ✅ Dockerfile en raíz (Next 16 standalone, multi-stage). Ya sufrió deploys reales: tiene el `--max-old-space-size=4096` por el OOM del type-check en el builder de Easypanel y el `--webpack` porque Turbopack necesita el SWC nativo, que la imagen slim no instala.
 - 5.5 ✅ pre-deploy checks (hardening RLS deny-by-default, revoke anon/authenticated, email Lautaro cargado en DB).
 - 5.6 ⏳ deploy manual a Easypanel reemplazando el servicio legacy en `lexstrategy.teotec.org`. Sin coexistencia, sin URL temporal beta, sin swap DNS.
 
+### Fase 8 — LEXIE (asistente global)
+
+- 8.0 ⏳ migración `20260819120000_lexie_tipo_ejecucion.sql` — **sin aplicar**. Bloquea las dos rutas de LEXIE.
+- 8.1 ✅ motor de agente genérico; `run-agent-consulta` migrado.
+- 8.2 ✅ prompt caching (medido: turno de chat 0,0517 → 0,0362 USD).
+- 8.3 ✅ las cinco tools de lectura, con el guard de ownership.
+- 8.4 ✅ `GET`/`POST /api/lexie` + conversación global.
+- 8.5 ✅ protocolo de saludo, server-side y sin tokens.
+- 8.6 ✅ panel global (botón flotante + Ctrl/⌘+J).
+- 8.7 ✅ PWA instalable en iOS y Android.
+
 Pendientes conocidos:
-- Dockerfile en raíz: el viejo se movió a `/legacy/Dockerfile`, el nuevo se crea en 5.4.
+- **Aplicar `20260819120000`** en el SQL Editor: sin eso LEXIE devuelve 500.
+- `run-agent.ts` (`/analizar-caso`) sigue con su propio loop; migrarlo al motor es 8.1b.
+- Las **carátulas de las causas son malas** (varias son la primera línea del relato, una tiene el encoding roto). Degrada a LEXIE y al buscador. El arreglo de fondo es la ficha de causa que propone REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md.
 
 El plan detallado de las fases vive en la memoria del proyecto, no en el repo.
