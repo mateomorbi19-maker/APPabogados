@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/themes";
 import { esES } from "@clerk/localizations";
 import { TemaProvider } from "@/components/tema/tema-provider";
+import { RegistrarSW } from "@/components/pwa/registrar-sw";
 import { SCRIPT_ANTI_FLASH } from "@/components/tema/tema";
 import "./globals.css";
 
@@ -36,6 +37,50 @@ const CLERK_FONT_FAMILY =
 export const metadata: Metadata = {
   title: "EstrategiaLegal",
   description: "Análisis estratégico de casos penales asistido por IA",
+  // === Instalable como app (iOS y Android) ===
+  // El manifest (src/app/manifest.ts) cubre Android. iOS lo ignora casi por
+  // completo y se guía por estas dos cosas: `apple-mobile-web-app-capable`
+  // (que es lo que saca la barra de Safari al abrir desde el ícono) y el
+  // apple-touch-icon.
+  applicationName: "EstrategiaLegal",
+  appleWebApp: {
+    capable: true,
+    title: "EstrategiaLegal",
+    // La barra de estado se pinta con el fondo de la app en vez de quedar
+    // blanca sobre el canvas oscuro.
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  // Sin esto, iOS abre los links de la app en Safari aunque esté instalada.
+  formatDetection: { telephone: false },
+  other: {
+    // Next 16 emite `mobile-web-app-capable` (el nombre estándar del W3C) y
+    // deliberadamente NO emite el de Apple. Verificado leyendo el <head>
+    // renderizado: apple-mobile-web-app-title y -status-bar-style sí salen,
+    // pero -capable no.
+    //
+    // iOS 15.4+ ya respeta `display: standalone` del manifest, así que en un
+    // iPhone actualizado alcanza. Pero en los anteriores esta meta es lo ÚNICO
+    // que hace que el ícono abra la app sin la barra de Safari — que es
+    // exactamente la diferencia entre "una app" y "un acceso directo a una
+    // página". Cuesta una línea; va.
+    "apple-mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport: Viewport = {
+  // `viewportFit: cover` deja que el contenido use la pantalla completa en los
+  // teléfonos con notch; los componentes compensan con env(safe-area-inset-*).
+  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#08080c",
 };
 
 export default function RootLayout({
@@ -74,6 +119,7 @@ export default function RootLayout({
             // browser pinte nada del contenido.
             dangerouslySetInnerHTML={{ __html: SCRIPT_ANTI_FLASH }}
           />
+          <RegistrarSW />
           <TemaProvider>{children}</TemaProvider>
         </body>
       </html>
