@@ -52,11 +52,16 @@ src/
 
 supabase/migrations/              # SQL aplicado vía SQL Editor (ver MIGRATION_LOG.md)
 scripts/
-  ingestar-cppf.ts                # ingestor del CPPF (PDF local → documentos). Destructivo: delete-before-insert.
+  ingestar-cp.ts                  # ingestor del Código Penal (HTML Infoleg → documentos). Destructivo. VIGENTE.
+  ingestar-cppf-html.ts           # ingestor del CPPF (HTML Infoleg, Dto 118/2019). Destructivo. VIGENTE.
+  ingestar-cppf.ts                # ingestor viejo del CPPF (PDF Infojus 2014). SUPERADO por el de arriba.
   ingestar-repositorio.ts         # Drive → texto → ficha (IA) → embeddings → repositorio_*. Incremental, no destructivo.
   construir-catalogo-repositorio.ts # drive-catalogo.json → catalogo.ts (módulo generado)
   test-agent.ts                   # smoke test del agente RAG end-to-end
   count-system-tokens.ts          # mide tokens del system prompt + tool descriptions
+  verificar-coherencia-mapa.ts    # valida las 12 reglas del mapa contra la base (read-only)
+  verificar-lexie.ts              # smoke de LEXIE (--sin-modelo saltea el turno pago)
+  verificar-motor.ts              # smoke del tool-use loop genérico
 
 legacy/                           # Sistema viejo (Express + index.html + n8n).
                                   # Apagado, queda por referencia histórica.
@@ -223,7 +228,7 @@ Regenerar el catálogo: `npx tsx scripts/construir-catalogo-repositorio.ts` (lee
 El catálogo de arriba sólo conoce NOMBRES DE ARCHIVO. Para que el agente conteste
 "¿qué jurisprudencia aplica a este caso?" hace falta el CONTENIDO de los PDF, y eso
 vive en dos tablas propias (migración `20260807120000_repositorio_rag.sql`,
-**pendiente de aplicar**):
+**aplicada** — verificado contra la base el 2026-08-22: 345 documentos y 7.439 chunks):
 
 - `repositorio_documentos` — una fila por documento con una **ficha** generada
   offline por Claude al ingerir: `holding` (la regla que sienta), `sumario`,
@@ -260,11 +265,16 @@ estratégico. Medido sobre los mismos dos fallos: Haiku USD 0,011 por documento
 equivalentes: mismo holding, mismas normas, misma utilidad por lado.
 `--modelo preciso` vuelve a Sonnet.
 
-Estado medido del corpus: **300 documentos con texto, 45 sin** (escaneos sin OCR
-—varios leading cases de la CSJN— y 3 `.doc` viejos). Esos 45 se registran con
-`estado='sin_texto'`: siguen navegables en el Repositorio pero el agente no los
-puede citar. Pasarlos por OCR y volver a subirlos los incorpora en la próxima
-corrida.
+Estado medido del corpus el 2026-08-22, sobre 345 documentos:
+**155 `ok` (citables) · 145 `error` · 45 `sin_texto`.**
+
+- Los **45 `sin_texto`** son escaneos sin OCR —varios leading cases de la CSJN— y
+  3 `.doc` viejos. Siguen navegables en el Repositorio pero el agente no los puede
+  citar. Pasarlos por OCR y volver a subirlos los incorpora en la próxima corrida.
+- Los **145 `error`** tienen texto extraído pero se quedaron sin ficha: la ingesta
+  se cortó cuando la cuenta de Anthropic llegó a saldo cero. **No es un bug del
+  script** — se recuperan corriendo `npm run repo:ingesta` de nuevo (es incremental
+  por hash) apenas haya crédito.
 
 ### Orden de construcción de las estrategias
 
@@ -466,26 +476,34 @@ Bitácora de migraciones SQL: ver [MIGRATION_LOG.md](MIGRATION_LOG.md). **Nota:*
 
 ### Corpus
 
-La tabla `documentos` contiene **3.934 chunks** de derecho penal argentino, todos con embedding `vector(1536)`. Desglose por `tipo_documento`:
+La tabla `documentos` contiene **3.823 chunks** de derecho penal argentino, todos con embedding `vector(1536)`. Desglose por `tipo_documento` (medido contra la base el 2026-08-22):
 - `manual` = 2.974 chunks (manuales de litigación penal)
-- `codigo` = 590 chunks (Código Penal)
-- `codigo_procesal` = 370 chunks (CPPF Infojus 2014)
+- `codigo` = 425 chunks (Código Penal)
+- `codigo_procesal` = 424 chunks (CPPF consolidado Decreto 118/2019, no el PDF Infojus 2014)
+
+⚠️ **Estos números cambiaron respecto de lo que decía este documento** (3.934 / 590 / 370):
+el CP y el CPPF fueron re-ingestados con `ingestar-cp.ts` e `ingestar-cppf-html.ts`.
+El CP **ya no está roto**: tiene 396 artículos distintos (antes 52), incluidos 172,
+173, 210 y 292, y la duplicación máxima bajó de 10x a 4x — y ese 4x es legítimo
+(artículos largos partidos en varios chunks).
 
 Columnas: `id bigint (PK)`, `contenido text`, `embedding vector(1536)`, `fuente_id uuid (FK nullable)`, `tipo_documento`, `libro/titulo/capitulo/articulo/seccion text`, `pagina int4`, `metadata jsonb DEFAULT '{}'`, `created_at`.
 
 Índice vectorial: **HNSW cosine** (`documentos_embedding_idx USING hnsw (embedding vector_cosine_ops)`).
 
-Limitación de metadata: solo el **~24% de los chunks** (950/3.934) tienen número de `articulo` en metadata. El system prompt exige citar el artículo exacto tal como aparece en el chunk, pero el ~76% del corpus no trae ese campo estructurado.
+Limitación de metadata: solo el **~22% de los chunks** (849/3.823) tienen número de `articulo` en metadata. El system prompt exige citar el artículo exacto tal como aparece en el chunk, pero el ~76% del corpus no trae ese campo estructurado.
 
 Sin integraciones externas: no hay SAIJ, no hay scraping, no hay segunda API legal. Las únicas llamadas en runtime son a Anthropic (LLM), OpenAI (embeddings) y Supabase (DB + vector store).
 
 ### Pipeline de ingestión
 
-**No está completamente versionado en el repo.** El corpus tiene dos orígenes:
+**Los dos códigos ya son reproducibles; los manuales no.** Hoy el corpus tiene tres orígenes:
 
-- **`codigo_procesal` (370 chunks):** generados por [scripts/ingestar-cppf.ts](scripts/ingestar-cppf.ts), el único ingestor en el repo. Lee `notas-migracion/cppf-2014.pdf` (PDF local, Infojus 2014), chunkea por artículo con cap de 1.500 caracteres (split por oración, sin overlap), embeddea con OpenAI `text-embedding-3-small` e inserta en `documentos`. Script manual (sin CI, sin pg_cron); es **destructivo** (delete-before-insert de los chunks previos del tipo).
+- **`codigo` (425 chunks):** [scripts/ingestar-cp.ts](scripts/ingestar-cp.ts), desde el HTML de Infoleg (`notas-migracion/CP-infoleg.html`, charset windows-1252). Reemplazó al corpus roto que había cargado n8n (590 chunks con sólo ~52 artículos y duplicación ~10x). Destructivo: delete-before-insert del tipo. Modos `--dry-run` y `--validate` (read-only).
 
-- **`manual` + `codigo` (3.564 chunks, ~90% del corpus):** cargados en 2026-03-25 por el workflow n8n `notas-migracion/workflow-n8n-ingesta.json` (gitignored). Descargó PDFs desde Google Drive (`Codigo_Penal.pdf`, `Manual_Litigacion_1/2/3.pdf`), embeddeó vía OpenAI y los insertó directamente. **No reproducible desde el código versionado.**
+- **`codigo_procesal` (424 chunks):** [scripts/ingestar-cppf-html.ts](scripts/ingestar-cppf-html.ts), desde el HTML de Infoleg del CPPF **consolidado por Decreto 118/2019**. Reemplazó los 370 chunks del PDF Infojus 2014 que había cargado [ingestar-cppf.ts](scripts/ingestar-cppf.ts), que se conserva sólo como referencia histórica. Difiere en el parser: los artículos van en texto plano `ARTÍCULO N` delimitados por `<br>`, sin `<b>`, y la jerarquía suma un nivel PARTE que se pliega en el campo `libro`.
+
+- **`manual` (2.974 chunks, ~78% del corpus):** cargados en 2026-03-25 por el workflow n8n `notas-migracion/workflow-n8n-ingesta.json` (gitignored). Descargó los PDFs `Manual_Litigacion_1/2/3.pdf` desde Google Drive, embeddeó vía OpenAI y los insertó directamente. **Esta parte sigue sin ser reproducible desde el código versionado.**
 
 El schema de `documentos` tampoco está en ninguna migración versionada (fue creado fuera del repo).
 
@@ -586,7 +604,7 @@ Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; **
 
 ### Fase 8 — LEXIE (asistente global)
 
-- 8.0 ⏳ migración `20260819120000_lexie_tipo_ejecucion.sql` — **sin aplicar**. Bloquea las dos rutas de LEXIE.
+- 8.0 ✅ migración `20260819120000_lexie_tipo_ejecucion.sql` — **aplicada** (verificado el 2026-08-22: `conversaciones_lexie` y `mensajes_lexie` existen).
 - 8.1 ✅ motor de agente genérico; `run-agent-consulta` migrado.
 - 8.2 ✅ prompt caching (medido: turno de chat 0,0517 → 0,0362 USD).
 - 8.3 ✅ las cinco tools de lectura, con el guard de ownership.
@@ -596,8 +614,23 @@ Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; **
 - 8.7 ✅ PWA instalable en iOS y Android.
 
 Pendientes conocidos:
-- **Aplicar `20260819120000`** en el SQL Editor: sin eso LEXIE devuelve 500.
 - `run-agent.ts` (`/analizar-caso`) sigue con su propio loop; migrarlo al motor es 8.1b.
-- Las **carátulas de las causas son malas** (varias son la primera línea del relato, una tiene el encoding roto). Degrada a LEXIE y al buscador. El arreglo de fondo es la ficha de causa que propone REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md.
+- Las **carátulas de las causas son malas** (4 de 8 son la primera línea del relato). Lo arregla la Fase 9.
+
+> **Lección de esta fase, que vale para las próximas:** este bloque declaraba
+> pendientes DOS migraciones que estaban aplicadas hacía semanas, y una de ellas
+> supuestamente hacía que LEXIE devolviera 500. El drift entre el repo y la base
+> corta para los dos lados: un `.sql` versionado no prueba que esté aplicado, y
+> el `MIGRATION_LOG` tampoco prueba que no lo esté. **Se verifica con un GET a
+> PostgREST antes de creerle a este documento.**
+
+### Fase 9 — Ficha de causa
+
+La identidad del expediente: carátula, número, organismo, juez, fiscalía, delitos,
+partes. Ver [PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md) para el plan completo, las
+decisiones tomadas y lo que queda explícitamente afuera (honorarios, gastos, prueba
+como entidad, escritos generados).
+
+- 9.1 ⏳ migración `20260822120000_ficha_de_causa.sql` — **la corre Mateo a mano**.
 
 El plan detallado de las fases vive en la memoria del proyecto, no en el repo.

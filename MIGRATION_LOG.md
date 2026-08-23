@@ -408,7 +408,7 @@ Calcado de `uq_conversacion_activa_por_caso` (`20260507180000:71-73`).
 
 ---
 
-## 2026-08-07 · 12:00:00 UTC — `20260807120000_repositorio_rag.sql` · ⏳ PENDIENTE DE APLICAR
+## 2026-08-07 · 12:00:00 UTC — `20260807120000_repositorio_rag.sql` · ✅ APLICADA
 
 **Contexto:** el Repositorio de jurisprudencia y doctrina existía como **catálogo** (345 documentos en un módulo TS generado, `src/lib/repositorio/catalogo.ts`) construido a partir de los NOMBRES DE ARCHIVO de Drive. Eso alcanza para que el abogado navegue la biblioteca, pero no para que el agente conteste "¿qué jurisprudencia se puede aplicar a este caso?": para eso hace falta el CONTENIDO de los PDF. Esta migración crea las dos tablas donde vive ese contenido.
 
@@ -435,7 +435,11 @@ Calcado de `uq_conversacion_activa_por_caso` (`20260507180000:71-73`).
 
 **Costo de disco (medido en dry-run sobre el corpus real):** 300 documentos con texto (45 son escaneos sin OCR), ~16.700 chunks → **~100 MB de vectores + ~140 MB de índice HNSW**. Si el proyecto está en el plan Free (500 MB) conviene ingerir primero `--coleccion jurisprudencia` y medir antes de sumar la doctrina.
 
-**Aplicación:** ⏳ **pendiente.** La tiene que correr Mateo a mano en el SQL Editor (Claude Code no la ejecutó: el MCP de Supabase de esta sesión sigue scopeado a otra organización — devuelve dos proyectos de `mateomrb19@gmail.com`, ninguno es `xvdlnevcvcsgxbngwliv`). Después de aplicarla hay que correr la ingesta:
+**Aplicación:** ✅ **aplicada.** La corrió Mateo a mano en el SQL Editor. Verificado contra la base el **2026-08-22** por PostgREST con la service_role key: `repositorio_documentos` **345 filas** (155 `ok`, 145 `error`, 45 `sin_texto`) y `repositorio_chunks` **7.439**.
+
+> Este bloque decía ⏳ PENDIENTE hasta el 2026-08-22, con la migración aplicada y el corpus ingerido. El log no es fuente de verdad: se verifica contra la base.
+
+La ingesta ya corrió (parcialmente — los 145 `error` se quedaron sin ficha cuando la cuenta de Anthropic llegó a saldo cero). Para completarla, es incremental por hash:
 
 ```bash
 npm run repo:ingesta
@@ -451,7 +455,7 @@ Verificación: `GET /api/repositorio/estado` devuelve `documentos_indexados` (`n
 
 ---
 
-## 2026-08-19 · 12:00:00 UTC — `20260819120000_lexie_tipo_ejecucion.sql` · ⏳ PENDIENTE DE APLICAR
+## 2026-08-19 · 12:00:00 UTC — `20260819120000_lexie_tipo_ejecucion.sql` · ✅ APLICADA
 
 **Contexto:** Fase 8 / sub-paso 8.0. Primera pieza de LEXIE, el asistente global de la app. Va **antes** que cualquier línea de código del agente, a propósito.
 
@@ -483,11 +487,13 @@ Más un índice por hilo activo, uno por conversación+fecha, RLS deny-by-defaul
 
 Los cinco están **en uso**, así que ninguno se puede omitir al recrear el CHECK. El `DO` block borra el constraint vigente **por definición** y no por nombre, igual que `20260706190000` y `20260721120000`: hay drift repo↔DB y el nombre puede no ser el default.
 
-**Independiente de `20260807120000_repositorio_rag.sql`** (la otra pendiente): tocan objetos distintos y se pueden correr en cualquier orden.
+**Independiente de `20260807120000_repositorio_rag.sql`**: tocan objetos distintos y se pueden correr en cualquier orden.
 
-**Aplicación:** ⏳ **pendiente.** La corre Mateo a mano en el SQL Editor. Claude Code no la ejecutó: el MCP de Supabase de esta sesión sigue scopeado a otra organización (devuelve dos proyectos de `mateomrb19@gmail.com`, ninguno es `xvdlnevcvcsgxbngwliv`).
+**Aplicación:** ✅ **aplicada.** La corrió Mateo a mano en el SQL Editor. Verificado contra la base el **2026-08-22**: `conversaciones_lexie` (2 filas) y `mensajes_lexie` existen y responden.
 
-**Bloquea:** `POST /api/lexie` y `GET /api/lexie` fallan con "relation does not exist" hasta que se aplique. El resto de la app no se entera: nada más consulta estas tablas, y `'lexie'` no se inserta desde ningún otro lado.
+> Igual que la de `repositorio_rag`: este bloque decía ⏳ PENDIENTE y CLAUDE.md afirmaba que LEXIE devolvía 500 por esta migración. Las dos cosas eran falsas.
+
+**Bloqueaba:** `POST /api/lexie` y `GET /api/lexie` fallaban con "relation does not exist" hasta aplicarla. El resto de la app no se entera: nada más consulta estas tablas, y `'lexie'` no se inserta desde ningún otro lado.
 
 **Verificación** (el CHECK con los 6 valores + las dos tablas):
 
@@ -501,4 +507,41 @@ WHERE rel.relname = 'ejecuciones' AND con.contype = 'c'
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public'
   AND table_name IN ('conversaciones_lexie', 'mensajes_lexie');
+```
+
+---
+
+## 2026-08-22 · 12:00:00 UTC — `20260822120000_ficha_de_causa.sql` · ⏳ PENDIENTE DE APLICAR
+
+**Contexto:** Fase 9 / sub-paso 9.1. La causa gana su identidad. Hoy `casos` tiene 13 columnas y ninguna dice cómo se llama oficialmente el expediente, qué número tiene, ante qué organismo tramita ni quién está imputado. Medido contra la base el 2026-08-22: **de 8 causas, 4 se llaman con un pedazo del relato** — una es literalmente `"El 3 de julio de 2026, cerca de las 04:15"`. Eso degrada a la vez la lista de causas, el buscador global, el contexto de LEXIE y el header del chat, porque los cuatro leen `casos.titulo`.
+
+El orden lo había fijado [REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md) §6: la ficha va primero y sirve aunque la reportería no se construya nunca. El plan completo está en [PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md).
+
+**Tipo:** aditiva. 8 columnas nuevas en `casos` + 1 tabla nueva (`partes_caso`) + 1 CHECK recreado con el patrón defensivo por definición. Cero cambios destructivos, cero backfill.
+
+**Contenido:**
+
+- `casos.caratula`, `expediente_numero`, `organismo`, `secretaria`, `juez`, `fiscalia`, `delitos text[]` — todas **nullable**. El campo que falta se muestra vacío con opción de cargarlo; nunca se rellena con un valor verosímil (misma regla que `SIN_JURISPRUDENCIA_APLICABLE`).
+- `casos.estado_seguimiento text NOT NULL DEFAULT 'activa'` con CHECK `(activa|en_espera|archivada)`. Único NOT NULL, con default, para que las 8 causas existentes queden `activa` sin backfill. **No es la etapa procesal**: esa la deriva el mapa y no se persiste.
+- `partes_caso` — 1:N, con `nombre`, `rol`, `es_cliente` (ortogonal al rol: nuestro cliente puede ser el imputado o la víctima) y `situacion_libertad`. **Sin datos de contacto** hasta que se conteste la P1 de REPORTERIA. RLS ENABLE + REVOKE a `anon`/`authenticated` (patrón de `20260819120000`, que `mapa_procesal_nodos` se había olvidado).
+
+**Lo que a propósito NO trae:** columna `portal` (derivable del `fuero`), columna `etapa` (la calcula el mapa desde el nodo `ocurrido` más profundo; una columna declarada se contradice con el mapa el primer día), índices sobre `casos` (8 filas, el planner los ignora) y `expediente_anio` (el año va adentro del número en los tres fueros: desdoblarlo son dos verdades para el mismo dato).
+
+**Acoplamiento código ↔ migración: ALTO.** No hay un solo `select("*")` sobre `casos` en el repo — son **13 call sites** que enumeran columnas a mano. Una columna nombrada en un SELECT que la base no tiene devuelve 42703 y PostgREST lo traduce a **500 en todos los reads del caso**. Es exactamente el patrón de `riesgo_alto`. Por eso esta migración va **sola y antes** que una línea de TypeScript.
+
+**Aplicación:** ⏳ **pendiente.** La corre Mateo a mano en el SQL Editor. Claude Code no puede: no hay MCP de Supabase con acceso a `xvdlnevcvcsgxbngwliv` ni URL directa de Postgres en `.env.local` — sólo PostgREST con la service_role key, que sirve para leer y para verificar, no para DDL.
+
+**Verificación** (después de correrla):
+
+```sql
+SELECT column_name, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = 'casos'
+  AND column_name IN ('caratula','expediente_numero','organismo','secretaria',
+                      'juez','fiscalia','delitos','estado_seguimiento')
+ORDER BY column_name;
+
+SELECT estado_seguimiento, count(*) FROM casos GROUP BY 1;   -- activa | 8
+
+SELECT relrowsecurity FROM pg_class WHERE relname = 'partes_caso';  -- t
 ```
