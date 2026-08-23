@@ -55,6 +55,17 @@ type EventoLite = {
 
 type CasoLite = {
   id: string;
+  // Ficha (Fase 9). Hasta entonces este builder no leía ni siquiera `titulo`:
+  // el agente del chat conversaba sobre una causa sin saber cómo se llamaba.
+  titulo: string;
+  caratula: string | null;
+  expediente_numero: string | null;
+  organismo: string | null;
+  secretaria: string | null;
+  juez: string | null;
+  fiscalia: string | null;
+  delitos: string[] | null;
+  estado_seguimiento: string;
   caso_descripcion: string;
   contexto: Record<string, unknown> | null;
   rol: string;
@@ -64,6 +75,13 @@ type CasoLite = {
   estrategia_snapshot: Record<string, unknown>;
   // Fuero del mapa procesal. NULL en casos cuyo mapa nunca se inicializó.
   fuero: Fuero | null;
+};
+
+type ParteLite = {
+  nombre: string;
+  rol: string;
+  es_cliente: boolean;
+  situacion_libertad: string | null;
 };
 
 const FECHA_AR = new Intl.DateTimeFormat("es-AR", {
@@ -117,7 +135,7 @@ export async function buildContextoCaso(
   const { data: casoRaw, error: casoErr } = await supabase
     .from("casos")
     .select(
-      "id, caso_descripcion, contexto, rol, ejecucion_origen_id, estrategia_seleccionada_idx, estrategia_seleccionada_rol, estrategia_snapshot, fuero",
+      "id, titulo, caratula, expediente_numero, organismo, secretaria, juez, fiscalia, delitos, estado_seguimiento, caso_descripcion, contexto, rol, ejecucion_origen_id, estrategia_seleccionada_idx, estrategia_seleccionada_rol, estrategia_snapshot, fuero",
     )
     .eq("id", casoId)
     .maybeSingle();
@@ -164,6 +182,15 @@ export async function buildContextoCaso(
   // la sección solo se RENDERIZA si el caller la pidió.
   const nodosMapa = await getNodosDelCaso(casoId);
 
+  // Partes de la causa. Misma nota de ownership que arriba: la query va
+  // scopeada por caso_id y el caller ya autenticó el caso.
+  const { data: partesRaw } = await supabase
+    .from("partes_caso")
+    .select("nombre, rol, es_cliente, situacion_libertad")
+    .eq("caso_id", casoId)
+    .order("creado_en", { ascending: true });
+  const partes = (partesRaw ?? []) as ParteLite[];
+
   // Recolectar adjuntos históricos (de eventos manuales y consultas
   // previas) para que la función llamadora sepa qué hay disponible.
   // No incluimos los del evento de consulta actual porque ese se crea
@@ -187,6 +214,55 @@ export async function buildContextoCaso(
 
   lineas.push("# CONTEXTO DEL CASO");
   lineas.push("");
+
+  // 0. Identificación del expediente.
+  //
+  // Va PRIMERO y antes del relato porque es lo que le permite al agente
+  // referirse a la causa como se refiere el abogado ("la de Rodríguez en el
+  // Federal 3") en vez de repetir el relato entero.
+  //
+  // Los campos vacíos NO se emiten. Nunca se escribe "juzgado: no informado":
+  // esa línea le da al modelo un dato para repetir, y "el juzgado figura como
+  // no informado" suena a que el sistema sabe algo cuando no sabe nada.
+  const ident: string[] = [];
+  const caratulaViva = caso.caratula?.trim();
+  ident.push(`- Cómo se llama: ${caratulaViva || caso.titulo}`);
+  if (!caratulaViva) {
+    ident.push(
+      "  (ese es un título de trabajo, NO la carátula oficial: la carátula todavía no se cargó. No se lo cites al abogado como si fuera el nombre del expediente.)",
+    );
+  }
+  if (caso.expediente_numero)
+    ident.push(`- Expediente: ${caso.expediente_numero}`);
+  if (caso.organismo) ident.push(`- Organismo: ${caso.organismo}`);
+  if (caso.secretaria) ident.push(`- Secretaría: ${caso.secretaria}`);
+  if (caso.juez) ident.push(`- Juez: ${caso.juez}`);
+  if (caso.fiscalia) ident.push(`- Fiscalía: ${caso.fiscalia}`);
+  if (caso.delitos && caso.delitos.length > 0)
+    ident.push(`- Delitos: ${caso.delitos.join(", ")}`);
+  ident.push(`- El estudio actúa como: ${caso.rol}`);
+  if (caso.estado_seguimiento && caso.estado_seguimiento !== "activa") {
+    ident.push(
+      `- Estado de la causa para el estudio: ${caso.estado_seguimiento.replace(/_/g, " ")}`,
+    );
+  }
+
+  lineas.push("## Identificación de la causa");
+  lineas.push(...ident);
+  lineas.push("");
+
+  if (partes.length > 0) {
+    lineas.push("## Partes");
+    for (const p of partes) {
+      const extra: string[] = [p.rol];
+      if (p.es_cliente) extra.push("CLIENTE DEL ESTUDIO");
+      if (p.situacion_libertad && p.rol === "imputado") {
+        extra.push(p.situacion_libertad.replace(/_/g, " "));
+      }
+      lineas.push(`- ${p.nombre} — ${extra.join(" · ")}`);
+    }
+    lineas.push("");
+  }
 
   // 1. Caso original
   lineas.push("## Caso original");

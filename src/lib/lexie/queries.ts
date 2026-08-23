@@ -191,3 +191,38 @@ export function inputTokensParaCuota(usage: RunAgentUsage): number {
     usage.cache_read_input_tokens
   );
 }
+
+/**
+ * ¿Cambió alguna causa del abogado desde `desdeIso`?
+ *
+ * Lo usa la ruta de LEXIE para decidir si tiene que volver a inyectar el bloque
+ * de contexto en un hilo que ya está andando. Sin esto, el contexto queda
+ * congelado en el primer mensaje: la conversación activa no se archiva sola ni
+ * se puede resetear desde el UI, así que una carátula corregida no llegaría
+ * nunca al modelo.
+ *
+ * Es UNA fila: se pide el `actualizado_en` más alto con limit 1, apoyándose en
+ * el orden, no en un agregado. `casos.actualizado_en` lo bumpea un trigger en
+ * cada UPDATE del caso y también al tocar sus eventos, así que cubre tanto
+ * editar la ficha como cargar un movimiento.
+ *
+ * Ante un error de la query devuelve `false` — no refrescar es peor que
+ * refrescar de más, pero mucho menos malo que romper el turno entero por una
+ * optimización de contexto.
+ */
+export async function hayCambiosDesde(
+  usuarioId: string,
+  desdeIso: string | null,
+): Promise<boolean> {
+  if (!desdeIso) return false;
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("casos")
+    .select("actualizado_en")
+    .eq("usuario_id", usuarioId)
+    .order("actualizado_en", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return false;
+  return (data as { actualizado_en: string }).actualizado_en > desdeIso;
+}

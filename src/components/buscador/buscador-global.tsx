@@ -29,12 +29,28 @@ export type ResultadoBusqueda = {
   titulo: string;
   rol: string;
   actualizado_en: string;
-  campo: "titulo" | "relato" | "contexto";
+  campo:
+    | "caratula"
+    | "expediente"
+    | "parte"
+    | "organismo"
+    | "delito"
+    | "titulo"
+    | "relato"
+    | "contexto";
   fragmento: string;
 };
 
+// `titulo` decía "Carátula" hasta la Fase 9, cuando la carátula real no
+// existía. Ahora son dos cosas distintas y dejar las dos con el mismo rótulo
+// haría que el ⌘K muestre dos entradas iguales que significan lo contrario.
 const CAMPO_LABEL: Record<ResultadoBusqueda["campo"], string> = {
-  titulo: "Carátula",
+  caratula: "Carátula",
+  expediente: "Expediente",
+  parte: "Parte",
+  organismo: "Juzgado",
+  delito: "Delito",
+  titulo: "Título",
   relato: "En el relato",
   contexto: "En el formulario",
 };

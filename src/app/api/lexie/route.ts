@@ -12,6 +12,7 @@ import {
   getMensajes,
   getOCrearConversacionActiva,
   guardarTurno,
+  hayCambiosDesde,
   inputTokensParaCuota,
   ponerTituloSiFalta,
   reconstruirHistorial,
@@ -125,13 +126,42 @@ export async function POST(req: Request) {
     const historial = await getMensajes(conv.id);
     mensajesPrevios = reconstruirHistorial(historial);
 
-    // El contexto pesado (causas + agenda + fecha) va SOLO en el primer
-    // mensaje del hilo. Después ya vive en el historial, que además queda
-    // dentro del prefijo cacheado del motor.
-    if (mensajesPrevios.length === 0) {
+    // El contexto pesado (causas + agenda + fecha) va en el primer mensaje del
+    // hilo. Después ya vive en el historial, dentro del prefijo cacheado.
+    //
+    // Pero se REFRESCA si algo cambió desde el último mensaje. Sin esto, el
+    // contexto quedaba congelado para siempre: la conversación activa no se
+    // archiva sola ni se puede resetear desde el UI, así que el abogado podía
+    // corregir una carátula, cargar el juzgado y los imputados, y LEXIE seguía
+    // leyendo la versión vieja hasta que alguien archivara la fila a mano.
+    //
+    // El disparador es `MAX(casos.actualizado_en) > último mensaje del hilo`.
+    // Es auto-limitante: apenas se re-inyecta, el mensaje nuevo pasa a ser el
+    // último y no vuelve a dispararse hasta el próximo cambio real.
+    //
+    // Y es barato en caché: el prefijo cacheado va hasta el final del historial
+    // previo, así que agregar contenido DESPUÉS no lo invalida — se paga una
+    // vez, como cualquier turno nuevo. La alternativa "mandarlo en todos los
+    // turnos" sí rompía el prefijo (medido: un turno de chat pasó de USD 0,0517
+    // a 0,0362 gracias al caching).
+    const debeRefrescar =
+      mensajesPrevios.length > 0 &&
+      (await hayCambiosDesde(
+        wl.usuario_id,
+        historial[historial.length - 1]?.creado_en ?? null,
+      ));
+
+    if (mensajesPrevios.length === 0 || debeRefrescar) {
       const datos = await cargarDatosLexie(wl.usuario_id, wl.nombre);
       nombre = datos.nombre;
       contextoInicial = construirContextoModelo(datos);
+      if (debeRefrescar) {
+        contextoInicial =
+          "NOTA: el abogado actualizó datos de alguna causa desde tu último mensaje. " +
+          "Este bloque REEMPLAZA al que viste antes en esta conversación; si algo " +
+          "difiere, vale lo de acá.\n\n" +
+          contextoInicial;
+      }
     }
   } catch (e) {
     console.error("[POST lexie] error preparando la conversación:", e);

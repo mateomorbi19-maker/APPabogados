@@ -136,7 +136,7 @@ export const lexieTools: Anthropic.Tool[] = [
   {
     name: LEXIE_TOOL_NAMES.buscarCasos,
     description:
-      "Busca entre las causas del abogado por texto libre: nombre de un imputado, carátula, delito, o cualquier palabra que aparezca en el relato del caso. Usala cuando mencione una causa que no está en la lista que ya tenés en el contexto, o cuando busque por el nombre de una persona. Devuelve el fragmento donde encontró el término.",
+      "Busca entre las causas del abogado por texto libre: nombre de una persona de la causa (imputado, víctima, querellante), carátula, número de expediente, delito, juzgado, o cualquier palabra del relato. Usala cuando mencione una causa que no está en la lista que ya tenés en el contexto, o cuando busque por el nombre de una persona. El número de expediente se puede escribir con puntos, barras o guiones o sin nada: la búsqueda los ignora. Cada resultado dice en qué campo pegó (`donde_pego`), así que si pegó en `parte` sabés que esa persona figura en la causa con ese rol.",
     input_schema: {
       type: "object",
       properties: {
