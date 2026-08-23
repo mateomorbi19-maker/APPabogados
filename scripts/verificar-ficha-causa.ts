@@ -6,6 +6,11 @@
 //   DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server \
 //     --import dotenv/config scripts/verificar-ficha-causa.ts
 //
+// Todo lo que hace está SCOPEADO A UN SOLO ABOGADO: por default el de
+// VERIFICAR_EMAIL (o el admin), nunca "todas las causas de la base". El script
+// entra con `service_role`, que bypassa RLS, así que sin ese filtro leería —y
+// el bloque 6 ESCRIBIRÍA— en expedientes penales de los otros dos abogados.
+//
 // SOLO LECTURA salvo el bloque final, que crea y borra una parte de prueba en
 // una causa propia para probar el camino de escritura de `partes_caso`. Se
 // saltea con --sin-escritura.
@@ -48,11 +53,37 @@ async function main() {
   const supabase = createServerClient();
 
   // ---------------------------------------------------------------
+  titulo("0. De qué abogado son las causas que se van a mirar");
+
+  // El script no tiene sesión de Clerk, así que el usuario se elige por env.
+  // Sin esto, `casos[0]` del bloque 6 era la primera fila de un SELECT sin
+  // filtro ni orden: podía ser de cualquiera de los tres.
+  const EMAIL = (process.env.VERIFICAR_EMAIL ?? "mateomorbi19@gmail.com")
+    .trim()
+    .toLowerCase();
+
+  const { data: yo, error: yoErr } = await supabase
+    .from("usuarios")
+    .select("id, nombre, email")
+    .eq("email", EMAIL)
+    .maybeSingle();
+
+  if (yoErr || !yo) {
+    mal(`No hay ningún usuario con email ${EMAIL}`);
+    info("Pasá VERIFICAR_EMAIL=tu@email para verificar sobre tus causas.");
+    return;
+  }
+  const usuario = yo as { id: string; nombre: string; email: string };
+  ok(`Verificando sobre las causas de ${usuario.nombre} (${usuario.email})`);
+
+  // ---------------------------------------------------------------
   titulo("1. La migración 20260822120000");
 
   const { data: casosData, error: casosErr } = await supabase
     .from("casos")
     .select(COLS_CASO)
+    .eq("usuario_id", usuario.id)
+    .order("creado_en", { ascending: true })
     .limit(50);
 
   if (casosErr) {
@@ -184,22 +215,33 @@ async function main() {
     if (crearErr || !creada) {
       mal(`No se pudo insertar una parte: ${crearErr?.message}`);
     } else {
+      const idPrueba = (creada as { id: string }).id;
       ok("INSERT en partes_caso");
 
-      // El CHECK del rol tiene que rechazar un valor inventado.
-      const { error: rolMalErr } = await supabase
-        .from("partes_caso")
-        .update({ rol: "escribano" })
-        .eq("id", (creada as { id: string }).id);
-      if (rolMalErr) ok("El CHECK de `rol` rechaza un valor fuera del vocabulario");
-      else mal("El CHECK de `rol` aceptó 'escribano': el constraint no se aplicó");
-
-      const { error: borrarErr } = await supabase
-        .from("partes_caso")
-        .delete()
-        .eq("id", (creada as { id: string }).id);
-      if (borrarErr) mal(`No se pudo borrar la parte de prueba: ${borrarErr.message}`);
-      else ok("DELETE en partes_caso (la fila de prueba quedó limpia)");
+      // El borrado va en `finally`: si el chequeo del CHECK tira, la fila de
+      // prueba tiene que desaparecer igual. Un "imputado en prisión preventiva"
+      // huérfano no queda en un rincón — sale en la ficha, en el buscador como
+      // parte, y en el contexto que lee el agente del chat.
+      try {
+        const { error: rolMalErr } = await supabase
+          .from("partes_caso")
+          .update({ rol: "escribano" })
+          .eq("id", idPrueba);
+        if (rolMalErr)
+          ok("El CHECK de `rol` rechaza un valor fuera del vocabulario");
+        else mal("El CHECK de `rol` aceptó 'escribano': el constraint no se aplicó");
+      } finally {
+        const { error: borrarErr } = await supabase
+          .from("partes_caso")
+          .delete()
+          .eq("id", idPrueba);
+        if (borrarErr) {
+          mal(`No se pudo borrar la parte de prueba: ${borrarErr.message}`);
+          info(`Borrala a mano: partes_caso.id = ${idPrueba}`);
+        } else {
+          ok("DELETE en partes_caso (la fila de prueba quedó limpia)");
+        }
+      }
     }
   }
 

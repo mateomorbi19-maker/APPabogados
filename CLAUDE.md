@@ -731,6 +731,19 @@ DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/
   posterior al último mensaje del hilo. Antes se inyectaba solo en el primer
   mensaje y la conversación activa no se archiva sola: una carátula corregida no
   llegaba nunca al modelo.
+- **El fuero se congela cuando el mapa está armado.** La ficha lo deja editar
+  sólo mientras `mapa_procesal_nodos` esté vacío; si no, el `PATCH` devuelve
+  **409** y el selector aparece deshabilitado. `casos.fuero` no es descriptivo:
+  la plantilla del mapa se instancia UNA vez con `generarPlantillaBase(casoId,
+  fuero)` y no se regenera, así que cambiarlo dejaría el fuero de un código y el
+  árbol de otro — los títulos canónicos de `coherencia.ts` degradarían cada nodo
+  troncal a rama hipotética, cambiarían los nodos terminales, y el simulador
+  (que sólo soporta PBA) se habilitaría sobre un mapa de Nación. El único camino
+  para cambiar de fuero sigue siendo reiniciar el mapa, que es destructivo a
+  propósito.
+- **"Última actuación" cuenta sólo eventos `sucedido`.** Los `pendiente` son
+  cosas agendadas con fecha futura: sin filtrar, cargar una audiencia para
+  diciembre hacía que la ficha dijera que la causa se movió en diciembre.
 
 **Pendiente de esta fase:** 9.9 (movimientos del expediente con título, foja,
 organismo y ámbito intra/externo) queda **condicionado** a que el timeline se

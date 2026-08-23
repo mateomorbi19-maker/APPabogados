@@ -142,7 +142,8 @@ export async function PATCH(
   if (d.estado_seguimiento !== undefined)
     patchCols.estado_seguimiento = d.estado_seguimiento;
   if (d.fuero !== undefined) patchCols.fuero = d.fuero;
-  if (d.titulo !== undefined) patchCols.titulo = d.titulo.trim();
+  // Sin `.trim()`: el schema ya lo normalizó, igual que el resto de los campos.
+  if (d.titulo !== undefined) patchCols.titulo = d.titulo;
 
   if (Object.keys(patchCols).length === 0) {
     return jsonResponse(
@@ -152,6 +153,49 @@ export async function PATCH(
   }
 
   const supabase = createServerClient();
+
+  // El fuero NO se puede cambiar con el mapa procesal ya instanciado.
+  //
+  // `casos.fuero` no es un dato descriptivo: los nodos de `mapa_procesal_nodos`
+  // se generan UNA vez con `generarPlantillaBase(casoId, fuero)` y no se
+  // regeneran solos. Cambiarlo acá dejaría el fuero de un código y el árbol de
+  // otro, y todo lo que deriva del fuero pasaría a validar contra un código
+  // procesal que no es el del mapa: los títulos canónicos de coherencia.ts
+  // degradarían cada nodo troncal a "rama hipotética", los nodos terminales
+  // cambiarían, y el simulador de audiencias (que sólo soporta PBA) se
+  // habilitaría sobre un mapa de Nación.
+  //
+  // El único camino legítimo para cambiar de fuero es reiniciar el mapa, que es
+  // destructivo a propósito y se confirma en su propio diálogo. Acá se rechaza
+  // con 409 y se explica dónde hacerlo — igual que un rechazo de coherencia, no
+  // es un error técnico sino el sistema frenando un cambio incoherente.
+  if (d.fuero !== undefined) {
+    const { data: actual } = await supabase
+      .from("casos")
+      .select("fuero")
+      .eq("id", id)
+      .eq("usuario_id", wl.usuario_id)
+      .maybeSingle();
+
+    if (actual && (actual as { fuero: string | null }).fuero !== d.fuero) {
+      const { count } = await supabase
+        .from("mapa_procesal_nodos")
+        .select("id", { count: "exact", head: true })
+        .eq("caso_id", id);
+
+      if ((count ?? 0) > 0) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "El mapa procesal de esta causa ya está armado con el fuero anterior. Para cambiar de fuero hay que reiniciar el mapa, que borra el progreso: se hace desde el Mapa procesal.",
+          },
+          409,
+        );
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("casos")
     .update(patchCols)

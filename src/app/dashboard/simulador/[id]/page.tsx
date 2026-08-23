@@ -98,7 +98,7 @@ export default async function SimuladorPage({
     <SimuladorShell
       key={simulacion?.id ?? "sin-simulacion"}
       casoId={casoId}
-      casoTitulo={casoTipado.titulo}
+      casoTitulo={nombreCaso(casoTipado)}
       fueroSoportado={casoTipado.fuero === FUERO_SOPORTADO}
       fueroCaso={casoTipado.fuero}
       simulacionInicial={simulacion}

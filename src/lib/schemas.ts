@@ -410,7 +410,11 @@ export const editarCasoInputSchema = z
     fuero: z.enum(["nacion", "pba", "federal"]).nullable().optional(),
     // El título de trabajo sigue siendo editable: es lo que ve el abogado
     // mientras no cargue la carátula, y hasta la Fase 9 era inmutable.
-    titulo: z.string().min(1).max(500).optional(),
+    //
+    // El `.trim()` va ANTES del `.min(1)`: sin eso, "   " pasaba la validación
+    // y llegaba al UPDATE, donde el handler lo recortaba y guardaba "" en una
+    // columna NOT NULL — o sea una causa sin nombre visible, con 200 OK.
+    titulo: z.string().trim().min(1).max(500).optional(),
   })
   .strict();
 export type EditarCasoInput = z.infer<typeof editarCasoInputSchema>;

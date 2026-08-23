@@ -10,7 +10,7 @@
 // La situación de libertad se muestra sólo cuando el rol la hace significativa
 // (imputado). Un testigo "en libertad" es ruido.
 
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { Plus, Pencil, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,12 @@ import { ParteForm } from "./parte-form";
 type Props = {
   casoId: string;
   partes: ParteCaso[];
-  onPartesChange: (partes: ParteCaso[]) => void;
+  // Setter de React y no `(partes) => void`: los dos handlers de abajo corren
+  // DESPUÉS de un await, y con la firma anterior calculaban la lista nueva a
+  // partir del `partes` capturado en el render en que se hizo click. Dos altas
+  // rápidas seguidas, o un borrado mientras otra request está en vuelo, y la
+  // segunda pisaba a la primera.
+  onPartesChange: Dispatch<SetStateAction<ParteCaso[]>>;
 };
 
 export function PartesCausa({ casoId, partes, onPartesChange }: Props) {
@@ -56,7 +61,7 @@ export function PartesCausa({ casoId, partes, onPartesChange }: Props) {
         toast.error("No se pudo quitar a la persona");
         return;
       }
-      onPartesChange(partes.filter((x) => x.id !== p.id));
+      onPartesChange((prev) => prev.filter((x) => x.id !== p.id));
     } catch {
       toast.error("No se pudo quitar a la persona. Revisá la conexión.");
     } finally {
@@ -65,9 +70,10 @@ export function PartesCausa({ casoId, partes, onPartesChange }: Props) {
   };
 
   const handleSaved = (p: ParteCaso) => {
-    const existe = partes.some((x) => x.id === p.id);
-    onPartesChange(
-      existe ? partes.map((x) => (x.id === p.id ? p : x)) : [...partes, p],
+    onPartesChange((prev) =>
+      prev.some((x) => x.id === p.id)
+        ? prev.map((x) => (x.id === p.id ? p : x))
+        : [...prev, p],
     );
   };
 

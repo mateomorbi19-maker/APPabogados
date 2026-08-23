@@ -61,6 +61,14 @@ type Props = {
   caso: Caso;
   /** Campo a enfocar al abrir. Viene del botón "Cargar" del campo vacío. */
   campoInicial?: CampoFicha;
+  /**
+   * `true` si el caso ya tiene nodos de mapa procesal. Bloquea el selector de
+   * fuero: la plantilla del mapa se instancia UNA vez a partir del fuero y no
+   * se regenera, así que cambiarlo acá dejaría el fuero de un código y el árbol
+   * de otro. El server lo rechaza con 409; esto es para no ofrecer algo que va
+   * a fallar.
+   */
+  mapaInicializado: boolean;
   onClose: () => void;
   onSaved: (caso: Caso) => void;
 };
@@ -97,6 +105,7 @@ export function FichaForm({
   open,
   caso,
   campoInicial,
+  mapaInicializado,
   onClose,
   onSaved,
 }: Props) {
@@ -165,9 +174,15 @@ export function FichaForm({
     for (const k of texto) {
       if (form[k] !== inicial[k]) body[k] = form[k];
     }
-    // `titulo` es NOT NULL en la base: si lo vació, no se manda.
+    // `titulo` es NOT NULL en la base. Antes esto lo descartaba en silencio, y
+    // el resultado era peor que el error: si el título vacío era el único
+    // cambio, el diálogo se cerraba sin hacer nada; si había otros, decía
+    // "Ficha actualizada" habiendo tirado a la basura lo que el abogado
+    // escribió. Se corta el guardado y se avisa.
     if (typeof body.titulo === "string" && body.titulo.trim() === "") {
-      delete body.titulo;
+      setLoading(false);
+      setError("El título de trabajo no puede quedar vacío.");
+      return;
     }
     if (JSON.stringify(form.delitos) !== JSON.stringify(inicial.delitos)) {
       body.delitos = form.delitos;
@@ -203,6 +218,10 @@ export function FichaForm({
         return;
       }
       onSaved(json.caso);
+      // La sidebar de "Mis casos" es un componente hermano sin estado
+      // compartido con el detalle: sin este aviso seguiría mostrando el nombre
+      // y el expediente viejos hasta navegar a otra causa y volver.
+      window.dispatchEvent(new Event("caso-actualizado"));
       toast.success("Ficha actualizada");
       onClose();
     } catch {
@@ -261,7 +280,7 @@ export function FichaForm({
                 id="f-fuero"
                 className={SELECT_CLS}
                 value={form.fuero}
-                disabled={loading}
+                disabled={loading || mapaInicializado}
                 autoFocus={campoInicial === "fuero"}
                 onChange={(e) => set("fuero", e.target.value as Fuero | "")}
               >
@@ -272,12 +291,17 @@ export function FichaForm({
                   </option>
                 ))}
               </select>
-              {/* El fuero también lo escribe el mapa procesal al inicializarse.
-                  Si se reinicia el mapa eligiendo otro fuero, ese valor pisa
-                  este: el mapa es destructivo por diseño y el abogado confirma
-                  el fuero ahí también. */}
+              {/* Con el mapa armado el fuero queda congelado. La plantilla del
+                  mapa se instancia UNA vez a partir del fuero y no se regenera:
+                  cambiarlo acá dejaría el fuero de un código y el árbol de
+                  otro, y los títulos canónicos, los nodos terminales y el
+                  simulador pasarían a validar contra el código equivocado. El
+                  único camino es reiniciar el mapa, que es destructivo y se
+                  confirma en su propio diálogo. */}
               <p className="text-xs text-muted-foreground">
-                Define la plantilla del mapa procesal.
+                {mapaInicializado
+                  ? "Fijado por el mapa procesal. Para cambiarlo hay que reiniciar el mapa, y eso borra el progreso."
+                  : "Define la plantilla del mapa procesal."}
               </p>
             </div>
           </div>

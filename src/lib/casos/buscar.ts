@@ -233,10 +233,17 @@ export async function buscarCasos(
         rol: c.rol,
         actualizado_en: c.actualizado_en,
         campo,
-        // Los campos cortos se muestran enteros: recortar "Robo agravado" a un
-        // fragmento con elipsis no aclara nada. Los largos sí van recortados.
+        // El fragmento se omite cuando el texto que pegó ES el que ya se
+        // muestra como nombre de la fila: repetirlo abajo no aporta nada. Se
+        // compara contra el nombre y no por nombre de campo, porque `titulo`
+        // cae de los dos lados — es el nombre mostrado cuando no hay carátula,
+        // y un dato distinto y no visible cuando sí la hay.
+        //
+        // Los campos cortos que sí se muestran van enteros: recortar "Robo
+        // agravado" a un fragmento con elipsis no aclara nada. Los largos
+        // (relato, formulario) van recortados alrededor del match.
         fragmento:
-          campo === "caratula" || campo === "titulo"
+          texto === nombre
             ? ""
             : campo === "relato" || campo === "contexto"
               ? fragmentoAlrededor(texto, pos, termino.length)

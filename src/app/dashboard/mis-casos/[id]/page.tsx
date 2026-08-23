@@ -108,6 +108,7 @@ export default async function CasoDetallePage({
       eventosIniciales={eventos}
       partesIniciales={partes}
       etapa={etapa}
+      mapaInicializado={nodos.length > 0}
     />
   );
 }

@@ -14,6 +14,8 @@ type Props = {
   partesIniciales: ParteCaso[];
   /** Etapa procesal derivada del mapa en el server. */
   etapa: { label: string; nodoTitulo: string } | null;
+  /** `true` si el caso ya tiene nodos de mapa procesal: congela el fuero. */
+  mapaInicializado: boolean;
 };
 
 // Orquestador del detalle del caso. Mantiene state local de eventos y de
@@ -32,6 +34,7 @@ export function DetalleCaso({
   eventosIniciales,
   partesIniciales,
   etapa,
+  mapaInicializado,
 }: Props) {
   const [caso, setCaso] = useState<Caso>(casoInicial);
   const [eventos, setEventos] = useState<EventoCaso[]>(eventosIniciales);
@@ -41,11 +44,17 @@ export function DetalleCaso({
   // "última actuación", en vez de `casos.actualizado_en`: esa columna la pisa
   // un trigger en CADA update, así que editar la ficha diría "actualizado hoy"
   // con el expediente quieto hace tres meses.
+  //
+  // Solo los eventos `sucedido`. Los `pendiente` son cosas AGENDADAS —una
+  // audiencia del mes que viene, un vencimiento— y su `ocurrido_en` está en el
+  // futuro: sin este filtro, cargar una audiencia para diciembre hacía que la
+  // ficha dijera que la última actuación de la causa fue en diciembre.
+  const sucedidos = eventos.filter((e) => e.estado === "sucedido");
   const ultimaActuacion =
-    eventos.length > 0
-      ? eventos.reduce(
+    sucedidos.length > 0
+      ? sucedidos.reduce(
           (max, e) => (e.ocurrido_en > max ? e.ocurrido_en : max),
-          eventos[0].ocurrido_en,
+          sucedidos[0].ocurrido_en,
         )
       : null;
 
@@ -59,6 +68,7 @@ export function DetalleCaso({
         caso={caso}
         etapa={etapa}
         ultimaActuacion={ultimaActuacion}
+        mapaInicializado={mapaInicializado}
         onCasoChange={setCaso}
       />
 

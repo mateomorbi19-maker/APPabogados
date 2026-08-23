@@ -30,6 +30,8 @@ type Props = {
   etapa: { label: string; nodoTitulo: string } | null;
   /** Fecha del último movimiento del expediente (ISO), no `actualizado_en`. */
   ultimaActuacion: string | null;
+  /** `true` si el caso ya tiene nodos de mapa: congela el fuero. */
+  mapaInicializado: boolean;
   onCasoChange: (caso: Caso) => void;
 };
 
@@ -37,6 +39,7 @@ export function FichaCausa({
   caso,
   etapa,
   ultimaActuacion,
+  mapaInicializado,
   onCasoChange,
 }: Props) {
   const [formOpen, setFormOpen] = useState(false);
@@ -114,7 +117,14 @@ export function FichaCausa({
       </header>
 
       <dl className="grid grid-cols-1 border-t border-[var(--el-border)] sm:grid-cols-2">
-        {campos.map((c, i) => (
+        {campos.map((c, i) => {
+          // En qué columna cae realmente esta celda. NO alcanza la paridad del
+          // índice: los campos `ancho` ocupan DOS celdas, así que cada uno
+          // corre la paridad de todo lo que viene después y el borde derecho
+          // terminaba pintado en la columna equivocada.
+          const columna =
+            campos.slice(0, i).reduce((n, x) => n + (x.ancho ? 2 : 1), 0) % 2;
+          return (
           <div
             key={c.campo}
             className={cn(
@@ -122,7 +132,7 @@ export function FichaCausa({
               c.ancho && "sm:col-span-2",
               // El borde derecho solo en la columna izquierda de la grilla de
               // 2, y nunca en las filas que ocupan el ancho completo.
-              !c.ancho && i % 2 === 0 && "sm:border-r",
+              !c.ancho && columna === 0 && "sm:border-r",
             )}
           >
             <dt className="text-[11px] uppercase tracking-wide text-[var(--el-text-muted)]">
@@ -142,7 +152,8 @@ export function FichaCausa({
               )}
             </dd>
           </div>
-        ))}
+          );
+        })}
 
         {/* Delitos: chips, porque una causa real casi nunca tiene uno solo. */}
         <div className="min-w-0 border-b border-[var(--el-border)] px-4 py-3 sm:col-span-2 sm:px-5">
@@ -218,6 +229,7 @@ export function FichaCausa({
         open={formOpen}
         caso={caso}
         campoInicial={campoInicial}
+        mapaInicializado={mapaInicializado}
         onClose={() => setFormOpen(false)}
         onSaved={onCasoChange}
       />

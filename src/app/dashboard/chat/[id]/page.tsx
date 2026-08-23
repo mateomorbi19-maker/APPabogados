@@ -17,6 +17,7 @@ import { z } from "zod";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
 import { COLS_CASO } from "@/lib/casos/columnas";
+import { nombreCaso } from "@/lib/casos/nombre";
 import { ChatShell } from "@/components/mis-casos/chat/chat-shell";
 import type {
   Caso,
@@ -154,7 +155,7 @@ export default async function CasoChatPage({
     <ChatShell
       key={conversacionActual.id}
       casoId={casoId}
-      casoTitulo={(caso as Caso).titulo}
+      casoTitulo={nombreCaso(caso as Caso)}
       conversacionInicial={conversacionActual}
       mensajesIniciales={mensajes}
       conversaciones={conversaciones}
