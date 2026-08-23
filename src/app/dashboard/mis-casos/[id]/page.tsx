@@ -1,15 +1,18 @@
 // Detalle del caso. Server component:
 //   - Valida UUID del path y ownership del caso → 404 si falla.
-//   - Trae caso + eventos en 2 queries (paralelas con Promise.all).
+//   - Trae caso + eventos + partes + nodos del mapa en 4 queries paralelas.
+//   - Deriva la etapa procesal del mapa (no es un campo de la ficha).
 //   - Pasa los datos al client component DetalleCaso.
 
 import { notFound } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
-import { COLS_CASO } from "@/lib/casos/columnas";
+import { COLS_CASO, COLS_PARTE } from "@/lib/casos/columnas";
+import { getNodosDelCaso } from "@/lib/mapa-procesal/queries";
+import { etapaActual } from "@/lib/mapa-procesal/etapa-actual";
 import { DetalleCaso } from "@/components/mis-casos/detalle-caso";
 import { estrategiaSchema } from "@/lib/schemas";
-import type { Caso, EventoCaso } from "@/lib/types";
+import type { Caso, EventoCaso, ParteCaso } from "@/lib/types";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -27,7 +30,13 @@ export default async function CasoDetallePage({
 
   const supabase = createServerClient();
 
-  const [casoRes, eventosRes] = await Promise.all([
+  // Las cuatro lecturas en paralelo. Los nodos del mapa se traen sólo para
+  // derivar la etapa procesal del badge: es una tabla chica por caso y evita
+  // que la ficha tenga que declarar una etapa propia que se contradiga con el
+  // mapa. `getNodosDelCaso` no valida propiedad —la validó el SELECT de
+  // `casos` de acá al lado, con el mismo `id`— y su query está scopeada por
+  // caso_id, así que no puede devolver nodos de otra causa.
+  const [casoRes, eventosRes, partesRes, nodos] = await Promise.all([
     supabase
       .from("casos")
       .select(COLS_CASO)
@@ -41,6 +50,17 @@ export default async function CasoDetallePage({
       )
       .eq("caso_id", id)
       .order("ocurrido_en", { ascending: true }),
+    supabase
+      .from("partes_caso")
+      .select(COLS_PARTE)
+      .eq("caso_id", id)
+      .order("creado_en", { ascending: true }),
+    // El mapa puede no existir todavía; un fallo acá degrada a "sin etapa",
+    // que es lo mismo que ve una causa sin mapa. No puede tirar la pantalla.
+    getNodosDelCaso(id).catch((e) => {
+      console.error("[caso detalle] error nodos del mapa:", e);
+      return [];
+    }),
   ]);
 
   if (casoRes.error) {
@@ -70,5 +90,24 @@ export default async function CasoDetallePage({
 
   const eventos = (eventosRes.data ?? []) as EventoCaso[];
 
-  return <DetalleCaso caso={caso} eventosIniciales={eventos} />;
+  if (partesRes.error) {
+    console.error("[caso detalle] error partes:", partesRes.error);
+  }
+  const partes = (partesRes.data ?? []) as ParteCaso[];
+
+  // Se pasa serializada (label + nodo) y no el objeto entero: el componente es
+  // client y no tiene por qué recibir el árbol del mapa para pintar un badge.
+  const etapaDerivada = etapaActual(nodos);
+  const etapa = etapaDerivada
+    ? { label: etapaDerivada.label, nodoTitulo: etapaDerivada.nodoTitulo }
+    : null;
+
+  return (
+    <DetalleCaso
+      caso={caso}
+      eventosIniciales={eventos}
+      partesIniciales={partes}
+      etapa={etapa}
+    />
+  );
 }

@@ -3,23 +3,40 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { fmtFecha } from "@/lib/format";
+import { nombreCaso, sinCaratula } from "@/lib/casos/nombre";
+import { rolBadge, rolLabel } from "@/lib/casos/rol";
+import {
+  ESTADO_SEGUIMIENTO_BADGE,
+  ESTADO_SEGUIMIENTO_LABEL,
+} from "@/lib/casos/ficha";
+import { FUERO_LABEL } from "@/lib/mapa-procesal/types";
+import type { Fuero } from "@/lib/mapa-procesal/types";
 import type { Caso } from "@/lib/types";
 import { EliminarCasoModal } from "./eliminar-caso-modal";
 
 type Props = {
   caso: Caso;
+  /** Etapa procesal derivada del mapa. `null` = mapa sin inicializar. */
+  etapa: { label: string; nodoTitulo: string } | null;
 };
 
-// Header del caso: título grande + metadata (creado / rol / jurisdicción) +
-// botón "Eliminar" arriba a la derecha que abre el modal de confirmación.
-export function HeaderCaso({ caso }: Props) {
+// Header del caso: nombre + badges (etapa, estado, rol, fuero) + botón
+// "Eliminar".
+//
+// El nombre sale de `nombreCaso()`, no de `caso.titulo`: si hay carátula manda
+// la carátula. Mientras no la haya, el título automático se muestra en cursiva
+// y apagado, porque es un nombre provisorio sacado del relato y no el del
+// expediente.
+//
+// Los DOS badges de la cabecera del mockup son cosas distintas y es la
+// confusión más fácil de cometer: "Instrucción" es la ETAPA PROCESAL, que la
+// deriva el mapa; "En seguimiento" es el estado de la causa PARA EL ESTUDIO,
+// que es un campo de la ficha.
+export function HeaderCaso({ caso, etapa }: Props) {
   const [eliminarOpen, setEliminarOpen] = useState(false);
-
-  const jurisdiccion =
-    caso.contexto && typeof caso.contexto === "object"
-      ? (caso.contexto.jurisdiccion as string | null | undefined)
-      : null;
+  const provisorio = sinCaratula(caso);
 
   return (
     // flex+gap en vez de space-y: el link de volver es `md:hidden`, y con
@@ -37,11 +54,17 @@ export function HeaderCaso({ caso }: Props) {
         Mis casos
       </Link>
       <div className="flex items-start justify-between gap-3">
-        {/* Las carátulas reales son malas (varias son la primera línea del
+        {/* Las carátulas provisorias son largas (los primeros 60 chars del
             relato): a 30px fijos se comían 4-6 renglones de la pantalla antes
             de que apareciera cualquier otra cosa. */}
-        <h1 className="font-serif text-xl sm:text-2xl md:text-3xl leading-tight min-w-0 break-words">
-          {caso.titulo}
+        <h1
+          className={cn(
+            "font-serif text-xl sm:text-2xl md:text-3xl leading-tight min-w-0 break-words",
+            provisorio && "italic text-muted-foreground",
+          )}
+          title={provisorio ? "Sin carátula cargada" : undefined}
+        >
+          {nombreCaso(caso)}
         </h1>
         <Button
           variant="outline"
@@ -57,22 +80,44 @@ export function HeaderCaso({ caso }: Props) {
           <span className="hidden sm:inline">Eliminar</span>
         </Button>
       </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        {etapa ? (
+          <Badge
+            className="bg-[rgba(139,92,246,0.22)] text-violet-800 dark:text-[#CDBEFF]"
+            title={`Etapa según el mapa procesal: ${etapa.nodoTitulo}`}
+          >
+            {etapa.label}
+          </Badge>
+        ) : null}
+        {/* "Activa" no se muestra: es el default de las 8 causas y un badge
+            que llevan todas no distingue nada. Los otros dos sí. */}
+        {caso.estado_seguimiento !== "activa" ? (
+          <Badge className={ESTADO_SEGUIMIENTO_BADGE[caso.estado_seguimiento]}>
+            {ESTADO_SEGUIMIENTO_LABEL[caso.estado_seguimiento]}
+          </Badge>
+        ) : null}
+        <Badge className={rolBadge(caso.rol)}>{rolLabel(caso.rol)}</Badge>
+        {caso.fuero ? (
+          <Badge className="bg-[rgba(59,130,246,0.18)] text-blue-800 dark:text-[#A9CDFF]">
+            {FUERO_LABEL[caso.fuero as Fuero]}
+          </Badge>
+        ) : null}
+      </div>
+
       <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <dt className="uppercase tracking-wider">Creado</dt>
           <dd>{fmtFecha(caso.creado_en)}</dd>
         </div>
-        <span aria-hidden="true">·</span>
-        <div className="flex items-center gap-1.5">
-          <dt className="uppercase tracking-wider">Rol</dt>
-          <dd className="capitalize">{caso.rol}</dd>
-        </div>
-        {jurisdiccion ? (
+        {caso.expediente_numero ? (
           <>
             <span aria-hidden="true">·</span>
-            <div className="flex items-center gap-1.5">
-              <dt className="uppercase tracking-wider">Jurisdicción</dt>
-              <dd>{jurisdiccion}</dd>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <dt className="uppercase tracking-wider">Expediente</dt>
+              <dd className="tabular-nums break-all">
+                {caso.expediente_numero}
+              </dd>
             </div>
           </>
         ) : null}
@@ -84,5 +129,27 @@ export function HeaderCaso({ caso }: Props) {
         onClose={() => setEliminarOpen(false)}
       />
     </header>
+  );
+}
+
+function Badge({
+  className,
+  title,
+  children,
+}: {
+  className?: string;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      title={title}
+      className={cn(
+        "rounded-full border border-transparent px-2 py-0.5 text-xs font-medium",
+        className,
+      )}
+    >
+      {children}
+    </span>
   );
 }
