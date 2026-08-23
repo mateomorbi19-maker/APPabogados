@@ -58,6 +58,7 @@ scripts/
   ingestar-repositorio.ts         # Drive → texto → ficha (IA) → embeddings → repositorio_*. Incremental, no destructivo.
   construir-catalogo-repositorio.ts # drive-catalogo.json → catalogo.ts (módulo generado)
   test-agent.ts                   # smoke test del agente RAG end-to-end
+  verificar-ficha-causa.ts        # valida la Fase 9 contra la base (migración, nombres, etapa, RLS)
   count-system-tokens.ts          # mide tokens del system prompt + tool descriptions
   verificar-coherencia-mapa.ts    # valida las 12 reglas del mapa contra la base (read-only)
   verificar-lexie.ts              # smoke de LEXIE (--sin-modelo saltea el turno pago)
@@ -314,18 +315,61 @@ No pasa por `enforceTokenLimit` (Whisper no gasta tokens de Anthropic; se
 factura aparte en OpenAI, ~USD 0,006 el minuto). El control es la whitelist, el
 tope de tamaño y el corte automático de la grabación a los 10 minutos.
 
+### Ficha de causa — `PATCH /api/casos/:id` y `/api/casos/:id/partes`
+
+La identidad del expediente. Ver la Fase 9 más abajo y
+[PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md).
+
+- `PATCH /api/casos/[id]` — edita la ficha. **Es la primera ruta de escritura
+  sobre el recurso `caso`**: hasta la Fase 9 sólo había `GET` y `DELETE`, o sea
+  que `titulo` se fijaba en el `POST` inicial y no había forma de corregirlo.
+- `GET|POST /api/casos/[id]/partes` y `PATCH|DELETE .../partes/[parte_id]`.
+
+Tres invariantes de estas rutas, en orden de importancia:
+
+1. **El `.eq("usuario_id", …)` va DENTRO del `UPDATE`**, no en un `SELECT`
+   previo. El server entra con `service_role`, que bypassa RLS: ese filtro es el
+   único control real de propiedad, y hacerlo en dos pasos abre una ventana
+   entre el chequeo y la escritura. En `partes_caso` —que no tiene `usuario_id`
+   propio— el guard es verificar el caso primero y filtrar por `caso_id` en
+   todas las escrituras.
+2. **Las columnas escribibles se enumeran a mano en el handler.** El schema Zod
+   NO es la lista blanca: nunca se derrama `parsed.data` en el `.update()`, o un
+   campo de más en el schema pasaría a poder mover `usuario_id`,
+   `ejecucion_origen_id` o `estrategia_snapshot`.
+3. **Body vacío es 400**, no un `UPDATE` sin columnas. Un `UPDATE` vacío igual
+   dispara el trigger `casos_set_actualizado_en`, y esa columna ordena el
+   Inicio, el buscador y el contexto de LEXIE: un guardado sin cambios saltearía
+   la causa al tope de las tres listas.
+
+El schema distingue `undefined` (el formulario no mandó el campo, no se toca) de
+`null` (el abogado lo vació, se borra). Sin esa distinción, guardar desde un
+formulario parcial borraría todo lo que ese formulario no muestra.
+
 ### `GET /api/buscar?q=` — buscador global
 
 Alimenta la paleta ⌘K / Ctrl+K (montada en `NavShell`, así que se abre desde
 cualquier sección) y la fila de búsqueda del Inicio. Busca **solo sobre los
-casos del usuario**: título, relato y las respuestas del formulario, todo
-normalizado sin tildes ([src/lib/casos/buscar.ts](src/lib/casos/buscar.ts)).
+casos del usuario**, en ocho campos con prioridad
+([src/lib/casos/buscar.ts](src/lib/casos/buscar.ts)): carátula → expediente →
+partes → título → delitos → organismo → formulario → relato. Cada resultado dice
+en cuál pegó, y devuelve el fragmento cuando el campo es largo.
 
-No hay tabla de imputados: "buscar por imputado" funciona porque el nombre está
-en el relato, y el resultado devuelve el fragmento donde pegó para que se vea
-por qué apareció. El filtrado es **en memoria** — con 3 usuarios sale más barato
-que mantener un `tsvector` con su trigger e índice. No toca el LLM ni el RAG,
-así que puede correr a cada tecla.
+**Dos normalizaciones distintas, y no se pueden mezclar:**
+- `normalizar()` baja a minúsculas y saca tildes, y **conserva la longitud** —
+  de eso depende el cálculo del fragmento, que usa el índice del texto
+  normalizado sobre el original.
+- `normalizarIdentificador()` además borra todo lo que no sea letra o dígito, y
+  se usa **solo para el número de expediente**: el mismo expediente se escribe
+  `12345/2026`, `12.345/2026` o `IPP 08-00-012345-26`, y ninguna forma es la
+  correcta. Como no conserva la longitud, no sirve para fragmentos — no hace
+  falta, un expediente que pega se muestra entero.
+
+"Buscar por imputado" ya no depende de que el nombre esté en el relato: sale de
+`partes_caso` y el resultado dice el rol ("Rodríguez, Carlos — Imputado"). El
+filtrado sigue siendo **en memoria** — con 3 usuarios sale más barato que
+mantener un `tsvector` con su trigger e índice. No toca el LLM ni el RAG, así
+que puede correr a cada tecla.
 
 ### LEXIE — `/api/lexie` (asistente global)
 
@@ -450,12 +494,19 @@ Response:
 
 ## Schema en Supabase
 
-Proyecto: `xvdlnevcvcsgxbngwliv` (región us-west-2, Postgres 17.6). RLS habilitada en las 9 tablas; el server siempre accede con `service_role` key.
+Proyecto: `xvdlnevcvcsgxbngwliv` (región us-west-2, Postgres 17.6). RLS habilitada en todas las tablas; el server siempre accede con `service_role` key.
 
 **Tablas de tracking / usuario:**
 - `usuarios`: `id UUID, nombre UNIQUE, email, clerk_user_id, role (admin|user), limite_tokens_mensual=1.000.000, created_at`.
 - `ejecuciones`: `usuario_id FK, tipo (pre_analisis|analizar_caso|consulta_caso), modelo, input_tokens, output_tokens, total_tokens (GENERATED), costo_usd, latencia_ms, ejecutado_en, metadata jsonb`. Las ejecuciones con `metadata.refunded=true` se excluyen del consumo mensual.
-- `casos`: vincula un análisis a un usuario.
+- `casos`: la causa. Identidad + ficha + estrategia elegida. Las columnas de la
+  **ficha** (`caratula`, `expediente_numero`, `organismo`, `secretaria`, `juez`,
+  `fiscalia`, `delitos text[]`) son **todas nullable**; `estado_seguimiento` es el
+  único NOT NULL, con default `'activa'`. `fuero` lo escriben el mapa procesal y
+  la ficha. Ver la Fase 9 y la migración `20260822120000`.
+- `partes_caso`: personas de una causa (imputado, víctima, querellante, testigo).
+  `es_cliente` es **ortogonal al rol**: en una querella el cliente es la víctima.
+  Sin datos de contacto hasta que se conteste la P1 de REPORTERIA.
 - `eventos_caso`: eventos dentro de un caso (adjuntos, cambios de estado).
 - `conversaciones_caso`: conversaciones de chat por caso (máx. 1 activa por vez).
 - `mensajes_conversacion`: mensajes individuales de cada conversación (tipo `usuario` o `agente`).
@@ -626,11 +677,65 @@ Pendientes conocidos:
 
 ### Fase 9 — Ficha de causa
 
-La identidad del expediente: carátula, número, organismo, juez, fiscalía, delitos,
-partes. Ver [PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md) para el plan completo, las
-decisiones tomadas y lo que queda explícitamente afuera (honorarios, gastos, prueba
-como entidad, escritos generados).
+La identidad del expediente. Ver [PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md) para el
+plan completo, las decisiones tomadas y lo que queda explícitamente afuera
+(honorarios, gastos, prueba como entidad, escritos generados, las 6 tabs del
+mockup, autocompletado con IA e integración con portales judiciales).
 
-- 9.1 ⏳ migración `20260822120000_ficha_de_causa.sql` — **la corre Mateo a mano**.
+- 9.0 ✅ documentación sincerada contra la base.
+- 9.1 ⏳ migración `20260822120000_ficha_de_causa.sql` — **la corre Mateo a mano.
+  Hasta que se aplique, todo lo demás de esta fase devuelve 500.**
+- 9.2 ✅ `src/lib/casos/columnas.ts` + `PATCH /api/casos/[id]`.
+- 9.3 ✅ bloque de ficha en el detalle del caso, con formulario.
+- 9.4 ✅ `nombreCaso()` en los once consumidores + carátula al crear la causa.
+- 9.5 ✅ `partes_caso` + rutas + bloque de personas.
+- 9.6 ✅ buscador por carátula, expediente, partes, delitos y organismo.
+- 9.7 ✅ la ficha en el contexto del chat y de LEXIE.
+- 9.8 ✅ etapa procesal derivada del mapa + última actuación real.
+
+Verificación (solo lectura salvo un alta/baja de prueba en `partes_caso`;
+`--sin-escritura` la saltea). Cero tokens:
+
+```bash
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-ficha-causa.ts
+```
+
+**Lo que cambia para el resto de la app:**
+
+- **`casos.titulo` ya no es la identidad de la causa.** El nombre sale de
+  `nombreCaso(c) = caratula ?? titulo` ([src/lib/casos/nombre.ts](src/lib/casos/nombre.ts)).
+  Los dos conviven en la base a propósito: `titulo` es el nombre de trabajo (hoy,
+  los primeros 60 chars del relato) y la carátula manda cuando existe. Ningún
+  consumidor nuevo debe leer `.titulo` directo.
+- **Ningún archivo escribe a mano una lista de columnas de `casos`.** Van en
+  [src/lib/casos/columnas.ts](src/lib/casos/columnas.ts), como STRING LITERAL:
+  supabase-js parsea el argumento de `.select()` en tipos y con un `string` ancho
+  (por ejemplo un `array.join()`) colapsa la fila a `GenericStringError`.
+- **La etapa procesal NO es un campo de la ficha.** La deriva
+  [etapa-actual.ts](src/lib/mapa-procesal/etapa-actual.ts) del nodo `ocurrido` más
+  profundo del mapa, reusando `etapasPorNodo`. Persistirla crearía dos verdades
+  que se contradicen el primer día.
+- **"Última actuación" sale de `MAX(eventos_caso.ocurrido_en)`, no de
+  `actualizado_en`:** a esa columna la pisa un trigger en cada UPDATE, así que
+  editar la ficha diría "actualizado hoy" con el expediente quieto.
+- **El campo vacío se muestra vacío, con un botón "Cargar".** No se rellena con
+  un valor verosímil, y a los agentes directamente **no se les emite**: una línea
+  "juzgado: no informado" en el contexto le da al modelo un dato para repetir.
+  La única excepción es la carátula ausente, que sí se declara — ahí el modelo
+  tiene que saber que el nombre que lee es provisorio.
+- **`partes_caso` no tiene `usuario_id`:** la propiedad se hereda del caso por la
+  FK, y el server bypassa RLS con `service_role`. Las cuatro rutas verifican que
+  el caso sea del usuario ANTES de tocar nada, y el UPDATE y el DELETE llevan
+  `caso_id` además del `id` de la parte.
+- **El contexto de LEXIE se refresca** cuando `MAX(casos.actualizado_en)` es
+  posterior al último mensaje del hilo. Antes se inyectaba solo en el primer
+  mensaje y la conversación activa no se archiva sola: una carátula corregida no
+  llegaba nunca al modelo.
+
+**Pendiente de esta fase:** 9.9 (movimientos del expediente con título, foja,
+organismo y ámbito intra/externo) queda **condicionado** a que el timeline se
+empiece a usar. Al 2026-08-22 hay 10 eventos de caso en toda la base, 8 creados
+por el sistema y 2 por un abogado, y cero adjuntos: el problema del timeline no
+es que le falten campos.
 
 El plan detallado de las fases vive en la memoria del proyecto, no en el repo.

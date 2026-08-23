@@ -4,7 +4,9 @@
 **Origen:** mockup HTML `lexstrategy_ficha_causa` + el orden de construcción que ya fijó
 [REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md) §6
 ("hay que empezar por la ficha, no por las plantillas").
-**Estado:** aprobado. Las cuatro decisiones de alcance están tomadas (§3).
+**Estado:** implementado (F0, F2–F8). **F1 —la migración— la corre Mateo a mano en
+el SQL Editor y al 2026-08-22 sigue sin aplicar: hasta entonces la app devuelve 500
+en todo lo que lee una causa.** F9 queda condicionada (ver §4).
 
 ---
 
@@ -165,7 +167,7 @@ cacheado que comparten los tres abogados.
 *Por qué derivada y no una columna:* una `etapa` declarada a mano se contradice con el mapa
 el primer día.
 
-### F9 — Condicional: sólo si el timeline empieza a usarse
+### F9 — Condicional, NO implementada: sólo si el timeline empieza a usarse
 Movimientos con `titulo`, `foja`, `organismo` y `ambito` (intra / externo), `PATCH` de evento
 (hoy sólo se puede borrar y reescribir) y sincronizar los **cuatro** SELECT de `eventos_caso`
 —uno de los cuales, `api/casos/[id]/route.ts:53`, ya está desactualizado hoy porque no trae
@@ -221,3 +223,26 @@ propio orden de construcción, y las 12 variables "que hay que cargar una vez y 
 reusan" de REPORTERIA §3 pasan a existir. Las 6 preguntas de ese documento siguen sin
 contestar, pero **sólo la P1 (¿el reporte es por causa o por persona?) toca la ficha**, y la
 tabla `partes_caso` funciona igual con las dos respuestas.
+
+---
+
+## 8. Diferencias entre el plan y lo que se construyó
+
+Se anotan acá para que el plan no quede mintiendo:
+
+- **`partes_caso` no lleva columna `orden`.** El plan la mencionaba; se ordena
+  por `creado_en`. Con menos de diez personas por causa, una columna de orden es
+  una que hay que mantener para no ganar nada.
+- **Los accesos rápidos son TRES tarjetas, no cuatro.** La cuarta del mockup es
+  "Análisis de riesgo", que en esta app no existe.
+- **`SELECT_CLS` no se unificó.** Las cuatro copias del repo ya habían divergido
+  entre sí (distinta altura táctil, dos sin `text-foreground`), así que
+  unificarlas cambia el aspecto de cuatro pantallas ajenas a la ficha. Los dos
+  formularios nuevos suman una quinta y una sexta copia, y la unificación quedó
+  como tarea aparte.
+- **F0 incluyó commitear una tanda de 88 archivos que no era de tema claro sino
+  de responsive/móvil** (commit `8.9`). El relevamiento la había caracterizado
+  mal.
+- **Se agregó un verificador** (`scripts/verificar-ficha-causa.ts`) que no estaba
+  en el plan: la migración manual necesitaba una forma de contestar "¿ya está?"
+  que no fuera abrir la app y ver un 500.
