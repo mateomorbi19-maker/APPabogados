@@ -33,8 +33,12 @@ const CLASES_FILTRO: { value: ClaseFiltro; label: string }[] = [
   { value: "evento", label: "Eventos" },
 ];
 
+// h-9 son 36px: abajo del piso táctil de 40px. `max-md:h-10` lo levanta solo en
+// móvil y deja la densidad de escritorio intacta. (El zoom de iOS al enfocar el
+// select ya lo resuelve el piso de 16px de globals.css, que aplica a todos los
+// <select> nativos de la app.)
 const SELECT_CLS =
-  "h-9 w-full rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
+  "h-9 max-md:h-10 w-full rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
 const TITULO_CLS =
   "text-xs font-medium uppercase tracking-wide text-muted-foreground";
 const SECCION_CLS = "rounded-lg bg-secondary/40 p-3";
@@ -75,7 +79,9 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
                 type="button"
                 onClick={() => onChange({ ...filtros, clase: c.value })}
                 className={cn(
-                  "rounded-md px-2 py-1.5 text-xs transition-colors",
+                  // 28px de alto con el pulgar es una ruleta entre las tres
+                  // pastillas; en móvil van a 40px.
+                  "rounded-md px-2 py-1.5 text-xs transition-colors max-md:py-2.5",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "border border-border text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -92,7 +98,9 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
       <div className={cn(SECCION_CLS, "space-y-2.5")}>
         <p className={TITULO_CLS}>Tipo</p>
         <div className="space-y-2">
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
+          {/* py-1.5 en móvil: la fila del checkbox medía ~20px y las 8 filas
+              de tipos quedaban a 28px de paso, imposible de acertar con el dedo. */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm max-md:py-1.5">
             <Checkbox
               checked={todosActivo}
               onCheckedChange={() => onChange({ ...filtros, tipos: [] })}
@@ -111,7 +119,7 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
             return (
               <label
                 key={t}
-                className="flex cursor-pointer items-center gap-2 text-sm"
+                className="flex cursor-pointer items-center gap-2 text-sm max-md:py-1.5"
               >
                 <Checkbox checked={checked} onCheckedChange={() => toggleTipo(t)} />
                 <span
@@ -159,7 +167,9 @@ export function AgendaFilters({ filtros, casos, onChange }: Props) {
                 type="button"
                 onClick={() => onChange({ ...filtros, rango: r.value })}
                 className={cn(
-                  "rounded-md px-2 py-1.5 text-xs transition-colors",
+                  // py-1.5 daba pastillas de 28px de alto: con el pulgar se
+                  // erra entre "Hoy" y "Semana". En móvil van a 40px.
+                  "rounded-md px-2 py-1.5 text-xs transition-colors max-md:py-2.5",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "border border-border text-muted-foreground hover:text-foreground hover:bg-muted",

@@ -48,14 +48,22 @@ export function ProgresoAnalisis({ inicio, onCancel }: Props) {
   }, [inicio]);
 
   return (
-    <Card className="p-6 space-y-4">
+    <Card className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center gap-3">
         <Loader2 className="size-4 animate-spin text-primary" />
         <span className="text-sm font-medium">{MENSAJES[mensajeIdx]}</span>
       </div>
       <Progress value={progress} />
       <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={onCancel}>
+        {/* El max-md:h-10 es redundante desde que el primitivo subió size="sm"
+            al piso táctil de 40px en móvil; queda explícito porque abortar una
+            corrida de ~90s no puede depender de un botón chico. */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCancel}
+          className="max-md:h-10"
+        >
           Cancelar
         </Button>
       </div>

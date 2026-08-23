@@ -47,7 +47,7 @@ export function AvisoDrive({ error, motivo, viewUrl, onReintentar }: Props) {
   const puedeReintentar = motivo === "error_drive" || motivo === null;
 
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-xl border border-[rgba(251,191,36,0.28)] bg-[rgba(251,191,36,0.06)] px-6 py-12 text-center">
+    <div className="flex min-h-[50dvh] flex-col items-center justify-center rounded-xl border border-[rgba(251,191,36,0.28)] bg-[rgba(251,191,36,0.06)] px-6 py-12 text-center max-md:min-h-0 max-md:px-4">
       <Icono className="size-8 text-amber-700 dark:text-[#fcd34d]" aria-hidden />
       <h2 className="mt-3 font-display text-base font-semibold text-amber-800 dark:text-[#fde68a]">
         No se puede abrir el PDF acá adentro
@@ -62,10 +62,16 @@ export function AvisoDrive({ error, motivo, viewUrl, onReintentar }: Props) {
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+      {/* En móvil las tres acciones van apiladas y a todo el ancho: a 360px la
+          fila envuelta dejaba “Reintentar” solo y descentrado abajo, y los
+          botones quedaban de 100px pegados entre sí. */}
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2 max-md:w-full max-md:flex-col">
         {puedeReloguear ? (
           <SignOutButton redirectUrl="/sign-in">
-            <Button aria-label="Volver a iniciar sesión para autorizar Google Drive">
+            <Button
+              className="max-md:w-full"
+              aria-label="Volver a iniciar sesión para autorizar Google Drive"
+            >
               Autorizar Google Drive
             </Button>
           </SignOutButton>
@@ -75,14 +81,18 @@ export function AvisoDrive({ error, motivo, viewUrl, onReintentar }: Props) {
             href={viewUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: "outline" }))}
+            className={cn(buttonVariants({ variant: "outline" }), "max-md:w-full")}
           >
             <ExternalLink aria-hidden />
             Abrir en Drive
           </a>
         ) : null}
         {puedeReintentar && onReintentar ? (
-          <Button variant="outline" onClick={onReintentar}>
+          <Button
+            variant="outline"
+            className="max-md:w-full"
+            onClick={onReintentar}
+          >
             <RotateCcw aria-hidden />
             Reintentar
           </Button>
@@ -114,7 +124,7 @@ export function BannerDrive({ vinculado }: { vinculado: boolean }) {
         <Button
           variant="outline"
           size="sm"
-          className="shrink-0 self-start md:self-auto"
+          className="shrink-0 self-start md:self-auto max-md:h-10 max-md:w-full"
           aria-label="Volver a iniciar sesión para autorizar Google Drive"
         >
           Autorizar Drive

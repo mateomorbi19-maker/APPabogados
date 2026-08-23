@@ -40,9 +40,9 @@ export const COLECCIONES: Record<Coleccion, ColeccionMeta> = {
     label: "Jurisprudencia",
     singular: "fallo",
     descripcion:
-      "Sentencias y fallos dictados por los tribunales.",
+      "Sentencias y fallos dictados por organismos de justicia.",
     para_que:
-      "Sirven como precedente: mostrar que un caso parecido ya se resolvió de determinada manera. Cuanto más alto el tribunal, más peso tiene el precedente.",
+      "Útiles como precedente para fundar pretensiones y demostrar cómo casos similares fueron resueltos. Cuanto más alto el tribunal, mayor el peso del precedente.",
     icono: "Gavel",
     badge: "bg-violet-500/10 text-violet-300 border-violet-500/20",
     dot: "bg-violet-500",

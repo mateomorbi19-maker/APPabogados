@@ -213,6 +213,25 @@ export function NuevoAnalisisPanel() {
     };
   }, []);
 
+  // Al cambiar de fase el árbol se reemplaza entero pero nadie toca el scroll:
+  // el navegador lo clampea al alto del documento nuevo y el abogado aterriza
+  // en cualquier lado. En 375px el formulario mide varias pantallas (resumen +
+  // datos detectados + hasta 8 preguntas + la tarjeta del repositorio), así que
+  // después de esperar ~90s el resultado abría en "Búsquedas en jurisprudencia"
+  // y el encabezado "Estrategias" quedaba arriba, fuera de vista. En escritorio
+  // casi no se nota; en móvil el resultado directamente no se veía.
+  const faseKind = fase.kind;
+  useEffect(() => {
+    if (
+      faseKind === "resultado" ||
+      faseKind === "form" ||
+      faseKind === "error-analisis" ||
+      faseKind === "error-pre"
+    ) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [faseKind]);
+
   const submitCaso = async (caso: string, rol: Rol) => {
     if (inFlightPreRef.current) return;
     inFlightPreRef.current = true;
@@ -490,6 +509,26 @@ export function NuevoAnalisisPanel() {
   if (fase.kind === "error-analisis") {
     return (
       <div className="space-y-6">
+        {/* La tarjeta de error va ARRIBA del formulario: abajo quedaba al final
+            de un formulario que en móvil mide varias pantallas, así que tocar
+            "Analizar caso" y fallar se veía como que no pasó nada. Junto con el
+            scroll al tope de la fase, es lo primero que se lee. */}
+        <Card className="p-4 sm:p-6 border-destructive">
+          <p className="text-destructive font-medium mb-1">
+            {tituloError(fase.tipo)}
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">{fase.message}</p>
+          {puedeReintentar(fase.tipo) ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void submitAnalisis(fase.ctx, fase.caso)}
+              className="max-md:h-10 max-md:w-full"
+            >
+              Reintentar
+            </Button>
+          ) : null}
+        </Card>
         <FormularioDinamico
           data={fase.ctx.data}
           respuestas={fase.ctx.respuestas}
@@ -515,21 +554,6 @@ export function NuevoAnalisisPanel() {
           onAnalizar={() => void submitAnalisis(fase.ctx, fase.caso)}
           loading={false}
         />
-        <Card className="p-6 border-destructive">
-          <p className="text-destructive font-medium mb-1">
-            {tituloError(fase.tipo)}
-          </p>
-          <p className="text-sm text-muted-foreground mb-4">{fase.message}</p>
-          {puedeReintentar(fase.tipo) ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void submitAnalisis(fase.ctx, fase.caso)}
-            >
-              Reintentar
-            </Button>
-          ) : null}
-        </Card>
       </div>
     );
   }
@@ -539,6 +563,29 @@ export function NuevoAnalisisPanel() {
   const rolActual = fase.rol;
   return (
     <div className="space-y-6">
+      {/* El error va arriba del formulario por el mismo motivo que en
+          error-analisis: en móvil el relato + el selector de rol empujan la
+          tarjeta fuera de la pantalla. */}
+      {fase.kind === "error-pre" ? (
+        <Card className="p-4 sm:p-6 border-destructive">
+          <p className="text-destructive font-medium mb-1">
+            {fase.tipo === "rate-limit"
+              ? "Cupo agotado"
+              : "Error consultando pre-análisis"}
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">{fase.message}</p>
+          {fase.tipo === "general" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void submitCaso(fase.caso, fase.rol)}
+              className="max-md:h-10 max-md:w-full"
+            >
+              Reintentar
+            </Button>
+          ) : null}
+        </Card>
+      ) : null}
       <CasoInput
         caso={casoActual}
         onCasoChange={(c) =>
@@ -557,25 +604,6 @@ export function NuevoAnalisisPanel() {
         }}
         loading={fase.kind === "loading-pre"}
       />
-      {fase.kind === "error-pre" ? (
-        <Card className="p-6 border-destructive">
-          <p className="text-destructive font-medium mb-1">
-            {fase.tipo === "rate-limit"
-              ? "Cupo agotado"
-              : "Error consultando pre-análisis"}
-          </p>
-          <p className="text-sm text-muted-foreground mb-4">{fase.message}</p>
-          {fase.tipo === "general" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void submitCaso(fase.caso, fase.rol)}
-            >
-              Reintentar
-            </Button>
-          ) : null}
-        </Card>
-      ) : null}
     </div>
   );
 }

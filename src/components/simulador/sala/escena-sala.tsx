@@ -45,7 +45,7 @@ export function EscenaSala({
 
   return (
     <section
-      className="shrink-0 border-b border-[var(--el-border-soft)] px-4 pb-1.5 pt-4 md:px-6"
+      className="shrink-0 overflow-hidden border-b border-[var(--el-border-soft)] px-4 pb-1.5 pt-4 md:px-6"
       style={{
         background:
           "radial-gradient(1200px 300px at 50% -40%, #15203a 0%, var(--el-canvas) 70%)",
@@ -64,7 +64,21 @@ export function EscenaSala({
           ) : null}
         </div>
 
-        <div className="el-stage">
+        {/* Piso de alto SOLO donde hace falta. A 390px de viewport el
+            escenario medía 358x107px (el ancho manda y el alto sale del
+            aspect-ratio 1000/300 de .el-stage): 107px no alcanzan para tres
+            filas de avatares con placa, así que el juez se salía por arriba y
+            las placas se pisaban. El piso deja de aplicar apenas el ancho pasa
+            de ~613px, o sea que escritorio queda idéntico. El min() con 34dvh
+            es el techo para el teléfono acostado, donde .el-stage-wrap ya se
+            angosta sola a 26dvh de alto: ahí 184px se comerían el transcript,
+            pero con 26dvh clavados el juez volvía a salirse por arriba. */}
+        <div className="el-stage min-h-[min(184px,34dvh)]">
+        {/* Banda del mobiliario. El SVG y los asientos —que se posicionan en %
+            sobre SU caja— viven acá adentro y comparten el 1000/300 original,
+            así que el alto extra de arriba es letterbox: nadie se despega del
+            estrado ni se deforma. */}
+        <div className="absolute inset-x-0 top-1/2 aspect-[10/3] -translate-y-1/2">
         <svg
           viewBox="0 0 1000 300"
           preserveAspectRatio="xMidYMid meet"
@@ -158,6 +172,7 @@ export function EscenaSala({
             esUsuario={a.rol === asientoUsuario}
           />
         ))}
+        </div>
         </div>
       </div>
     </section>

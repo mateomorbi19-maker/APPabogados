@@ -16,11 +16,24 @@ import { cn } from "@/lib/utils";
 import { ELENCO, colorDe, type Asiento } from "@/lib/simulador/sala";
 import { AvatarRol } from "./avatar-rol";
 
+// El escalón de móvil existe porque el escenario se angosta a ~330-400px y los
+// vecinos de mesa quedan a 39px (fiscal/querella) y 46px (juez/secretaría):
+// con los marcos de escritorio se tocaban entre sí. A partir de sm vuelven los
+// valores originales, así que de 640px para arriba no cambia nada.
 const TAM_MARCO: Record<Asiento["tam"], string> = {
-  lg: "size-12 md:size-[72px]",
-  md: "size-11 md:size-16",
-  sm: "size-9 md:size-[54px]",
+  lg: "size-10 sm:size-12 md:size-[72px]",
+  md: "size-9 sm:size-11 md:size-16",
+  sm: "size-7 sm:size-9 md:size-[54px]",
 };
+
+// Asientos que en móvil comparten mesa con un vecino a menos de 50px: su placa
+// baja un escalón para no quedar encima de la de al lado. El margen negativo
+// compensa exacto al positivo, así que la columna no cambia de alto y el marco
+// no se corre respecto del mobiliario.
+const PLACA_ESCALONADA: ReadonlySet<Asiento["rol"]> = new Set<Asiento["rol"]>([
+  "secretario",
+  "querellante",
+]);
 
 type Props = {
   asiento: Asiento;
@@ -46,7 +59,7 @@ export function AsientoSala({
   return (
     <div
       className={cn(
-        "el-seat absolute flex flex-col items-center gap-1.5",
+        "el-seat absolute flex flex-col items-center gap-1 sm:gap-1.5",
         activo && "el-seat-active",
         esTuTurno && "el-seat-turn",
       )}
@@ -86,11 +99,21 @@ export function AsientoSala({
         <AvatarRol rol={asiento.rol} className="size-full rounded-2xl" />
       </div>
 
-      <div className="text-center leading-[1.15]">
-        <div className="el-seat-name max-w-[86px] truncate text-[10px] font-semibold md:max-w-[120px] md:text-[11px]">
+      <div
+        className={cn(
+          "text-center leading-[1.15]",
+          PLACA_ESCALONADA.has(asiento.rol) && "max-sm:mt-4 max-sm:-mb-4",
+        )}
+      >
+        <div className="el-seat-name max-w-[52px] truncate text-[10px] font-semibold sm:max-w-[86px] md:max-w-[120px] md:text-[11px]">
           {etiqueta}
         </div>
-        <div className="max-w-[86px] truncate text-[8.5px] text-[var(--el-text-muted)] md:max-w-[120px] md:text-[9.5px]">
+        {/* La función procesal se cae en móvil: es la segunda línea de una
+            placa que ahí mide 52px y el ancho de "Ministerio Público" o
+            "Particular damnificado" era justo lo que empujaba a las placas
+            vecinas una encima de la otra. El nombre alcanza para saber quién
+            es; la función completa está en el transcript. */}
+        <div className="hidden max-w-[86px] truncate text-[8.5px] text-[var(--el-text-muted)] sm:block md:max-w-[120px] md:text-[9.5px]">
           {ficha.rol}
         </div>
       </div>

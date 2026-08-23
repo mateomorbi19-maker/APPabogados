@@ -14,6 +14,7 @@ import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { SimulacionAudiencia, TurnoSimulacion } from "@/lib/types";
+import { usePunteroFino } from "@/lib/hooks/use-cliente";
 
 // Igual que el max del schema Zod del borde (crearTurnoInputSchema).
 const MAX_CHARS = 5000;
@@ -41,6 +42,17 @@ export function InputIntervencion({
   // duplique el turno y no cobre otra llamada al modelo.
   const [sinConfirmar, setSinConfirmar] = useState(false);
   const contadorRef = useRef(0);
+  // El atajo "Enter envía" SOLO con puntero fino (mouse / trackpad). En el
+  // teclado virtual de un teléfono no existe Shift+Enter: con el atajo prendido
+  // no se puede escribir una intervención de dos párrafos, y cualquier Enter
+  // reflejo manda la intervención a medias. Acá eso no es un fastidio
+  // cosmético: cada envío persiste el turno y paga una llamada al modelo, y
+  // reintentar duplica las dos cosas (ver el protocolo de arriba). En táctil el
+  // único disparador es el botón "Intervenir".
+  // `usePunteroFino` y no useState+useEffect: el server no sabe qué puntero
+  // tiene el dispositivo, así que hidrata en false y el valor real entra en el
+  // mismo commit, sin el render en cascada de corregirlo desde un efecto.
+  const atajoEnter = usePunteroFino();
 
   // Conserva la burbuja optimista (el shell la re-agrega porque su id ya no
   // está en la lista base), no devuelve el texto al input y bloquea el envío.
@@ -139,8 +151,9 @@ export function InputIntervencion({
         value={contenido}
         onChange={(e) => setContenido(e.target.value)}
         onKeyDown={(e) => {
-          // Enter envía; Shift+Enter hace salto de línea.
-          if (e.key === "Enter" && !e.shiftKey) {
+          // Enter envía; Shift+Enter hace salto de línea. En táctil el atajo
+          // está apagado (ver `atajoEnter`) y el Enter escribe el salto.
+          if (atajoEnter && e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             void enviar();
           }
@@ -166,10 +179,14 @@ export function InputIntervencion({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] text-muted-foreground">
-          Enter envía · Shift+Enter salto de línea
-        </p>
+      <div className="flex items-center justify-end gap-3">
+        {/* El cartel se muestra solo donde el atajo existe: anunciarlo en un
+            teléfono era decir algo falso sobre la tecla que más caro sale. */}
+        {atajoEnter ? (
+          <p className="mr-auto text-[11px] text-muted-foreground">
+            Enter envía · Shift+Enter salto de línea
+          </p>
+        ) : null}
         <Button onClick={enviar} disabled={bloqueado || !contenido.trim()}>
           {loading ? (
             <Loader2 className="size-4 animate-spin" />

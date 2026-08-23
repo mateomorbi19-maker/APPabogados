@@ -35,7 +35,10 @@ export function BuzonRail({ activo, onChange }: Props) {
             aria-current={esActivo ? "page" : undefined}
             onClick={() => onChange(b)}
             className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-xs transition-colors",
+              // py-2.5 en móvil: con py-1.5 el botón medía 28px de alto, y es
+              // lo único que cambia de buzón. El texto sigue en 12px para que
+              // los cuatro entren en 360px sin obligar a scrollear el rail.
+              "inline-flex shrink-0 items-center gap-1.5 rounded-[9px] px-2.5 py-1.5 text-xs transition-colors max-md:py-2.5",
               esActivo
                 ? "bg-[rgba(139,92,246,0.22)] font-medium text-violet-800 dark:text-[#CDBEFF]"
                 : "text-[var(--el-text-soft)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--el-text)]",

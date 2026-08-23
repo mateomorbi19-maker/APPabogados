@@ -56,8 +56,11 @@ export function Pagination({ page, pageSize, total }: Props) {
   };
 
   const list = paginas(page, totalPages);
+  // 40px de lado en móvil: con h-8 (32px) un número de página es más chico
+  // que la yema de un dedo y se salta de a dos páginas. Desde md vuelve a la
+  // densidad original.
   const baseBtn =
-    "inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-border px-2 text-xs transition-colors";
+    "inline-flex h-10 min-w-10 md:h-8 md:min-w-8 items-center justify-center rounded-md border border-border px-2 text-xs transition-colors";
 
   return (
     <nav
@@ -81,7 +84,7 @@ export function Pagination({ page, pageSize, total }: Props) {
         p === "…" ? (
           <span
             key={`gap-${i}`}
-            className="inline-flex h-8 min-w-8 items-center justify-center text-muted-foreground text-xs"
+            className="inline-flex h-10 min-w-10 md:h-8 md:min-w-8 items-center justify-center text-muted-foreground text-xs"
             aria-hidden
           >
             …
@@ -115,7 +118,9 @@ export function Pagination({ page, pageSize, total }: Props) {
         Siguiente
         <ChevronRight className="size-3.5" />
       </Link>
-      <span className="ml-2 text-xs text-muted-foreground">
+      {/* En móvil la fila de páginas ya ocupa el ancho completo: el contador
+          baja a su propia línea en vez de pelearle el espacio. */}
+      <span className="w-full md:ml-2 md:w-auto text-xs text-muted-foreground">
         Mostrando {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} de {total}
       </span>
     </nav>

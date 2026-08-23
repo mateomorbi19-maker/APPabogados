@@ -9,8 +9,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, ExternalLink, EyeOff, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  EyeOff,
+  FileText,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
+import { useMediaQuery } from "@/lib/hooks/use-cliente";
 import { Toaster } from "@/components/ui/sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -65,6 +73,11 @@ function Dato({ termino, valor }: { termino: string; valor: string }) {
 }
 
 export function LectorDocumento({ doc }: { doc: DocumentoRepositorio }) {
+  // El visor embebido se decide en JS y no con `max-md:hidden`:
+  // display:none esconde el iframe pero NO evita que el browser pida el
+  // PDF igual. Un fallo escaneado son varios MB que el telefono se bajaba
+  // —con datos moviles— para no mostrarlos nunca.
+  const enEscritorio = useMediaQuery("(min-width: 768px)");
   const router = useRouter();
   const meta = COLECCIONES[doc.coleccion];
   const Icono = ICONO_COLECCION[doc.coleccion];
@@ -133,7 +146,14 @@ export function LectorDocumento({ doc }: { doc: DocumentoRepositorio }) {
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={volver} className="-ml-2">
+      {/* max-md:h-10: es el único “atrás” visible de la pantalla, no puede
+          quedarse en los 36px que da `size="sm"` en móvil. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={volver}
+        className="-ml-2 max-md:h-10"
+      >
         <ArrowLeft aria-hidden />
         Volver al repositorio
       </Button>
@@ -178,7 +198,10 @@ export function LectorDocumento({ doc }: { doc: DocumentoRepositorio }) {
             <Link
               key={label}
               href={`/dashboard/repositorio?coleccion=${doc.coleccion}&materia=${slugMateria(doc.coleccion, label)}`}
-              className="rounded-md border border-[var(--el-border-soft)] px-1.5 py-0.5 text-[11px] text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/45 hover:text-[var(--el-text)]"
+              // Cada materia es un link a la lista filtrada: 18px de alto no se
+              // tocan. En esta pantalla no hay presión de densidad, así que van
+              // al piso completo de 40px.
+              className="rounded-md border border-[var(--el-border-soft)] px-1.5 py-0.5 text-[11px] text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/45 hover:text-[var(--el-text)] max-md:inline-flex max-md:min-h-10 max-md:items-center max-md:px-3 max-md:text-xs"
             >
               {label}
             </Link>
@@ -208,7 +231,7 @@ export function LectorDocumento({ doc }: { doc: DocumentoRepositorio }) {
 
       {/* ——— Visor ——— */}
       {!previsualizable ? (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 rounded-xl border border-[var(--el-border-soft)] px-6 py-12 text-center">
+        <div className="flex min-h-[40dvh] flex-col items-center justify-center gap-3 rounded-xl border border-[var(--el-border-soft)] px-6 py-12 text-center">
           <p className="text-sm text-[var(--el-text-soft)]">
             Este archivo es {etiquetaTipoArchivo(doc.mime_type)} y no se puede
             previsualizar acá adentro.
@@ -235,16 +258,60 @@ export function LectorDocumento({ doc }: { doc: DocumentoRepositorio }) {
               Content-Type del catálogo + nosniff + CSP `default-src 'none'`
               + `attachment` para todo lo que no sea previsualizable. Ver
               src/app/api/repositorio/documentos/[id]/archivo/route.ts. */}
-          <iframe
-            src={urlArchivo(doc.id)}
-            title={`Documento: ${doc.titulo}`}
-            referrerPolicy="no-referrer"
-            className="h-[78vh] min-h-[440px] w-full rounded-xl border border-[var(--el-border)] bg-[var(--el-surface-card)]"
-          />
-          <p className="text-xs text-[var(--el-text-muted)] md:hidden">
-            Si el visor no carga en el celular, usá “Descargar” o “Abrir en
-            Drive”.
-          </p>
+          {/* El iframe no se monta en móvil. Safari iOS renderiza un PDF
+              embebido como una imagen fija de la PRIMERA página, sin scroll
+              interno: leer un fallo de 30 carillas desde el teléfono es
+              imposible y el visor aparece roto en vez de derivar limpio. El
+              alto va en dvh y no en vh porque vh mide contra el viewport
+              grande de iOS y el marco se metía abajo de la barra de URL. */}
+          {enEscritorio ? (
+            <iframe
+              src={urlArchivo(doc.id)}
+              title={`Documento: ${doc.titulo}`}
+              referrerPolicy="no-referrer"
+              className="h-[78dvh] min-h-[440px] w-full rounded-xl border border-[var(--el-border)] bg-[var(--el-surface-card)]"
+            />
+          ) : null}
+          {/* La salida del celular: el visor nativo de iOS y Android abre el
+              PDF a pantalla completa y ahí sí scrollea, hace zoom y busca. */}
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--el-border-soft)] bg-[var(--el-surface-card)]/50 px-5 py-8 text-center md:hidden">
+            <FileText
+              className="size-8 text-[var(--el-text-muted)]"
+              aria-hidden
+            />
+            <p className="text-sm text-[var(--el-text-soft)]">
+              En el celular el documento se lee mejor en el visor del teléfono,
+              a pantalla completa.
+            </p>
+            <a
+              href={urlArchivo(doc.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ size: "lg" }), "w-full max-w-xs")}
+            >
+              <ExternalLink aria-hidden />
+              Abrir el PDF
+            </a>
+            {/* size="lg" y no un `h-11` suelto: el primitivo trae
+                `max-md:h-10`, y una utility con variante le gana a una sin
+                variante, asi que el h-11 nunca se aplicaba justo en movil, que
+                es el unico ancho donde este bloque existe (md:hidden). `lg` da
+                los 44px de verdad. */}
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleDescargar}
+              disabled={bajando}
+              className="w-full max-w-xs"
+            >
+              {bajando ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <Download aria-hidden />
+              )}
+              Descargar
+            </Button>
+          </div>
         </div>
       )}
 

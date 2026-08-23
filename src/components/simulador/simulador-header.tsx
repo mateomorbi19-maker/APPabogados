@@ -60,7 +60,14 @@ export function SimuladorHeader({
     turnos.some((t) => t.emisor === "usuario");
 
   return (
-    <header className="shrink-0 border-b border-border bg-card/50 backdrop-blur">
+    <header
+      className="shrink-0 border-b border-border bg-card/50 backdrop-blur"
+      // Primera fila del viewport en una vista inmersiva (no hay top-bar arriba):
+      // con viewportFit "cover" y la app instalada en un iPhone, sin este padding
+      // el título arranca debajo del notch / isla dinámica. Mismo recurso que
+      // nav/top-bar.tsx; el inset vale 0 en escritorio.
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 md:px-6">
         <Link
           href={`/dashboard/mis-casos/${casoId}`}
@@ -80,8 +87,15 @@ export function SimuladorHeader({
 
         {simulacion && !mostrandoConfig ? (
           <>
-            <span className="text-muted-foreground/50 shrink-0">/</span>
-            <span className="text-xs text-muted-foreground truncate">
+            {/* La configuración de la sesión se esconde debajo de md: a 360px
+                la fila ya la venía comiendo hasta dejar "Defen…", que no
+                informa nada y le roba el ancho al título del caso. El estado
+                (En curso / Finalizada) sí se queda: es lo que decide si podés
+                intervenir. */}
+            <span className="text-muted-foreground/50 shrink-0 hidden md:inline">
+              /
+            </span>
+            <span className="text-xs text-muted-foreground truncate hidden md:inline">
               {labelDe(ROLES_USUARIO, simulacion.rol_usuario)} ·{" "}
               {labelDe(DIFICULTADES, simulacion.dificultad)} · Juez{" "}
               {labelDe(MAGISTRADOS, simulacion.magistrado_perfil).toLowerCase()}
@@ -112,13 +126,24 @@ export function SimuladorHeader({
             scroll={false}
             className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
           >
-            {vistaSala ? "Vista de texto" : "Vista de sala"}
+            {/* Rótulo corto en móvil: los tres botones de la derecha suman
+                ~300px de los 328 útiles a 360px y la fila se partía en dos. */}
+            <span className="hidden sm:inline">
+              {vistaSala ? "Vista de texto" : "Vista de sala"}
+            </span>
+            <span className="sm:hidden">{vistaSala ? "Texto" : "Sala"}</span>
           </Link>
         ) : null}
 
         {puedeCerrar ? (
-          <Button variant="outline" size="sm" onClick={() => setCerrarOpen(true)}>
-            Cerrar y ver informe
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCerrarOpen(true)}
+            aria-label="Cerrar la audiencia y ver el informe"
+          >
+            <span className="hidden sm:inline">Cerrar y ver informe</span>
+            <span className="sm:hidden">Cerrar</span>
           </Button>
         ) : null}
 

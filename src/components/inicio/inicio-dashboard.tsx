@@ -153,13 +153,16 @@ function CtaCompacto() {
   return (
     <Link
       href="/analisis"
-      className="group flex items-center gap-3 rounded-[11px] border border-[var(--el-violet)]/40 bg-[var(--el-violet)]/8 px-4 py-3 transition-colors hover:border-[var(--el-violet)] hover:bg-[var(--el-violet)]/14"
+      className="group flex items-center gap-3 rounded-[11px] border border-[var(--el-violet)]/40 bg-[var(--el-violet)]/8 px-4 py-3 transition-colors hover:border-[var(--el-violet)] hover:bg-[var(--el-violet)]/14 max-sm:py-3.5"
     >
       <Sparkles className="size-4 shrink-0 text-[var(--el-violet-light)]" />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--el-text)]">
         Analizar un caso nuevo
       </span>
-      <BadgeDuracion className="bg-[var(--el-violet)]/15 text-[var(--el-violet-light)]" />
+      {/* El badge se esconde en móvil, igual que en CtaCompleto: entre ícono,
+          badge (~70px), flecha y gaps se iban ~138px de los ~296 útiles de un
+          360px y el único label del CTA quedaba cortado a media palabra. */}
+      <BadgeDuracion className="hidden bg-[var(--el-violet)]/15 text-[var(--el-violet-light)] sm:inline-flex" />
       <ArrowRight className="size-4 shrink-0 text-[var(--el-violet-light)] transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
@@ -336,12 +339,21 @@ function CasosRecientes({
         <ul className="divide-y divide-[var(--el-border-soft)]">
           {casos.map((c) => (
             <li key={c.id}>
+              {/* En móvil el badge de rol se apila debajo en vez de competir por
+                  el renglón: en 360px quedan ~288px útiles y "Querellante"
+                  (~85px) dejaba la carátula en unos 22 caracteres. Con las
+                  carátulas actuales —varias son la primera línea del relato— la
+                  fila no distinguía una causa de otra. Además el título pasa a
+                  dos renglones y la fila sube a ~48px táctiles. */}
               <Link
                 href={`/dashboard/mis-casos/${c.id}`}
-                className="group flex items-center gap-3 py-2.5"
+                className="group flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:gap-3 sm:py-2.5"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-[var(--el-text)] transition-colors group-hover:text-[var(--el-violet-light)]">
+                  {/* line-clamp-2 en vez de truncate: cortar la carátula en un
+                      renglón es justo lo que hace ilegible la lista en el
+                      teléfono. En escritorio casi ninguna llega a dos líneas. */}
+                  <span className="line-clamp-2 text-sm font-medium text-[var(--el-text)] transition-colors group-hover:text-[var(--el-violet-light)]">
                     {c.titulo}
                   </span>
                   <span className="mt-0.5 block text-xs text-[var(--el-text-muted)]">
@@ -350,7 +362,7 @@ function CasosRecientes({
                 </span>
                 <span
                   className={cn(
-                    "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
+                    "shrink-0 self-start rounded-full border px-2 py-0.5 text-xs font-medium sm:self-auto",
                     rolBadge(c.rol),
                   )}
                 >
@@ -427,19 +439,24 @@ function PanelAgenda({
           <ul className="divide-y divide-[var(--el-border-soft)]">
             {eventos.map((e) => (
               <li key={e.id}>
+                {/* Misma lógica que en Causas recientes: "Miércoles · 09:00"
+                    (~105px) le comía un tercio del renglón al título del
+                    evento. En móvil la etiqueta baja al renglón del tipo,
+                    separada por un punto medio, y el título usa todo el ancho. */}
                 <Link
                   href="/dashboard/agenda"
-                  className="group flex items-baseline gap-3 py-2.5"
+                  className="group flex items-baseline gap-3 py-3 sm:py-2.5"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-[var(--el-text)] transition-colors group-hover:text-[var(--el-violet-light)]">
+                    <span className="line-clamp-2 text-sm font-medium text-[var(--el-text)] transition-colors group-hover:text-[var(--el-violet-light)]">
                       {e.titulo}
                     </span>
                     <span className="mt-0.5 block text-xs text-[var(--el-text-muted)]">
                       {tipoLabel(e.tipo)}
+                      <span className="sm:hidden"> · {etiquetaEvento(e)}</span>
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs font-medium text-[var(--el-text-muted)]">
+                  <span className="hidden shrink-0 text-xs font-medium text-[var(--el-text-muted)] sm:block">
                     {etiquetaEvento(e)}
                   </span>
                 </Link>

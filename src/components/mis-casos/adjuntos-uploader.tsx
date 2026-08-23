@@ -431,8 +431,8 @@ function AdjuntoCard({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-destructive shrink-0"
           onClick={onQuitar}
           disabled={disabled}
           aria-label="Quitar"
@@ -455,7 +455,10 @@ function AdjuntoCard({
             onChange={(e) => onDescripcionChange(e.target.value)}
             disabled={descripcionDisabled}
             maxLength={DESCRIPCION_MAX}
-            className="h-8 text-xs"
+            // 32px de alto era medio dedo. El look compacto se conserva de
+            // 768px para arriba; el `text-xs` va con modificador porque sin
+            // él twMerge le borra el text-base del primitivo.
+            className="h-10 md:h-8 md:text-xs"
           />
           {item.descripcion.length > 0 ? (
             <p className="text-[10px] text-muted-foreground text-right">

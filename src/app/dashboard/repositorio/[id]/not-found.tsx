@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 // vez de caer al not-found global de la app.
 export default function DocumentoNoEncontrado() {
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-center">
+    <div className="flex min-h-[50dvh] flex-col items-center justify-center gap-3 text-center max-md:px-2">
       <FileSearch className="size-9 text-[var(--el-text-muted)]" aria-hidden />
       <h1 className="font-display text-lg font-semibold text-[var(--el-text)]">
         Ese documento no está en el repositorio

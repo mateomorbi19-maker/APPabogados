@@ -134,16 +134,23 @@ export function ResultadosAnalisis({
     <div className="space-y-6">
       {tieneCtas ? (
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h2 className="font-serif text-3xl">Estrategias</h2>
+          {/* text-2xl en móvil: en 360px el título y los dos CTA comparten
+              renglón y con text-3xl el wrap dejaba el header en tres líneas. */}
+          <h2 className="font-serif text-2xl sm:text-3xl">Estrategias</h2>
           <div className="flex items-center gap-2">
             {onVolver ? (
-              <Button variant="outline" size="sm" onClick={onVolver}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onVolver}
+                className="max-md:h-10"
+              >
                 <ArrowLeft />
                 Volver al formulario
               </Button>
             ) : null}
             {onReiniciar ? (
-              <Button size="sm" onClick={onReiniciar}>
+              <Button size="sm" onClick={onReiniciar} className="max-md:h-10">
                 <RotateCcw />
                 Nuevo análisis
               </Button>
@@ -247,7 +254,9 @@ function Seccion({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-serif text-2xl">{seccion.rol}</h3>
+        {/* `seccion.rol` sale del modelo tal cual: un rol más largo que
+            "Defensor" en text-2xl se comía dos renglones en 360px. */}
+        <h3 className="font-serif text-xl sm:text-2xl">{seccion.rol}</h3>
         {(seccion.imputados_identificados.length > 0 ||
           seccion.delitos_imputables.length > 0) && (
           <div className="flex flex-wrap gap-1.5 mt-2">
@@ -339,7 +348,9 @@ function EstrategiaCard({
   return (
     <Card
       className={cn(
-        "p-6 space-y-4 border-t-[3px] flex flex-col transition-opacity",
+        // p-4 en móvil: con p-6 el resumen ejecutivo quedaba en una columna de
+        // ~280px (unos 40 caracteres por línea) en un 360px.
+        "p-4 sm:p-6 space-y-4 border-t-[3px] flex flex-col transition-opacity",
         colores.borde,
         isAtenuada && "opacity-50",
       )}
@@ -348,7 +359,9 @@ function EstrategiaCard({
         <Badge variant="outline" className={cn("border", colores.badge)}>
           {colores.label}
         </Badge>
-        <h4 className="font-serif text-xl leading-tight">{estrategia.nombre}</h4>
+        <h4 className="font-serif text-lg leading-tight sm:text-xl">
+          {estrategia.nombre}
+        </h4>
       </div>
 
       <p className="text-sm leading-relaxed text-muted-foreground flex-1">
@@ -498,6 +511,24 @@ function ContenidoColapsableLectura({
 
 type FlowState = "inicial" | "confirmando" | "ingresando_titulo";
 
+// El cuerpo del modal es una estrategia entera (tesis, fundamento legal,
+// doctrina, jurisprudencia, fortalezas/riesgos y pasos procesales): en 375px
+// son 1500-2500px de alto adentro de un scroller propio, así que sin esto la
+// acción de cada paso vive al fondo de todo. En móvil el footer se pega abajo y
+// queda siempre a mano.
+//
+// `bottom-4` y no `bottom-0`: el footer sale del padding del diálogo con -mb-4,
+// y con offset 0 su borde inferior quedaría 16px por debajo del área visible.
+// El fondo pasa a opaco porque el contenido ahora le corre por atrás (bg-muted/50
+// dejaría ver el texto moviéndose debajo).
+//
+// El diálogo pasa a `flex flex-col` en móvil (ver el className del
+// DialogContent): el primitivo es `grid`, y adentro de una grilla el bloque
+// contenedor de un item es su propia celda, así que un `sticky` no tendría
+// recorrido y no haría nada.
+const FOOTER_PEGAJOSO_MOVIL =
+  "max-md:sticky max-md:bottom-4 max-md:z-10 max-md:shrink-0 max-md:bg-popover";
+
 function ModalDesplegue({
   ejecucionId,
   caso,
@@ -598,7 +629,11 @@ function ModalDesplegue({
   return (
     <Dialog open={true} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-3xl max-h-[85vh] overflow-y-auto"
+        // dvh y no vh: en iOS 85vh mide contra el viewport grande (barra de URL
+        // oculta), así que con la barra visible el diálogo — centrado con
+        // -translate-y-1/2 — se recortaba arriba y abajo. En escritorio dvh y vh
+        // valen lo mismo, así que el tamaño de siempre no cambia.
+        className="sm:max-w-3xl max-h-[85dvh] overflow-y-auto max-md:flex max-md:flex-col"
         showCloseButton={!loading}
       >
         <DialogHeader>
@@ -610,29 +645,10 @@ function ModalDesplegue({
               {colores.label}
             </Badge>
           </div>
-          <DialogTitle className="font-serif text-2xl mt-2">
+          <DialogTitle className="font-serif text-xl mt-2 sm:text-2xl">
             {estrategia.nombre}
           </DialogTitle>
         </DialogHeader>
-
-        {flowState === "ingresando_titulo" ? (
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="titulo-caso">Título del caso</Label>
-            <Input
-              id="titulo-caso"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              disabled={loading}
-              maxLength={500}
-              autoFocus
-            />
-            {!tituloOk ? (
-              <p className="text-xs text-muted-foreground">
-                El título no puede estar vacío.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
 
         <ContenidoEstrategia estrategia={estrategia} />
 
@@ -643,7 +659,7 @@ function ModalDesplegue({
         ) : null}
 
         {flowState === "inicial" ? (
-          <DialogFooter>
+          <DialogFooter className={FOOTER_PEGAJOSO_MOVIL}>
             <Button
               className="w-full sm:w-auto sm:ml-auto"
               onClick={handleSeleccionar}
@@ -652,11 +668,21 @@ function ModalDesplegue({
             </Button>
           </DialogFooter>
         ) : flowState === "confirmando" ? (
-          <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <DialogFooter
+            className={cn(
+              "flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end",
+              FOOTER_PEGAJOSO_MOVIL,
+            )}
+          >
             <p className="text-sm text-muted-foreground sm:mr-auto">
               ¿Deseas avanzar con esta estrategia?
             </p>
-            <Button variant="link" size="sm" onClick={handleCancelar}>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={handleCancelar}
+              className="max-md:h-10"
+            >
               Cancelar
             </Button>
             <Button onClick={handleConfirmarAvance} className="sm:w-auto">
@@ -665,24 +691,54 @@ function ModalDesplegue({
           </DialogFooter>
         ) : (
           // ingresando_titulo
-          <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
-            <Button
-              variant="link"
-              size="sm"
-              onClick={handleCancelar}
-              disabled={loading}
+          //
+          // El campo del título va acá, pegado al footer, y no arriba del
+          // contenido: en móvil la estrategia entera queda en el medio, así que
+          // el abogado escribía el título arriba de todo y tenía que atravesar
+          // 2000px de scroll para llegar a "Crear caso". Campo y botón entran
+          // juntos en pantalla.
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="titulo-caso">Título del caso</Label>
+              <Input
+                id="titulo-caso"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                disabled={loading}
+                maxLength={500}
+                autoFocus
+              />
+              {!tituloOk ? (
+                <p className="text-xs text-muted-foreground">
+                  El título no puede estar vacío.
+                </p>
+              ) : null}
+            </div>
+            <DialogFooter
+              className={cn(
+                "flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end",
+                FOOTER_PEGAJOSO_MOVIL,
+              )}
             >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleCrear}
-              disabled={loading || !tituloOk}
-              className="sm:w-auto"
-            >
-              {loading ? <Loader2 className="size-4 animate-spin" /> : null}
-              {loading ? "Creando..." : "Crear caso"}
-            </Button>
-          </DialogFooter>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={handleCancelar}
+                disabled={loading}
+                className="max-md:h-10"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleCrear}
+                disabled={loading || !tituloOk}
+                className="sm:w-auto"
+              >
+                {loading ? <Loader2 className="size-4 animate-spin" /> : null}
+                {loading ? "Creando..." : "Crear caso"}
+              </Button>
+            </DialogFooter>
+          </>
         )}
       </DialogContent>
     </Dialog>

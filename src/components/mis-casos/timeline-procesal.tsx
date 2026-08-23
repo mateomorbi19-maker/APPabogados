@@ -242,10 +242,15 @@ function EventoItem({
                 ) : null}
               </div>
               {esEditable ? (
+                // En touch no existe :hover, así que el opacity-0 dejaba un
+                // botón invisible de 28px al lado del texto: no se podía
+                // borrar un evento desde el teléfono, y peor, se tocaba sin
+                // querer. Abajo de 768px va siempre visible y con el tamaño
+                // táctil del primitivo; de ahí para arriba, hover como antes.
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                  size="icon-sm"
+                  className="opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 transition-opacity shrink-0 text-muted-foreground hover:text-destructive"
                   onClick={onEliminar}
                   aria-label="Eliminar evento"
                 >

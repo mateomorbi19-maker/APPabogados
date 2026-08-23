@@ -42,6 +42,24 @@ export function EventoCard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Hora del evento / ícono de tarea / "Todo el día". Se declara una sola vez
+  // porque se renderiza en DOS lugares: el riel izquierdo de escritorio y, abajo
+  // de 640px, como prefijo del título. Motivo: a 360px la card tenía 184px de
+  // columnas fijas (checkbox + acento + riel de 56px + dos botones que en táctil
+  // miden 40px c/u) y al cuerpo le quedaban ~112px; el Badge del tipo es
+  // whitespace-nowrap y mide ~155px ("Presentación de escrito"), así que se
+  // salía de la card y scrolleaba horizontalmente TODA la página de la Agenda.
+  const horaContenido =
+    evento.clase === "tarea" ? (
+      <ListTodo className="size-5 text-muted-foreground" aria-label="Tarea" />
+    ) : evento.todo_el_dia ? (
+      <span className="text-xs text-muted-foreground">Todo el día</span>
+    ) : (
+      <span className="text-base font-medium tabular-nums">
+        {fmtHora(evento.fecha_inicio)}
+      </span>
+    );
+
   const handleDelete = async () => {
     if (deleting) return;
     setDeleting(true);
@@ -56,7 +74,9 @@ export function EventoCard({
   return (
     <div
       className={cn(
-        "group relative flex items-stretch gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:border-foreground/20",
+        // gap y padding más chicos abajo de 640px: cada gap de 12px que se
+        // ahorra es ancho que gana el cuerpo de la card en un viewport de 360px.
+        "group relative flex items-stretch gap-2 rounded-lg border border-border bg-background px-3 py-3 transition-colors hover:border-foreground/20 sm:gap-3 sm:px-4",
         evento.completado && "opacity-60",
       )}
     >
@@ -67,7 +87,11 @@ export function EventoCard({
         aria-label={
           evento.completado ? "Marcar como pendiente" : "Marcar como completado"
         }
-        className="size-[18px] self-center rounded-full border-muted-foreground/40 data-checked:border-emerald-500 data-checked:bg-emerald-500 data-checked:text-white"
+        // El primitivo ya extiende el área de toque con `after:-inset-y-2`
+        // (34px de alto con este tamaño). En móvil lo estiramos a -inset-y-3
+        // para llegar a los ~42px sin agrandar el círculo, que a 18px es parte
+        // del diseño de la lista.
+        className="size-[18px] self-center rounded-full border-muted-foreground/40 max-md:after:-inset-y-3 data-checked:border-emerald-500 data-checked:bg-emerald-500 data-checked:text-white"
       />
 
       {/* Acento de color del tipo: barra vertical de 4px rellena con el color
@@ -76,34 +100,37 @@ export function EventoCard({
           types.ts (fuera de scope de este refactor). */}
       <div className={cn("w-1 shrink-0 self-stretch rounded-none", meta.dot)} aria-hidden />
 
-      {/* Hora (evento) · ícono de tarea · "Todo el día" */}
-      <div className="w-14 shrink-0 self-center text-center">
-        {evento.clase === "tarea" ? (
-          <ListTodo
-            className="mx-auto size-5 text-muted-foreground"
-            aria-label="Tarea"
-          />
-        ) : evento.todo_el_dia ? (
-          <span className="text-xs text-muted-foreground">Todo el día</span>
-        ) : (
-          <span className="text-base font-medium tabular-nums">
-            {fmtHora(evento.fecha_inicio)}
-          </span>
-        )}
+      {/* Riel de hora: solo de 640px para arriba. Abajo la hora va en la
+          primera línea del cuerpo (ver `horaContenido`). */}
+      <div className="hidden w-14 shrink-0 items-center justify-center self-center text-center sm:flex">
+        {horaContenido}
       </div>
 
       {/* Cuerpo */}
       <div className="min-w-0 flex-1 self-center">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="inline-flex shrink-0 items-center sm:hidden">
+            {horaContenido}
+          </span>
           <span
             className={cn(
-              "text-base font-medium",
+              // break-words: una carátula con un token largo del estilo
+              // "FERREYRA-12345/2024-CFP" no tiene dónde cortar y desbordaba.
+              "min-w-0 break-words text-base font-medium",
               evento.completado && "line-through",
             )}
           >
             {evento.titulo}
           </span>
-          <Badge className={cn(meta.badge, evento.completado && "opacity-50")}>
+          {/* El Badge nace `shrink-0 whitespace-nowrap`: se lo dejamos encoger
+              y cortar con elipsis para que nunca empuje el ancho de la card. */}
+          <Badge
+            className={cn(
+              meta.badge,
+              "min-w-0 max-w-full shrink truncate",
+              evento.completado && "opacity-50",
+            )}
+          >
             {meta.label}
           </Badge>
           {/* Prioridad: siempre en tareas; en eventos solo si no es la media. */}
@@ -121,7 +148,7 @@ export function EventoCard({
           ) : null}
           {evento.google_calendar_event_id ? (
             <CalendarCheck2
-              className="size-[13px] text-emerald-700 dark:text-emerald-400"
+              className="size-[13px] shrink-0 text-emerald-700 dark:text-emerald-400"
               aria-label="Sincronizado con Google Calendar"
             />
           ) : null}
@@ -149,8 +176,12 @@ export function EventoCard({
         ) : null}
       </div>
 
-      {/* Acciones: ocultas hasta hover en desktop, siempre visibles en mobile */}
-      <div className="flex shrink-0 items-center gap-0.5 self-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
+      {/* Acciones: ocultas hasta hover, pero SOLO donde hay hover de verdad.
+          El breakpoint md: arrancaba en 768px, que es un iPad vertical: ahí un
+          lápiz y un tacho invisibles (opacity-0) quedaban igual de clickeables
+          al lado del contenido. Con (hover: hover) el criterio es el puntero,
+          no el ancho. */}
+      <div className="flex shrink-0 items-center gap-0.5 self-center opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100">
         <Button
           variant="ghost"
           size="icon-sm"

@@ -13,7 +13,9 @@ type Props = {
 // + adjuntos descargables (reusa AdjuntosRender existente).
 export function MensajeUsuario({ casoId, mensaje }: Props) {
   return (
-    <article className="ml-auto max-w-[85%] rounded-md border border-primary/25 bg-primary/10 px-3 py-2">
+    // 92% abajo de 640px: a 360px el 85% dejaba ~270px de burbuja menos
+    // 24px de padding, y un mensaje de tres renglones pasaba a cinco.
+    <article className="ml-auto max-w-[92%] sm:max-w-[85%] rounded-md border border-primary/25 bg-primary/10 px-3 py-2">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
         Tu mensaje · {fmtFecha(mensaje.creado_en)}
       </p>

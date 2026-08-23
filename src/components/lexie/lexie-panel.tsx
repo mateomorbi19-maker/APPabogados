@@ -17,6 +17,7 @@ import { Loader2, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DictadoVoz } from "@/components/mis-casos/chat/dictado-voz";
+import { usePunteroFino } from "@/lib/hooks/use-cliente";
 import { TextoLexie } from "./texto-lexie";
 import { cn } from "@/lib/utils";
 
@@ -46,10 +47,23 @@ type Mensaje = {
 // arrastrar el error o el borrador de la sesión anterior.
 type Props = { onCerrar: () => void };
 
+/** Devuelve el foco al campo, pero solo en escritorio.
+ *
+ *  En el teléfono cada `focus()` programático abre el teclado y le come media
+ *  pantalla al panel: al abrir taparía el saludo (que es lo primero que hay que
+ *  leer, las urgencias a 48h van ahí) y después de cada respuesta taparía la
+ *  respuesta recién llegada. En táctil el campo se enfoca tocándolo, que es lo
+ *  que se espera; el atajo de teclado no existe. */
+function enfocarSiEsEscritorio(campo: HTMLTextAreaElement | null) {
+  if (window.matchMedia("(min-width: 768px)").matches) campo?.focus();
+}
+
 export function LexiePanel({ onCerrar }: Props) {
   const [cargando, setCargando] = useState(true);
   const [saludo, setSaludo] = useState<Saludo | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
+  // Con el dedo no hay Shift+Enter: el atajo solo existe con mouse.
+  const atajoEnter = usePunteroFino();
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [dictando, setDictando] = useState(false);
@@ -57,20 +71,73 @@ export function LexiePanel({ onCerrar }: Props) {
 
   const finRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
-  // Esc cierra, y el body no scrollea detrás del panel.
+  // Esc cierra, y la página no scrollea detrás del panel.
+  //
+  // El bloqueo va también en <html>: Safari en iOS ignora el `overflow:hidden`
+  // del <body> y sigue paneando la página de atrás mientras el panel está
+  // abierto (el panel "se despega" y queda flotando sobre contenido que se
+  // mueve). Sobre el elemento raíz sí lo respeta, y a diferencia del truco de
+  // `position:fixed` no pierde la posición de scroll al cerrar.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCerrar();
     };
-    const prev = document.body.style.overflow;
+    const raiz = document.documentElement;
+    const prevBody = document.body.style.overflow;
+    const prevRaiz = raiz.style.overflow;
     document.body.style.overflow = "hidden";
+    raiz.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevBody;
+      raiz.style.overflow = prevRaiz;
     };
   }, [onCerrar]);
+
+  // El panel se pega al viewport VISUAL en móvil.
+  //
+  // `inset-y-0` mide el viewport de LAYOUT. En Android eso alcanza (el
+  // `interactiveWidget: "resizes-content"` del layout lo achica cuando sube el
+  // teclado), pero iOS no lo implementa: ahí el layout sigue midiendo la
+  // pantalla entera y la fila de escritura del panel queda ~300px por debajo
+  // del teclado. Escribir a LEXIE desde un iPhone era escribir a ciegas.
+  // `visualViewport` es el único que sabe cuánto quedó realmente a la vista.
+  //
+  // Se escribe el estilo a mano sobre el nodo y no por estado: el evento
+  // `scroll` del visual viewport se dispara en cada cuadro del scroll inercial
+  // de iOS, y un re-render del hilo por cuadro lo haría saltar.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const esMovil = window.matchMedia("(max-width: 767px)");
+
+    const ajustar = () => {
+      const nodo = panelRef.current;
+      if (!nodo) return;
+      if (!esMovil.matches) {
+        // De 768px para arriba manda el CSS: el panel es una columna lateral y
+        // no hay teclado virtual que compensar.
+        nodo.style.removeProperty("height");
+        nodo.style.removeProperty("transform");
+        return;
+      }
+      nodo.style.height = `${vv.height}px`;
+      nodo.style.transform = `translateY(${vv.offsetTop}px)`;
+    };
+
+    ajustar();
+    vv.addEventListener("resize", ajustar);
+    vv.addEventListener("scroll", ajustar);
+    esMovil.addEventListener("change", ajustar);
+    return () => {
+      vv.removeEventListener("resize", ajustar);
+      vv.removeEventListener("scroll", ajustar);
+      esMovil.removeEventListener("change", ajustar);
+    };
+  }, []);
 
   // Carga inicial. Corre una sola vez, al montar.
   useEffect(() => {
@@ -92,7 +159,7 @@ export function LexiePanel({ onCerrar }: Props) {
       .finally(() => {
         if (!vivo) return;
         setCargando(false);
-        inputRef.current?.focus();
+        enfocarSiEsEscritorio(inputRef.current);
       });
     return () => {
       vivo = false;
@@ -150,7 +217,7 @@ export function LexiePanel({ onCerrar }: Props) {
       setError("Se cortó la conexión. Probá de nuevo.");
     } finally {
       setEnviando(false);
-      inputRef.current?.focus();
+      enfocarSiEsEscritorio(inputRef.current);
     }
   }, [texto, enviando]);
 
@@ -158,12 +225,16 @@ export function LexiePanel({ onCerrar }: Props) {
 
   return (
     <>
+      {/* `touch-none` sobre el velo: sin eso, arrastrar el dedo sobre la parte
+          descubierta scrollea la página de atrás y el panel parece despegarse.
+          El tap sigue funcionando (touch-action solo corta el paneo). */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-40 touch-none bg-black/50 backdrop-blur-sm"
         onClick={onCerrar}
         aria-hidden
       />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="LEXIE, asistente del estudio"
@@ -197,8 +268,11 @@ export function LexiePanel({ onCerrar }: Props) {
           </Button>
         </header>
 
-        {/* — Conversación — */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* — Conversación —
+            `overscroll-contain`: al llegar al final del hilo el gesto se
+            encadenaba a la página de atrás y arrastraba el fondo debajo del
+            panel. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
           {cargando ? (
             <div className="flex items-center gap-2 text-sm text-[var(--el-text-muted)]">
               <Loader2 className="size-4 animate-spin" />
@@ -269,16 +343,20 @@ export function LexiePanel({ onCerrar }: Props) {
         </div>
 
         {/* — Input — */}
-        <div className="border-t border-[var(--el-border-soft)] p-3">
+        <div className="shrink-0 border-t border-[var(--el-border-soft)] p-3">
           <Textarea
             ref={inputRef}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={(e) => {
-              // Enter envía, Shift+Enter hace salto de línea. En pantalla táctil
-              // el teclado trae su propio Enter de "enviar", así que no se
-              // pierde nada.
-              if (e.key === "Enter" && !e.shiftKey) {
+              // Enter envía SOLO con puntero fino (mouse/trackpad). El
+              // comentario anterior decía que en táctil "no se pierde nada
+              // porque el teclado trae su propio Enter de enviar": es al revés
+              // — el teclado virtual NO tiene Shift+Enter, así que con el atajo
+              // prendido no hay forma de escribirle a LEXIE una pregunta de dos
+              // párrafos, y cualquier Enter reflejo manda el mensaje a medias y
+              // paga la llamada al modelo. Mismo criterio que el simulador.
+              if (atajoEnter && e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 void enviar();
               }
@@ -286,7 +364,13 @@ export function LexiePanel({ onCerrar }: Props) {
             placeholder="Preguntale algo…"
             rows={2}
             disabled={enviando || dictando}
-            className="min-h-[3.25rem] resize-none text-sm"
+            // Sin `text-sm`: el primitivo trae `text-base md:text-sm` y
+            // tailwind-merge borraba el `text-base` (mismo grupo, sin
+            // modificador) dejando la defensa contra el zoom de iOS apagada en
+            // silencio. Hoy el piso de 16px lo garantiza globals.css, así que
+            // esto es sacar la mina, no el arreglo: el render no cambia en
+            // ningún ancho (16px abajo de 768, 14px de ahí para arriba).
+            className="min-h-[3.25rem] resize-none"
           />
           <div className="mt-2 flex items-center justify-between gap-2">
             <DictadoVoz
@@ -294,8 +378,12 @@ export function LexiePanel({ onCerrar }: Props) {
               onTexto={(t) => setTexto((prev) => (prev ? `${prev} ${t}` : t))}
               onOcupadoChange={setDictando}
             />
+            {/* `size="sm"` deja 36px de alto en móvil y este es el botón
+                principal del panel: se lo lleva al piso táctil de 40px sin
+                tocar la densidad de escritorio (h-7). */}
             <Button
               size="sm"
+              className="max-md:h-10 max-md:px-4"
               onClick={() => void enviar()}
               disabled={enviando || dictando || texto.trim().length === 0}
             >

@@ -267,7 +267,10 @@ export function DictadoVoz({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 px-2"
+          // El h-7 fijo anulaba el piso táctil del primitivo: "Listo" es el
+          // botón que cierra el dictado y con 28px se falla con el dedo.
+          // Abajo de 768px queda en los 36px de la variante sm.
+          className="md:h-7 md:px-2"
           onClick={frenar}
           title="Terminar y pasar a texto"
         >
@@ -277,8 +280,8 @@ export function DictadoVoz({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-destructive"
           onClick={cancelar}
           aria-label="Descartar dictado"
           title="Descartar"

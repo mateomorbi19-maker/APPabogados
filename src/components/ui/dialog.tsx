@@ -53,7 +53,15 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // `max-h` + scroll interno: sin esto un diálogo más alto que la
+          // pantalla se centra vertical y se sale por arriba Y por abajo, sin
+          // ninguna forma de alcanzar lo que quedó afuera (el body está
+          // bloqueado por el backdrop). Pasaba en el compositor de correo y en
+          // el modal del mapa. En dvh y no vh: con el teclado abierto o la
+          // barra de URL desplegada, 100vh ya es más alto que lo visible.
+          // Los consumidores que pasan su propio max-h lo siguen pisando por
+          // twMerge, así que esto es un piso, no una imposición.
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

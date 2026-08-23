@@ -8,7 +8,11 @@
 // el shell muestra sidebar + esta página al lado derecho.)
 export default function MisCasosIndex() {
   return (
-    <div className="flex items-center justify-center min-h-[60vh] text-center">
+    // Oculto abajo de 768px: ahí no hay dos columnas, así que la lista ES la
+    // página y este cartel solo agregaba 60vh de vacío para scrollear al
+    // final. dvh en vez de vh para que no lo desajusten las barras del
+    // browser móvil.
+    <div className="hidden md:flex items-center justify-center min-h-[60dvh] text-center">
       <p className="text-sm text-muted-foreground max-w-md">
         Seleccioná un caso de la lista para ver el detalle.
       </p>

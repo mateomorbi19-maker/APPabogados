@@ -7,6 +7,7 @@ import {
   Filter,
   Loader2,
   Plus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -219,6 +220,19 @@ export function AgendaView({ casos }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Escape cierra el panel de filtros de móvil, igual que el Sheet del resto de
+  // la app. No bloqueamos el scroll del body a propósito: si el panel quedara
+  // abierto y el viewport pasara a ≥768px (rotación de una tablet) el aside
+  // vuelve a ser la columna de siempre y el bloqueo quedaría colgado.
+  useEffect(() => {
+    if (!mobileFiltrosOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileFiltrosOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileFiltrosOpen]);
+
   const refetch = useCallback(() => {
     void cargar(filtros);
   }, [cargar, filtros]);
@@ -328,13 +342,53 @@ export function AgendaView({ casos }: Props) {
 
   return (
     <div className="flex flex-col gap-4 md:flex-row">
-      {/* Sidebar (en mobile se colapsa, se abre con el botón "Filtros") */}
+      {/* Fondo del panel de filtros en móvil. Cierra al tocar afuera. */}
+      {mobileFiltrosOpen ? (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileFiltrosOpen(false)}
+          aria-hidden
+        />
+      ) : null}
+
+      {/* Sidebar. En escritorio es la columna izquierda de siempre; en móvil se
+          abre como panel anclado abajo con el botón "Filtros".
+
+          Antes se limitaba a pasar de `hidden` a `block` en su lugar del DOM, y
+          como el aside va PRIMERO y el botón que lo abre vive dentro del <main>,
+          el panel (mide ~380px) aparecía ARRIBA del título y del propio botón:
+          tocabas "Filtros", todo saltaba 380px hacia abajo y lo que acababas de
+          abrir quedaba fuera de pantalla por arriba. Reordenar por CSS no
+          alcanza (main incluye la lista entera, así que el panel caería al pie
+          de la página). Todas las clases del panel llevan `max-md:` para que de
+          768px para arriba el layout de escritorio quede exactamente igual. */}
       <aside
+        id="agenda-filtros"
         className={cn(
           "space-y-3 md:block md:w-52 md:shrink-0",
-          mobileFiltrosOpen ? "block" : "hidden",
+          mobileFiltrosOpen
+            ? "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-50 max-md:max-h-[80dvh] max-md:overflow-y-auto max-md:overscroll-contain max-md:rounded-t-2xl max-md:border-t max-md:border-border max-md:bg-card max-md:p-4 max-md:pb-[calc(1rem+env(safe-area-inset-bottom))] max-md:shadow-2xl"
+            : "hidden",
         )}
       >
+        {/* Encabezado del panel: en móvil el aside es un overlay y necesita una
+            salida visible (afuera del panel no siempre hay dónde tocar). Va
+            montado condicionalmente y no con `md:hidden`: un hijo oculto igual
+            cuenta para el `space-y-3` y dejaría 12px muertos arriba del sidebar
+            de escritorio. */}
+        {mobileFiltrosOpen ? (
+          <div className="flex items-center justify-between md:hidden">
+            <p className="text-sm font-medium">Filtros</p>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setMobileFiltrosOpen(false)}
+              aria-label="Cerrar filtros"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        ) : null}
         <AgendaFilters filtros={filtros} casos={casos} onChange={setFiltros} />
         <div className="rounded-lg bg-secondary/40 p-3">
           <GoogleCalendarStatus
@@ -358,11 +412,21 @@ export function AgendaView({ casos }: Props) {
             </span>
           ) : null}
           <div className="flex-1" />
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => abrirNuevo("tarea")}>
+          {/* En móvil los dos botones toman la fila completa a mitades: a 360px
+              "Nueva tarea" + "Nuevo evento" entraban justos y quedaban pegados
+              al borde derecho. */}
+          <div className="grid w-full grid-cols-2 items-center gap-2 md:flex md:w-auto">
+            <Button
+              variant="outline"
+              className="w-full md:w-auto"
+              onClick={() => abrirNuevo("tarea")}
+            >
               <Plus className="size-4" /> Nueva tarea
             </Button>
-            <Button onClick={() => abrirNuevo("evento")}>
+            <Button
+              className="w-full md:w-auto"
+              onClick={() => abrirNuevo("evento")}
+            >
               <Plus className="size-4" /> Nuevo evento
             </Button>
           </div>
@@ -374,8 +438,11 @@ export function AgendaView({ casos }: Props) {
           size="sm"
           className="md:hidden"
           onClick={() => setMobileFiltrosOpen((o) => !o)}
+          aria-expanded={mobileFiltrosOpen}
+          aria-controls="agenda-filtros"
         >
-          <Filter className="size-3.5" /> Filtros
+          <Filter className="size-3.5" />{" "}
+          {mobileFiltrosOpen ? "Ocultar filtros" : "Filtros"}
         </Button>
 
         {/* Stats */}
@@ -410,7 +477,7 @@ export function AgendaView({ casos }: Props) {
             <p className="text-sm text-muted-foreground">
               No tenés tareas ni eventos para este período.
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <Button variant="outline" onClick={() => abrirNuevo("tarea")}>
                 <Plus className="size-4" /> Crear tarea
               </Button>

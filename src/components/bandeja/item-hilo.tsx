@@ -126,7 +126,10 @@ export function ItemHilo({
             onToggleDestacado(hilo);
           }}
           className={cn(
-            "mt-1 size-6 shrink-0 rounded-md outline-none transition-colors",
+            // 24px de lado era la mitad del piso táctil, y encima está pegada
+            // al área que abre el hilo: con el dedo, o no entrás o abrís el
+            // mail sin querer. A 36px en móvil el objetivo es discernible.
+            "mt-1 size-6 shrink-0 rounded-md outline-none transition-colors max-md:mt-0.5 max-md:size-9",
             "flex items-center justify-center",
             "focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/60",
             puedeModificar
@@ -136,7 +139,7 @@ export function ItemHilo({
         >
           <Star
             className={cn(
-              "size-3.5",
+              "size-3.5 max-md:size-4",
               hilo.destacado
                 ? "fill-amber-600 dark:fill-[#fcd34d] text-amber-700 dark:text-[#fcd34d]"
                 : "text-[var(--el-text-muted)]",

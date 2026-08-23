@@ -67,8 +67,21 @@ function estiloDe(pct: number): Umbral {
     .estilo;
 }
 
-export function ConsumoBar() {
+// `variante`:
+// - "topbar" (default): la píldora del header. Oculta abajo de md porque en un
+//   teléfono compite por el ancho con el logo y el avatar.
+// - "drawer": el bloque del menú móvil. Siempre visible, a lo ancho, y con los
+//   números A LA VISTA en vez de adentro del tooltip — un tooltip necesita
+//   hover, y en una pantalla táctil no hay hover: en móvil esos números eran
+//   directamente inalcanzables.
+export function ConsumoBar({
+  variante = "topbar",
+}: {
+  variante?: "topbar" | "drawer";
+} = {}) {
   const { state } = useConsumo();
+  const enDrawer = variante === "drawer";
+  const visibilidad = enDrawer ? "flex" : "hidden md:flex";
 
   // Las fechas de renovación no cambian dentro de una sesión de trabajo, así
   // que no vale la pena recalcularlas en cada render del provider.
@@ -79,7 +92,7 @@ export function ConsumoBar() {
 
   if (state.status === "loading") {
     return (
-      <div className="hidden min-w-0 items-center gap-2 md:flex">
+      <div className={cn("min-w-0 items-center gap-2", visibilidad)}>
         <span className="text-xs text-muted-foreground">Cargando consumo…</span>
       </div>
     );
@@ -88,7 +101,7 @@ export function ConsumoBar() {
   if (state.status === "error") {
     return (
       <div
-        className="hidden min-w-0 items-center gap-2 md:flex"
+        className={cn("min-w-0 items-center gap-2", visibilidad)}
         title={state.message}
       >
         <span className="text-xs text-destructive">Consumo no disponible</span>
@@ -107,6 +120,41 @@ export function ConsumoBar() {
   const pctBarra = Math.min(100, pctReal);
   const estilo = estiloDe(pctReal);
 
+  const barra = (
+    <Progress
+      value={pctBarra}
+      className={cn(
+        "flex-1 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-[rgba(18,18,26,0.12)] dark:[&_[data-slot=progress-track]]:bg-[rgba(255,255,255,0.14)]",
+        estilo.barra,
+      )}
+    />
+  );
+
+  if (enDrawer) {
+    return (
+      <div className="min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-xs text-[var(--el-text-muted)]">
+            Cupo del mes
+          </span>
+          <span
+            className={cn(
+              "whitespace-nowrap font-display text-xs",
+              estilo.texto,
+            )}
+          >
+            {fmtPorcentaje(pctReal)} %
+          </span>
+        </div>
+        <div className="mt-1.5 flex">{barra}</div>
+        <p className="mt-1.5 text-xs text-[var(--el-text-muted)]">
+          {fmtNumber(tokens_usados_mes)} de {fmtNumber(limite_tokens_mensual)}{" "}
+          tokens · renueva {renovacion.corta}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -122,13 +170,7 @@ export function ConsumoBar() {
             />
           }
         >
-          <Progress
-            value={pctBarra}
-            className={cn(
-              "flex-1 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-[rgba(18,18,26,0.12)] dark:[&_[data-slot=progress-track]]:bg-[rgba(255,255,255,0.14)]",
-              estilo.barra,
-            )}
-          />
+          {barra}
           <span
             className={cn(
               "whitespace-nowrap font-display text-xs",

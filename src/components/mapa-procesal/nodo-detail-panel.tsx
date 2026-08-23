@@ -142,7 +142,13 @@ export function NodoDetailPanel({
   };
 
   return (
-    <aside className="absolute right-0 top-0 z-10 flex h-full w-80 flex-col border-l border-border bg-background shadow-xl duration-200 animate-in slide-in-from-right">
+    // Abajo de 640px es una HOJA INFERIOR, no un lateral: los 320px fijos del
+    // panel tapaban el 89% de un teléfono de 360 y dejaban una franja de mapa
+    // inservible al costado. Como hoja ocupa como mucho 75dvh, deja ver el
+    // nodo que se está editando y se cierra tocando el mapa de arriba. Desde
+    // sm vuelve el lateral de siempre (en un teléfono acostado, 640px de ancho
+    // y 390 de alto, la hoja sería peor que el panel).
+    <aside className="absolute inset-x-0 bottom-0 z-10 flex max-h-[75dvh] flex-col rounded-t-2xl border-t border-border bg-background pb-[env(safe-area-inset-bottom)] shadow-xl duration-200 animate-in max-sm:slide-in-from-bottom sm:inset-x-auto sm:right-0 sm:top-0 sm:h-full sm:max-h-none sm:w-80 sm:rounded-none sm:border-l sm:border-t-0 sm:pb-0 sm:slide-in-from-right">
       <header className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
         <div className="min-w-0 flex-1 space-y-2">
           {esRaiz ? (

@@ -35,15 +35,22 @@ export function NavShell({
   // abre desde cualquier sección y no solo desde el Inicio.
   return (
     <BuscadorProvider>
-      <div className="flex min-h-screen flex-col bg-[var(--el-canvas)] text-[var(--el-text)]">
-        <TopBar />
+      <div className="flex min-h-dvh flex-col bg-[var(--el-canvas)] text-[var(--el-text)]">
+        <TopBar nombreUsuario={nombreUsuario} isAdmin={isAdmin} />
         <div className="flex flex-1">
           <AppSidebar nombreUsuario={nombreUsuario} isAdmin={isAdmin} />
           <main className="min-w-0 flex-1 bg-[var(--el-canvas)]">
             {ancho === "completo" ? (
               children
             ) : (
-              <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+              // pb-24 en móvil: el botón flotante de LEXIE se monta acá abajo
+              // (línea ~60) sobre TODAS las secciones, es `fixed bottom-5
+              // right-5` y en móvil queda icon-only. Con el py-6 original se
+              // superponía al último elemento del documento — que en el flujo
+              // de análisis es justo el CTA ("Continuar", "Analizar caso"),
+              // alineado a la derecha: tocarlo abría LEXIE en vez de disparar
+              // el análisis. El hueco lo reserva el shell y no cada sección.
+              <div className="mx-auto max-w-6xl px-4 pt-6 pb-24 md:px-6 md:pb-6">
                 {children}
               </div>
             )}

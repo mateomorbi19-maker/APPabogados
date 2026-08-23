@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ListaCasos, type CasoListItem } from "./lista-casos";
 import { MisCasosEmptyState } from "./empty-state";
 
@@ -93,12 +94,23 @@ export function MisCasosShell({ children }: Props) {
     return <MisCasosEmptyState />;
   }
 
+  // Master-detail: en móvil no hay dos columnas, así que con un caso abierto
+  // la lista completa quedaba ARRIBA del detalle (~76px por card: con 8 casos
+  // había que scrollear ~600px para ver el caso recién abierto). Abajo de
+  // 768px pasa a navegación por pasos — lista O detalle, nunca los dos — y el
+  // detalle trae su propio "Mis casos" para volver (header-caso.tsx). El
+  // sticky de escritorio queda intacto.
   return (
     <div className="grid gap-6 grid-cols-1 md:grid-cols-[220px_1fr]">
-      <aside className="md:sticky md:top-20 md:self-start">
+      <aside
+        className={cn(
+          "md:sticky md:top-20 md:self-start",
+          idActivo && "hidden md:block",
+        )}
+      >
         <ListaCasos casos={estado.casos} idActivo={idActivo} />
       </aside>
-      <section>{children}</section>
+      <section className="min-w-0">{children}</section>
     </div>
   );
 }

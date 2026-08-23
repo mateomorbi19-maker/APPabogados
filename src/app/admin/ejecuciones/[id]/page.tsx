@@ -38,7 +38,7 @@ export default async function AdminEjecucionDetallePage({
     <div className="space-y-3">
       <Link
         href="/admin"
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1 min-h-10 md:min-h-0 text-xs text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />
         Volver al listado
@@ -46,7 +46,9 @@ export default async function AdminEjecucionDetallePage({
 
       <header className="rounded-md border border-border bg-card/50 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
-          <code className="font-mono text-sm">{ejecucion.id}</code>
+          {/* break-all: el UUID mide ~270px a text-sm y a 360px de viewport
+              era el único hijo del flex-wrap que no podía cortarse. */}
+          <code className="font-mono text-sm break-all">{ejecucion.id}</code>
           <Badge variant={estado.variant}>{estado.label}</Badge>
           <span className="text-sm text-muted-foreground">
             {ejecucion.usuario_nombre} · {fmtFecha(ejecucion.ejecutado_en)} ·{" "}
@@ -71,7 +73,7 @@ export default async function AdminEjecucionDetallePage({
         <summary className="cursor-pointer select-none text-xs font-medium">
           Metadata completa (JSON)
         </summary>
-        <pre className="mt-2 text-[11px] font-mono leading-relaxed whitespace-pre-wrap break-all max-h-[60vh] overflow-y-auto">
+        <pre className="mt-2 text-[11px] font-mono leading-relaxed whitespace-pre-wrap break-all max-h-[60dvh] overflow-y-auto">
           {JSON.stringify(meta, null, 2)}
         </pre>
       </details>

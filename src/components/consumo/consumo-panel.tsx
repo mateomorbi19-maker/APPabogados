@@ -16,8 +16,8 @@ export function ConsumoPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="font-serif text-3xl">Mi consumo</h2>
           {state.status === "ready" && state.data.historial.length > 0 ? (
             <p className="text-sm text-muted-foreground mt-1">
@@ -30,6 +30,7 @@ export function ConsumoPanel() {
         <Button
           variant="outline"
           size="sm"
+          className="shrink-0 max-md:h-10 max-md:px-4"
           onClick={() => {
             void revalidate();
           }}
@@ -42,9 +43,11 @@ export function ConsumoPanel() {
 
       {state.status === "loading" ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Mismo grid que MetricCards: si el skeleton se apila de a una y
+              las tarjetas reales entran de a dos, el layout salta al cargar. */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24" />
+              <Skeleton key={i} className="h-20 md:h-24" />
             ))}
           </div>
           <Skeleton className="h-64" />
@@ -60,6 +63,7 @@ export function ConsumoPanel() {
           <Button
             variant="outline"
             size="sm"
+            className="max-md:h-10 max-md:px-4"
             onClick={() => {
               void revalidate();
             }}

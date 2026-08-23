@@ -37,6 +37,10 @@ const CSP_CON_REMOTAS = `${CSP_BASE}; img-src data: 'self' https: http:`;
 
 const ALTO_INICIAL = 140;
 const ALTO_MAXIMO = 4000;
+// Tope de ancho del documento del mail. Más que esto ya no es "una tabla que no
+// entra en el teléfono": es un mail roto, y no vale la pena dejar la página
+// scrolleable dos pantallas hacia el costado.
+const ANCHO_MAXIMO = 1200;
 
 const RE_IMG_BLOQUEADA = new RegExp(`\\b${ATTR_IMG_BLOQUEADA}=`, "gi");
 
@@ -91,19 +95,40 @@ function CuerpoHtml({
 }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const [alto, setAlto] = useState(ALTO_INICIAL);
+  // 0 = el documento entra en el ancho disponible y el iframe queda fluido.
+  const [ancho, setAncho] = useState(0);
   const documento = useMemo(
     () => documentoHtml(permitirRemotas ? conImagenesRemotas(html) : html, permitirRemotas),
     [html, permitirRemotas],
   );
 
   const medir = useCallback(() => {
-    const doc = ref.current?.contentDocument;
-    if (!doc) return;
+    const frame = ref.current;
+    const doc = frame?.contentDocument;
+    if (!frame || !doc) return;
     const h = Math.max(
       doc.documentElement?.scrollHeight ?? 0,
       doc.body?.scrollHeight ?? 0,
     );
     if (h > 0) setAlto(Math.min(h + 4, ALTO_MAXIMO));
+
+    // También el ancho, que antes no se medía. Las cédulas electrónicas y los
+    // boletines llegan con `<table>` y `<div style="width:640px">` de ancho
+    // fijo: el `max-width:100%` del CSS de arriba no los alcanza (no cubre las
+    // celdas con width propio), así que a 360-430px el desborde pasaba ADENTRO
+    // del iframe —que tiene alto fijo y en touch no se deja scrollear de
+    // costado—. Dándole al iframe el ancho real del documento, el scroll
+    // horizontal pasa a ser el del wrapper de la página, que sí responde.
+    const w = Math.max(
+      doc.documentElement?.scrollWidth ?? 0,
+      doc.body?.scrollWidth ?? 0,
+    );
+    // El ancho sólo crece: si al ensancharlo el documento deja de desbordar,
+    // volver a "fluido" lo haría desbordar de nuevo — un ciclo infinito entre
+    // el ResizeObserver y esta medición.
+    if (w > frame.clientWidth + 4) {
+      setAncho((prev) => Math.max(prev, Math.min(w, ANCHO_MAXIMO)));
+    }
   }, []);
 
   useEffect(() => {
@@ -138,7 +163,11 @@ function CuerpoHtml({
       referrerPolicy="no-referrer"
       loading="lazy"
       className="w-full rounded-lg border border-[var(--el-border-soft)] bg-white"
-      style={{ height: `${alto}px` }}
+      style={{
+        height: `${alto}px`,
+        // El width inline pisa al `w-full` sólo cuando el mail no entra.
+        ...(ancho > 0 ? { width: `${ancho}px`, maxWidth: "none" } : {}),
+      }}
     />
   );
 }
@@ -186,7 +215,12 @@ export function CuerpoMensaje({ mensaje }: { mensaje: MensajeCompleto }) {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
+      {/* El scroll horizontal del mail ancho lo hace este wrapper, no el
+          iframe. -mx-3/px-3 lo estira hasta el borde de la tarjeta del mensaje
+          (que tiene px-3) para que el gesto arranque desde el filo de la
+          pantalla; overscroll-x-contain evita que el swipe se escape a la
+          navegación hacia atrás del navegador. */}
+      <div className="-mx-3 overflow-x-auto overscroll-x-contain px-3">
         {mostrarTexto ? (
           <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-[var(--el-text-soft)]">
             {mensaje.cuerpo_texto ?? ""}

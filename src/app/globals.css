@@ -283,6 +283,63 @@
   option {
     @apply bg-card text-foreground;
   }
+
+  /* Red de contención contra el desborde horizontal. Los datos que maneja la
+     app son cadenas largas SIN espacios —un CUIJ, un número de IPP, el mail
+     del juzgado, el nombre de un PDF del expediente, un link pegado— y en una
+     pantalla de 360px cualquiera de esas rompe su caja y termina generando
+     scroll lateral de la página entera.
+
+     Va en @layer base a propósito: `break-normal`/`break-all` son utilities y
+     por lo tanto siguen pudiendo pisar esto donde haga falta. Y es
+     `break-word` y no `anywhere` porque solo corta la palabra que NO entra,
+     en vez de habilitar el corte en cualquier posición. */
+  p,
+  li,
+  h1,
+  h2,
+  h3,
+  h4,
+  td,
+  th,
+  dd,
+  dt,
+  blockquote {
+    overflow-wrap: break-word;
+  }
+}
+
+/* ===========================================================================
+   Piso de 16px para los controles de formulario en móvil.
+
+   Safari en iOS hace zoom automático al enfocar cualquier campo con
+   font-size < 16px, y como el viewport no fija `maximumScale` (a propósito:
+   bloquearlo rompe el zoom por accesibilidad), la página QUEDA zoomeada
+   después de salir del campo: el resto de la app hereda scroll horizontal.
+
+   Esta regla está DELIBERADAMENTE FUERA de @layer. Tailwind v4 emite
+   `@layer theme, base, components, utilities`, así que una utility le gana
+   siempre a @layer base — un `text-sm` en el call site anularía la defensa.
+   El CSS sin capa, en cambio, le gana a TODAS las capas. Es el mismo
+   mecanismo por el que .font-display de acá abajo puede pisar utilities.
+
+   Por qué acá y no en cada primitivo: los primitivos ya traían
+   `text-base md:text-sm`, pero pasan por cn() = twMerge, y un `text-sm` sin
+   modificador del consumidor colisiona con el `text-base` sin modificador y
+   lo BORRA, dejando `md:text-sm` inerte. O sea que la defensa se apagaba sola
+   y en silencio cada vez que alguien ajustaba la tipografía de un campo.
+   Acá arriba de las capas no la puede apagar nadie, y de paso cubre los
+   <select> nativos y los <input> que renderiza Clerk, que no pasan por
+   ningún primitivo nuestro.
+
+   Arriba de 768px no aplica: ahí manda la utility del componente.
+   =========================================================================== */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 /* Util de la fuente display (Space Grotesk) con el tracking ajustado del

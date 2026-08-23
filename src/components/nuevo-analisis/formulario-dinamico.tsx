@@ -62,20 +62,27 @@ export function FormularioDinamico({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="font-serif text-3xl">Pre-análisis</h2>
+      {/* flex-wrap + título más chico en móvil: "Pre-análisis" en text-3xl se
+          come ~175px de los ~296 útiles de un 360px y comparte renglón con
+          "Volver", así que entraba raspando. Mismo patrón que el header de
+          resultados-analisis. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-serif text-2xl sm:text-3xl">Pre-análisis</h2>
         <Button
           variant="outline"
           size="sm"
           onClick={onVolver}
           disabled={loading}
+          className="max-md:h-10"
         >
           <ArrowLeft />
           Volver
         </Button>
       </div>
 
-      <Card className="p-6 space-y-2">
+      {/* p-4 en móvil: con p-6 en 360px quedaban 280px de texto útil y estos
+          párrafos jurídicos se leían en columnas de ~40 caracteres. */}
+      <Card className="p-4 sm:p-6 space-y-2">
         <h3 className="font-medium text-xs uppercase tracking-wider text-muted-foreground">
           Resumen preliminar
         </h3>
@@ -84,7 +91,7 @@ export function FormularioDinamico({
         </p>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h3 className="font-medium text-xs uppercase tracking-wider text-muted-foreground mb-3">
           Datos detectados
         </h3>
@@ -124,7 +131,7 @@ export function FormularioDinamico({
           poder revisar lo que se detectó y decidir sobre el repositorio antes
           de gastar la corrida. */}
       {data.preguntas.length === 0 ? (
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
             <div className="space-y-1">
@@ -190,8 +197,14 @@ export function FormularioDinamico({
         </label>
       </Card>
 
-      <div className="flex flex-col items-end gap-1.5 pt-2">
-        <Button onClick={onAnalizar} disabled={!puedeAnalizar}>
+      {/* Igual que en caso-input: en móvil el CTA a lo ancho y no como pastilla
+          pegada al borde derecho, que es donde flota el botón de LEXIE. */}
+      <div className="flex flex-col items-stretch gap-1.5 pt-2 sm:items-end">
+        <Button
+          onClick={onAnalizar}
+          disabled={!puedeAnalizar}
+          className="w-full sm:w-auto"
+        >
           {loading ? <Loader2 className="animate-spin" /> : null}
           Analizar caso
         </Button>

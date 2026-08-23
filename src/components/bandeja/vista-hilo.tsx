@@ -153,8 +153,12 @@ export function VistaHilo({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Barra de acciones del hilo */}
-      <div className="flex shrink-0 items-center gap-1 border-b border-[var(--el-border-soft)] px-2 py-2">
+      {/* Barra de acciones del hilo. Los botones ya miden 40px abajo de 768px
+          (el variant icon-sm lo resuelve en ui/button.tsx); lo que falta acá es
+          separación: con gap-1 (4px) y el pulgar, errarle a Archivar y darle a
+          Papelera —sobre correspondencia de un expediente— es cuestión de
+          tiempo. Ver también el separador antes de la papelera, más abajo. */}
+      <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[var(--el-border-soft)] px-2 py-2 max-md:gap-1.5">
         <Button
           variant="ghost"
           size="icon-sm"
@@ -215,6 +219,13 @@ export function VistaHilo({
           </Button>
         )}
 
+        {/* Aire entre "archivar" (reversible y frecuente) y "papelera" (la que
+            saca el hilo de la vista): pegadas a 4px son el mismo objetivo para
+            un dedo. El overflow-x-auto de la barra es la red por si el combo
+            más ancho (papelera + "Restaurar" + etiqueta de ejemplo) no entra en
+            360px: mejor que scrollee la barra a que empuje toda la página. */}
+        <div aria-hidden className="w-2 shrink-0 max-md:w-3" />
+
         <Button
           variant="ghost"
           size="icon-sm"
@@ -228,14 +239,24 @@ export function VistaHilo({
         <div className="flex-1" />
 
         {demo ? (
-          <span className="rounded-4xl border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.12)] px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-[#fcd34d]">
-            Mensaje de ejemplo
+          // A 360px la etiqueta larga no entra al lado de los cinco botones de
+          // 40px y empujaba la barra fuera de pantalla. El aviso no se saca —es
+          // deliberado que nadie confunda un mail de ejemplo con uno real—, se
+          // acorta.
+          <span className="shrink-0 rounded-4xl border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.12)] px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-[#fcd34d]">
+            <span className="max-md:hidden">Mensaje de ejemplo</span>
+            <span className="md:hidden">Ejemplo</span>
           </span>
         ) : null}
       </div>
 
-      {/* Contenido */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      {/* Contenido. El pb de móvil son dos cosas: el botón flotante de LEXIE
+          (fixed bottom-5, ~64px con su margen) y el indicador de home del
+          iPhone. Sin ese hueco, la última acción del último mensaje
+          ("Responder") quedaba abajo del botón flotante y tocarla abría LEXIE.
+          La Bandeja monta el shell con ancho="completo", así que el pb-24 que
+          el NavShell reserva para el resto de las secciones acá no aplica. */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4 max-md:px-3 max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]">
         <h1 className="font-display text-xl leading-snug font-semibold text-[var(--el-text)] md:text-2xl">
           {asunto}
         </h1>

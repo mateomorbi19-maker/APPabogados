@@ -45,7 +45,20 @@ export function Sheet({
       <aside
         role="dialog"
         aria-modal="true"
-        className="fixed right-0 top-0 z-50 h-screen w-full max-w-[60vw] overflow-y-auto border-l border-border bg-card shadow-2xl"
+        // Anchos: en móvil el panel va a pantalla completa. `max-w-[60vw]` sin
+        // variante base aplicaba DESDE 0px, así que en un teléfono de 360 el
+        // drawer se dibujaba de 216px — con el px-5 de su consumidor quedaban
+        // 176px útiles para un formulario con select, fecha/hora y textarea.
+        // El `max-w-none` explícito es necesario para desactivarlo abajo de sm.
+        //
+        // Alto: h-dvh y no h-screen. 100vh en móvil es el viewport GRANDE (el
+        // que existiría sin la barra de URL), así que el panel medía siempre
+        // más que la pantalla y su último control caía abajo del borde.
+        className="fixed right-0 top-0 z-50 flex h-dvh w-full max-w-none flex-col overflow-y-auto overscroll-contain border-l border-border bg-card shadow-2xl sm:max-w-[32rem] lg:max-w-[60vw]"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
       >
         {children}
       </aside>

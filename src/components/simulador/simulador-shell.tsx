@@ -144,8 +144,13 @@ export function SimuladorShell({
           />
 
           {enCurso ? (
+            // El layout declara viewportFit "cover": en un iPhone con home bar
+            // los ~34px de abajo se comen el botón "Intervenir" y el borde del
+            // textarea. env(safe-area-inset-bottom) es 0 en todo lo demás, así
+            // que el padding de escritorio queda igual (mismo criterio que
+            // chat-shell.tsx).
             <div className="shrink-0 border-t border-border bg-card/40">
-              <div className="mx-auto w-full max-w-4xl px-4 py-3 md:px-6">
+              <div className="mx-auto w-full max-w-4xl px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
                 <InputIntervencion
                   casoId={casoId}
                   simulacion={simulacion!}

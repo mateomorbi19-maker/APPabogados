@@ -65,7 +65,9 @@ export function ChipsFiltros({
           type="button"
           onClick={() => onChange(c.quitar)}
           aria-label={`Quitar filtro ${c.texto}`}
-          className="inline-flex max-w-[18rem] items-center gap-1.5 rounded-full border border-[var(--el-violet)]/40 bg-[var(--el-violet)]/12 py-0.5 pr-1.5 pl-2.5 text-xs text-[var(--el-text)] transition-colors hover:border-[var(--el-violet)] hover:bg-[var(--el-violet)]/20"
+          // 20px de alto: en móvil esta fila es la única forma de sacar un
+          // filtro sin volver a abrir el panel, así que sube al piso tocable.
+          className="inline-flex max-w-[18rem] items-center gap-1.5 rounded-full border border-[var(--el-violet)]/40 bg-[var(--el-violet)]/12 py-0.5 pr-1.5 pl-2.5 text-xs text-[var(--el-text)] transition-colors hover:border-[var(--el-violet)] hover:bg-[var(--el-violet)]/20 max-md:min-h-10 max-md:max-w-full max-md:pr-3 max-md:pl-3.5"
         >
           <span className="truncate">{c.texto}</span>
           <X className="size-3 shrink-0 text-[var(--el-text-soft)]" aria-hidden />
@@ -75,7 +77,7 @@ export function ChipsFiltros({
         <button
           type="button"
           onClick={onLimpiar}
-          className="px-1 text-xs text-[var(--el-text-muted)] hover:text-[var(--el-text)] hover:underline"
+          className="px-1 text-xs text-[var(--el-text-muted)] hover:text-[var(--el-text)] hover:underline max-md:inline-flex max-md:min-h-10 max-md:items-center max-md:px-2"
         >
           Limpiar todo
         </button>

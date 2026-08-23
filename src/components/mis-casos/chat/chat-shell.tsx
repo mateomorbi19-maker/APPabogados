@@ -9,7 +9,7 @@
 // La página lo monta con key={conversacion.id}: cambiar de conversación
 // remonta el shell entero y el state local nunca queda stale.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Conversacion, MensajeConversacion } from "@/lib/types";
 import { ChatHeader } from "./chat-header";
 import { ListaMensajes } from "./lista-mensajes";
@@ -35,6 +35,49 @@ export function ChatShell({
   // true mientras el agente está generando la respuesta: la lista
   // muestra la burbuja "Pensando…" (UX de chat estándar).
   const [pensando, setPensando] = useState(false);
+
+  // Alto real de la ventana cuando el teclado virtual está abierto, o null
+  // cuando no hace falta forzarlo. Ver el efecto de abajo.
+  const [altoConTeclado, setAltoConTeclado] = useState<number | null>(null);
+
+  // El teclado virtual de iOS NO achica el viewport de layout: `h-dvh` sigue
+  // midiendo la pantalla entera y el dock de input (textarea + Enviar) queda
+  // abajo del teclado, o sea escribís a ciegas. En Android lo resuelve
+  // `interactiveWidget: "resizes-content"` del layout, pero Safari no lo
+  // soporta: ahí la única fuente de verdad es visualViewport. En un iPhone 13
+  // (390x844) con el teclado abierto la altura útil baja a ~508px.
+  //
+  // Solo se activa abajo de 768px y solo cuando la diferencia supera los
+  // 120px (el colapso de la barra de Safari son ~60px y no es un teclado):
+  // en escritorio `h-dvh` alcanza y no tocamos nada.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const movil = window.matchMedia("(max-width: 767px)");
+    const medir = () => {
+      if (!movil.matches) {
+        setAltoConTeclado(null);
+        return;
+      }
+      const tapado = window.innerHeight - vv.height;
+      if (tapado > 120) {
+        setAltoConTeclado(Math.round(vv.height));
+        // iOS desplaza el viewport visual para revelar el campo enfocado.
+        // Como acá el alto ya lo compensamos nosotros, ese desplazamiento
+        // deja el header cortado arriba: lo devolvemos a cero.
+        window.scrollTo(0, 0);
+      } else {
+        setAltoConTeclado(null);
+      }
+    };
+    medir();
+    vv.addEventListener("resize", medir);
+    movil.addEventListener("change", medir);
+    return () => {
+      vv.removeEventListener("resize", medir);
+      movil.removeEventListener("change", medir);
+    };
+  }, []);
 
   // Protocolo optimista: al enviar, el mensaje del abogado se agrega a
   // la lista AL INSTANTE con un id temporal; cuando el server responde,
@@ -65,7 +108,12 @@ export function ChatShell({
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div
+      className="flex h-dvh flex-col overflow-hidden bg-background"
+      style={
+        altoConTeclado !== null ? { height: `${altoConTeclado}px` } : undefined
+      }
+    >
       <ChatHeader
         casoId={casoId}
         casoTitulo={casoTitulo}
@@ -76,8 +124,12 @@ export function ChatShell({
 
       <ListaMensajes casoId={casoId} mensajes={mensajes} pensando={pensando} />
 
+      {/* El layout declara viewportFit "cover", así que en la app instalada
+          en un iPhone con notch los ~34px del home indicator se comen la fila
+          de Nivel/Dictar/Enviar. env(safe-area-inset-bottom) es 0 en todo lo
+          demás, así que el padding de escritorio queda igual. */}
       <div className="shrink-0 border-t border-border bg-card/40">
-        <div className="mx-auto w-full max-w-4xl px-4 py-3 md:px-6">
+        <div className="mx-auto w-full max-w-4xl px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
           <InputMensaje
             casoId={casoId}
             conversacionId={conversacion.id}

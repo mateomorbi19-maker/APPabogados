@@ -83,9 +83,12 @@ function Contenido({
   return (
     <div className="flex flex-col">
       {/* === Sección 1: Cabecera === */}
-      <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-card/95 backdrop-blur px-5 py-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-card/95 backdrop-blur px-4 sm:px-5 py-3">
+        {/* min-w-0 + flex-wrap: en el panel a pantalla completa de un teléfono
+            el UUID, el botón de copiar y el badge no entran en una línea y sin
+            esto empujaban la cabecera fuera del ancho del <aside>. */}
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Ejecución
             </span>
@@ -120,7 +123,7 @@ function Contenido({
         </div>
       </div>
 
-      <div className="px-5 py-4 space-y-5">
+      <div className="px-4 sm:px-5 py-4 space-y-5">
         {isDegraded ? (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
             Esta respuesta fue parcial: el agente alcanzó el límite de
@@ -141,7 +144,7 @@ function Contenido({
         {/* === Sección 3: Contexto === */}
         <Seccion titulo="Contexto del formulario dinámico">
           {contexto && Object.keys(contexto).length > 0 ? (
-            <table className="w-full text-xs">
+            <TablaScrollable>
               <tbody className="divide-y divide-border/50">
                 {/* Insertamos `rol` de la ejecución arriba si existe en metadata,
                     porque el código guarda `rol` fuera de `contexto` (top-level
@@ -153,13 +156,13 @@ function Contenido({
                   <RowKv key={k} k={k} v={v} />
                 ))}
               </tbody>
-            </table>
+            </TablaScrollable>
           ) : typeof meta.rol === "string" ? (
-            <table className="w-full text-xs">
+            <TablaScrollable>
               <tbody>
                 <RowKv k="rol" v={meta.rol} />
               </tbody>
-            </table>
+            </TablaScrollable>
           ) : (
             <NoPersistido />
           )}
@@ -179,7 +182,7 @@ function Contenido({
             </p>
           ) : (
             <>
-              <table className="w-full text-xs">
+              <TablaScrollable>
                 <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="px-2 py-1 text-left w-8">#</th>
@@ -202,7 +205,7 @@ function Contenido({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </TablaScrollable>
               <p className="text-xs text-muted-foreground mt-2">
                 {busquedas.length}{" "}
                 {busquedas.length === 1 ? "búsqueda" : "búsquedas"}
@@ -218,7 +221,7 @@ function Contenido({
 
         {/* === Sección 6: Detalles técnicos === */}
         <Seccion titulo="Detalles técnicos">
-          <table className="w-full text-xs">
+          <TablaScrollable>
             <tbody className="divide-y divide-border/50">
               <RowKv k="input_tokens" v={fmtNumber(ejecucion.input_tokens)} />
               <RowKv k="output_tokens" v={fmtNumber(ejecucion.output_tokens)} />
@@ -259,7 +262,7 @@ function Contenido({
                 </tr>
               ) : null}
             </tbody>
-          </table>
+          </TablaScrollable>
         </Seccion>
 
         {/* === Sección 7: JSON crudo === */}
@@ -281,6 +284,19 @@ function Contenido({
           </div>
         </details>
       </div>
+    </div>
+  );
+}
+
+// Las 4 tablas del drill-down eran `w-full` a secas: `w-full` no las deja
+// achicarse por debajo de su min-content, así que dentro del panel en un
+// teléfono (~296px útiles) desbordaban el <aside> entero y el scroll lateral
+// quedaba pegado al panel, no a la tabla. Con el wrapper, cada tabla scrollea
+// dentro de su propia caja y el panel queda quieto.
+function TablaScrollable({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">{children}</table>
     </div>
   );
 }
@@ -307,7 +323,7 @@ function Seccion({
 function RowKv({ k, v }: { k: string; v: unknown }) {
   return (
     <tr>
-      <td className="px-2 py-1.5 align-top text-muted-foreground w-1/3">
+      <td className="px-2 py-1.5 align-top text-muted-foreground w-1/3 break-all">
         {k}
       </td>
       <td className="px-2 py-1.5 font-mono break-all">
@@ -379,7 +395,7 @@ function CopyBtn({
         type="button"
         onClick={onClick}
         title={`Copiar ${label}`}
-        className="inline-flex items-center justify-center rounded h-5 w-5 text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+        className="inline-flex items-center justify-center rounded h-10 w-10 md:h-5 md:w-5 text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
       >
         {copiado ? (
           <Check className="size-3 text-emerald-700 dark:text-emerald-400" />
@@ -394,7 +410,7 @@ function CopyBtn({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-7 text-xs hover:bg-muted/30 transition-colors"
+      className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-10 md:h-7 text-xs hover:bg-muted/30 transition-colors"
     >
       {copiado ? (
         <>

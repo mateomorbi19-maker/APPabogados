@@ -12,6 +12,7 @@ import {
   useNodesState,
   useReactFlow,
   type EdgeTypes,
+  type FitViewOptions,
   type NodeTypes,
   type OnBeforeDelete,
 } from "@xyflow/react";
@@ -74,6 +75,9 @@ type Estado =
       fuero: Fuero | null;
     };
 
+// Identidad estable para el caso "todavia no cargo".
+const SIN_NODOS: NodoProcesalDB[] = [];
+
 export function MapaProcesalView(props: Props) {
   return (
     <ReactFlowProvider>
@@ -110,6 +114,23 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   // Carriles de etapa (v3): capa de fondo derivada del layout, sincronizada al
   // viewport. Se recalcula junto con nodes/edges cuando cambian los nodos.
   const [lanes, setLanes] = useState<Lane[]>([]);
+
+  // === Puntero grueso (dedo) ===
+  // Todo el esquema de interacción de abajo está calibrado para mouse, y en un
+  // teléfono dejaba el mapa INMÓVIL: `panOnDrag={[1,2]}` limita el paneo a los
+  // botones medio/derecho —que en touch no existen— y el escape hatch es Ctrl
+  // + arrastre, que tampoco. Peor: con `selectionOnDrag` activo el dedo abre
+  // la caja de selección, así que el gesto de recorrer el mapa terminaba
+  // seleccionando nodos. Con puntero grueso el arrastre de un dedo panea (el
+  // pinch-zoom sigue andando por `zoomOnPinch`, que va en true por default).
+  const [tactil, setTactil] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)");
+    const sync = () => setTactil(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   // === Pan estilo n8n: Ctrl + click izquierdo arrastra el tablero ===
   // xyflow FILTRA ctrl+mousedown en su motor interno de zoom/pan (lo reserva
@@ -700,7 +721,10 @@ function MapaInner({ casoId, casoTitulo }: Props) {
 
   const onPaneClick = useCallback(() => setSelectedNodoId(null), []);
 
-  const nodos = estado.status === "ready" ? estado.nodos : [];
+  // SIN_NODOS y no un `[]` literal: el literal se recrea en cada render y le
+  // cambia la identidad a `nodos`, lo que invalida los useMemo que dependen de
+  // él (hijosSeleccionado y las opciones de encuadre) en cada vuelta.
+  const nodos = estado.status === "ready" ? estado.nodos : SIN_NODOS;
   const selectedNodo = nodos.find((n) => n.id === selectedNodoId) ?? null;
   const hijosSeleccionado = useMemo(
     () => (selectedNodoId ? nodos.filter((n) => n.padre_id === selectedNodoId) : []),
@@ -708,8 +732,42 @@ function MapaInner({ casoId, casoTitulo }: Props) {
   );
   const puedeAgregar = selectedNodo !== null && selectedNodo.estado !== "bloqueado";
 
+  // Encuadre inicial. Encuadrar TODO el árbol es lo correcto en escritorio,
+  // pero en un teléfono da zoom ~0.22 (medido con dagre sobre las 3 plantillas
+  // reales: 1144x1256 PBA, 850x1256 Nación, 1242x1256 Federal, sobre un canvas
+  // de 390x520): el orbe de 66px se dibuja de 14 y la etiqueta de 11px queda en
+  // 2,3px — el mapa abre como una nube de puntos ilegible. Con el dedo abrimos
+  // sobre el hito más avanzado y sus ramas, que es lo que el abogado viene a
+  // mirar, y el resto del árbol se alcanza con el pinch.
+  const opcionesFitView = useMemo<FitViewOptions<NodoFlow>>(() => {
+    if (!tactil) return { padding: 0.25 };
+    const ocurridos = nodos.filter((n) => n.estado === "ocurrido");
+    const candidatos = ocurridos.length > 0 ? ocurridos : nodos;
+    // dagre corre TB (rankdir arriba→abajo): el nodo más abajo es el más
+    // avanzado del proceso.
+    const foco = candidatos.reduce<NodoProcesalDB | null>(
+      (mejor, n) =>
+        mejor === null || n.posicion_y > mejor.posicion_y ? n : mejor,
+      null,
+    );
+    // maxZoom 0.9: sin tope, encuadrar un solo orbe de 66px daría zoom 2.
+    const base = { padding: 0.25, minZoom: 0.4, maxZoom: 0.9 };
+    if (!foco) return base;
+    return {
+      ...base,
+      nodes: [
+        { id: foco.id },
+        ...nodos.filter((n) => n.padre_id === foco.id).map((n) => ({ id: n.id })),
+      ],
+    };
+  }, [tactil, nodos]);
+
   return (
-    <div className="flex h-screen flex-col bg-background">
+    // h-dvh, no h-screen: en iOS Safari y Chrome Android `100vh` mide el
+    // viewport con la barra de URL RETRAÍDA, así que con la barra visible (el
+    // estado inicial) la columna medía ~90px más que el área visible y los
+    // Controls de abajo quedaban tapados por el chrome del navegador.
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <MapaToolbar
         casoId={casoId}
         casoTitulo={casoTitulo}
@@ -822,19 +880,27 @@ function MapaInner({ casoId, casoTitulo }: Props) {
                 edgeTypes={edgeTypes}
                 colorMode="dark"
                 fitView
-                fitViewOptions={{ padding: 0.25 }}
-                minZoom={0.2}
+                fitViewOptions={opcionesFitView}
+                // Con el dedo se baja el piso de zoom: el árbol Federal
+                // (1242x1256) no entra entero en 360px por encima de 0.2.
+                minZoom={tactil ? 0.12 : 0.2}
                 proOptions={{ hideAttribution: true }}
                 style={{ background: "transparent" }}
-                // === Interacción estilo n8n ===
+                // === Interacción estilo n8n (mouse) ===
                 // Click izquierdo + arrastre en el fondo = CAJA DE SELECCIÓN
                 // (parcial: alcanza con tocar el nodo). Pan: Ctrl + arrastre
                 // (interceptado por el wrapper de arriba), o botón del medio /
                 // derecho. Shift+click suma a la selección. Supr/Backspace
                 // borra los seleccionados (con Deshacer).
-                selectionOnDrag
+                // === Con el dedo ===
+                // Nada de eso existe en touch, así que el arrastre vuelve a ser
+                // paneo y la caja de selección se apaga: si no, el gesto de
+                // recorrer el mapa dibujaba la caja y al soltar dejaba nodos
+                // seleccionados. La multi-selección en móvil se resigna a
+                // propósito — mover el mapa es la interacción de base.
+                selectionOnDrag={!tactil}
                 selectionMode={SelectionMode.Partial}
-                panOnDrag={[1, 2]}
+                panOnDrag={tactil ? true : [1, 2]}
                 multiSelectionKeyCode="Shift"
                 deleteKeyCode={["Delete", "Backspace"]}
               >
@@ -844,7 +910,20 @@ function MapaInner({ casoId, casoTitulo }: Props) {
                   size={1}
                   color="rgba(255,255,255,0.04)"
                 />
-                <Controls />
+                <Controls
+                  // Los botones default de la librería miden 26x26 con un
+                  // ícono de 12: imposibles con el dedo. Abajo de 768px van al
+                  // piso táctil de 40px. El `!` hace falta porque el CSS de
+                  // xyflow entra SIN capa y las utilities de Tailwind v4 sí
+                  // están en @layer utilities: sin important pierde el pulso.
+                  className="max-md:[&_button]:!size-10 max-md:[&_button_svg]:!max-h-[18px] max-md:[&_button_svg]:!max-w-[18px]"
+                  // viewportFit=cover: instalada como app, el indicador de home
+                  // del iPhone se come los 34px de abajo y los controles caen
+                  // justo ahí. env() no se aplica solo.
+                  style={{
+                    marginBottom: "calc(15px + env(safe-area-inset-bottom))",
+                  }}
+                />
                 <MapaMinimap />
               </ReactFlow>
             </div>

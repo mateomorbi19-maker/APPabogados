@@ -80,6 +80,13 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
+  // El teclado virtual achica el viewport de LAYOUT en vez de solo el visual.
+  // Sin esto (`resizes-visual`, el default), el teclado se dibuja ENCIMA de la
+  // página: el dock de input del chat —que está anclado abajo de un contenedor
+  // `h-dvh`— queda tapado, y el abogado escribe sin ver lo que escribe. Con
+  // `resizes-content`, `dvh` pasa a medir el alto realmente visible y el dock
+  // sube solo con el teclado.
+  interactiveWidget: "resizes-content",
   themeColor: "#08080c",
 };
 

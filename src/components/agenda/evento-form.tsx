@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -34,8 +35,12 @@ import {
   type ValorFechaHora,
 } from "./selector-fecha-hora";
 
+// h-9 son 36px: abajo del piso táctil de 40px, y estos tres selects son el
+// camino de carga de un vencimiento procesal. `max-md:h-10` sube el alto solo en
+// móvil. (El zoom de iOS al enfocar un select ya lo tapa el piso de 16px de
+// globals.css.)
 const SELECT_CLS =
-  "h-9 w-full rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 disabled:opacity-50";
+  "h-9 max-md:h-10 w-full rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 disabled:opacity-50";
 
 // Inicio por defecto de un evento nuevo: ahora en hora de Argentina, redondeado
 // a la franja de 15' anterior (para que coincida con el dropdown de horas).
@@ -240,15 +245,23 @@ export function EventoForm({
         if (!v) handleClose();
       }}
     >
+      {/* Columna con scroll interno en vez de `max-h-[90vh] overflow-y-auto`
+          sobre todo el diálogo. Dos motivos: en Chrome Android `vh` es el
+          viewport GRANDE (barra de URL oculta), así que con la barra visible el
+          90vh medía más que lo realmente visible y el modal —centrado— se
+          cortaba arriba y abajo; y con todo el contenido scrolleando, los
+          botones Cancelar/Crear quedaban al final, había que recorrer el
+          formulario entero para guardar. Ahora el pie queda siempre a la vista y
+          el alto lo pone el `max-h-[calc(100dvh-2rem)]` del primitivo. */}
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+        className="flex flex-col sm:max-w-lg"
         showCloseButton={!loading}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle>{tituloModal}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4">
           {/* Toggle tarea/evento. Solo al crear: al editar la clase es fija
               (evita convertir un evento ya sincronizado con Google en tarea). */}
           {!editando ? (
@@ -260,7 +273,9 @@ export function EventoForm({
                   onClick={() => cambiarClase(c)}
                   disabled={loading}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
+                    // 32px de alto es poco para el dedo y este toggle decide la
+                    // forma entera del formulario: en móvil va a 40px.
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 max-md:py-2.5",
                     clase === c
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground",
@@ -285,7 +300,16 @@ export function EventoForm({
                   ? "Ej: Presentar escrito de excarcelación"
                   : "Ej: Audiencia de formalización"
               }
-              autoFocus
+              // Sin autofoco en móvil: el teclado virtual se abría junto con el
+              // modal y se comía la mitad de la pantalla antes de que el
+              // abogado llegara a ver el formulario. En escritorio el foco
+              // directo en el título sigue siendo lo cómodo. El diálogo se
+              // monta recién al abrirse, así que leer matchMedia acá no corre
+              // en el server ni afecta la hidratación.
+              autoFocus={
+                typeof window !== "undefined" &&
+                window.matchMedia("(min-width: 768px)").matches
+              }
             />
           </div>
 
@@ -382,7 +406,9 @@ export function EventoForm({
           ) : null}
         </div>
 
-        <div className="flex justify-end gap-2">
+        {/* DialogFooter apila los botones a lo ancho en móvil (y los deja en
+            fila de 640px para arriba, como estaban). */}
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
@@ -396,7 +422,7 @@ export function EventoForm({
                   ? "Crear tarea"
                   : "Crear evento"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

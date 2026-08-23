@@ -28,8 +28,12 @@ type Props = {
 // `text-foreground` explícito porque el <select> nativo no hereda
 // foreground en todos los browsers (Chromium en particular renderea
 // el valor seleccionado con contraste apagado si no se fuerza).
+//
+// h-10 abajo de 640px: 36px es medio dedo y este sheet se llena desde el
+// teléfono (cargar la audiencia que acaba de pasar). El font-size lo levanta
+// a 16px la regla global de móvil de globals.css.
 const SELECT_CLS =
-  "h-9 rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
+  "h-10 sm:h-9 rounded-md border border-input bg-transparent text-foreground px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
 
 const DESCRIPCION_MIN = 20;
 const DESCRIPCION_MAX = 2000;
@@ -202,7 +206,7 @@ export function AgregarEventoSheet({
                 value={ocurridoLocal}
                 onChange={(e) => setOcurridoLocal(e.target.value)}
                 disabled={loading}
-                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full h-10 sm:h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 

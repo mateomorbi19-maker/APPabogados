@@ -61,12 +61,17 @@ export function ConversacionesDropdown({
   const activa = conversaciones.find((c) => c.estado === "activa");
 
   return (
-    <div ref={wrapRef} className="relative">
+    // En móvil el wrapper queda `static` a propósito: el panel se ancla al
+    // <header> del chat (que es `relative`) y sale a lo ancho de toda la
+    // barra. Con `relative` acá el panel arrancaba en la x del trigger
+    // (~x=200 a 360px) y sus 320px se iban del borde derecho, donde el
+    // overflow-hidden del ChatShell los recortaba sin dejar scrollear.
+    <div ref={wrapRef} className="sm:relative">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setOpen((v) => !v)}
-        className="gap-1 max-w-[260px] truncate"
+        className="gap-1 max-w-[140px] truncate sm:max-w-[260px]"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -84,7 +89,7 @@ export function ConversacionesDropdown({
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 top-full mt-1 z-20 w-80 max-h-96 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-lg"
+          className="absolute inset-x-0 top-full mt-1 z-20 max-h-96 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-lg sm:left-0 sm:right-auto sm:w-80"
         >
           <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
             Activa

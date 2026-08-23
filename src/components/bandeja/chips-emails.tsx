@@ -80,7 +80,9 @@ export function ChipsEmails({
       </label>
       <div
         className={cn(
-          "flex min-h-8 flex-wrap items-center gap-1.5 rounded-lg border bg-input/30 px-2 py-1.5 transition-colors",
+          // min-h-10 abajo de 768px: el campo es el primero que se toca al
+          // redactar y con 32px de alto era más chico que el piso táctil.
+          "flex min-h-8 flex-wrap items-center gap-1.5 rounded-lg border bg-input/30 px-2 py-1.5 transition-colors max-md:min-h-10",
           error
             ? "border-destructive"
             : "border-input focus-within:border-ring",
@@ -90,7 +92,10 @@ export function ChipsEmails({
         {valores.map((v) => (
           <span
             key={v}
-            className="inline-flex max-w-full items-center gap-1 rounded-4xl bg-[rgba(139,92,246,0.18)] py-0.5 pr-1 pl-2 text-xs text-violet-800 dark:text-[#c4b5fd]"
+            // En móvil el chip crece (13px de texto, más padding vertical):
+            // una dirección de correo a 12px arriba de un fondo violeta se lee
+            // mal en un teléfono, y el chip alto es el que le da lugar a la X.
+            className="inline-flex max-w-full items-center gap-1 rounded-4xl bg-[rgba(139,92,246,0.18)] py-0.5 pr-1 pl-2 text-xs text-violet-800 max-md:py-1 max-md:pr-0.5 max-md:text-[13px] dark:text-[#c4b5fd]"
           >
             <span className="truncate">{v}</span>
             <button
@@ -98,9 +103,11 @@ export function ChipsEmails({
               disabled={disabled}
               aria-label={`Quitar ${v}`}
               onClick={() => quitar(v)}
-              className="rounded-full p-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/15"
+              // Era `p-0.5` con un ícono de 12px: ~17px de área táctil para la
+              // única forma de sacar un destinatario cargado por error.
+              className="flex size-4 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/10 max-md:size-8 dark:hover:bg-white/15"
             >
-              <X className="size-3" />
+              <X className="size-3 max-md:size-4" />
             </button>
           </span>
         ))}

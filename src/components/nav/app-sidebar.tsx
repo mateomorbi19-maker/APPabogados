@@ -2,76 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignOutButton, useUser } from "@clerk/nextjs";
-import {
-  BarChart3,
-  CalendarDays,
-  FolderOpen,
-  Home,
-  Inbox,
-  Library,
-  LogOut,
-  Shield,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import { LogOut } from "lucide-react";
+import { itemsVisibles } from "./nav-items";
 import { cn } from "@/lib/utils";
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  // Cómo se decide si el item está activo según el pathname.
-  match: (pathname: string) => boolean;
-  // Solo visible para admins.
-  adminOnly?: boolean;
-};
-
-const ITEMS: NavItem[] = [
-  { href: "/", label: "Inicio", icon: Home, match: (p) => p === "/" },
-  {
-    href: "/analisis",
-    label: "Nuevo análisis",
-    icon: Sparkles,
-    match: (p) => p === "/analisis" || p.startsWith("/analisis/"),
-  },
-  {
-    href: "/dashboard/mis-casos",
-    label: "Mis casos",
-    icon: FolderOpen,
-    match: (p) => p.startsWith("/dashboard/mis-casos"),
-  },
-  {
-    href: "/dashboard/agenda",
-    label: "Agenda",
-    icon: CalendarDays,
-    match: (p) => p.startsWith("/dashboard/agenda"),
-  },
-  {
-    href: "/dashboard/bandeja",
-    label: "Bandeja de entrada",
-    icon: Inbox,
-    match: (p) => p.startsWith("/dashboard/bandeja"),
-  },
-  {
-    href: "/dashboard/repositorio",
-    label: "Repositorio",
-    icon: Library,
-    match: (p) => p.startsWith("/dashboard/repositorio"),
-  },
-  {
-    href: "/consumo",
-    label: "Mi consumo",
-    icon: BarChart3,
-    match: (p) => p === "/consumo" || p.startsWith("/consumo/"),
-  },
-  {
-    href: "/admin",
-    label: "Admin",
-    icon: Shield,
-    match: (p) => p.startsWith("/admin"),
-    adminOnly: true,
-  },
-];
 
 export function AppSidebar({
   nombreUsuario,
@@ -82,7 +15,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const { user } = useUser();
-  const items = ITEMS.filter((i) => !i.adminOnly || isAdmin);
+  const items = itemsVisibles(isAdmin);
 
   return (
     <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 flex-col border-r border-[var(--el-border)] bg-[var(--el-surface-side)] md:flex">

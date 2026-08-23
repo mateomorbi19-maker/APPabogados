@@ -191,6 +191,18 @@ export function RepositorioView({
     }
   }, [cargandoMas, enPantalla, filtros, clave]);
 
+  // ——— Foco inicial del buscador, sólo en escritorio ———
+  // Era un `autoFocus` en el input. En el teléfono eso levanta el teclado
+  // virtual apenas se entra a la sección: se come media pantalla y tapa los
+  // resultados y el botón de Filtros antes de que el abogado haya decidido si
+  // quería buscar o explorar por tema. En escritorio el foco automático es lo
+  // correcto y se conserva.
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
   // ——— Estado de Drive (una sola vez) ———
   useEffect(() => {
     const ctrl = new AbortController();
@@ -228,9 +240,8 @@ export function RepositorioView({
   const consulta = tokenizar(filtros.q).length > 0 ? filtros.q.trim() : "";
   const filtrado = hayFiltros(filtros);
   const quedan = total - documentos.length;
-  const resumen = `${fmtNumber(total)} ${total === 1 ? "resultado" : "resultados"}${
-    consulta !== "" ? ` para “${consulta}”` : ""
-  }`;
+  const conteo = `${fmtNumber(total)} ${total === 1 ? "resultado" : "resultados"}`;
+  const resumen = `${conteo}${consulta !== "" ? ` para “${consulta}”` : ""}`;
 
   return (
     <div className="space-y-5">
@@ -249,9 +260,9 @@ export function RepositorioView({
           </span>
         </div>
         <p className="max-w-3xl text-sm leading-relaxed text-[var(--el-text-soft)]">
-          La biblioteca jurídica del estudio: fallos y textos de doctrina
-          espejados desde la carpeta de Drive, buscables por carátula, tema,
-          tribunal o autor.
+          Repositorio de fallos, sentencias y textos doctrinarios obtenidos de
+          fuentes oficiales. Buscables por carátula, tema, tribunal o autor.
+          Listos para ser analizados y aplicados en tus casos.
         </p>
         {/* Las dos colecciones, explicadas a la vista. No es un tooltip: quien
             usa esto no tiene por qué saber qué distingue una de la otra. */}
@@ -316,6 +327,9 @@ export function RepositorioView({
               }}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
+                // 32px de alto para el switch principal de la sección: en móvil
+                // sube a 40px, que es el piso tocable.
+                "max-md:min-h-10",
                 activo
                   ? "bg-[var(--el-violet)]/20 text-[var(--el-text)]"
                   : "text-[var(--el-text-soft)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--el-text)]",
@@ -358,12 +372,13 @@ export function RepositorioView({
                 ref={inputRef}
                 type="search"
                 value={qInput}
-                autoFocus
                 autoComplete="off"
                 maxLength={120}
                 onChange={(e) => setQInput(e.target.value)}
                 placeholder='Buscar por carátula, tema, tribunal o autor — ej. "Díaz Bessone prisión preventiva"'
-                className="h-12 w-full rounded-xl border border-[var(--el-border)] bg-[var(--el-surface-card)] pr-11 pl-11 text-sm text-[var(--el-text)] outline-none placeholder:text-[var(--el-text-muted)] focus-visible:border-[var(--el-violet)]/70 focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/25"
+                // max-md:pr-12 para que la X de limpiar, que en móvil crece a
+                // 40px para poder tocarla, no se monte sobre el texto escrito.
+                className="h-12 w-full rounded-xl border border-[var(--el-border)] bg-[var(--el-surface-card)] pr-11 pl-11 text-sm text-[var(--el-text)] outline-none placeholder:text-[var(--el-text-muted)] focus-visible:border-[var(--el-violet)]/70 focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/25 max-md:pr-12"
               />
               {qInput !== "" ? (
                 <button
@@ -373,7 +388,7 @@ export function RepositorioView({
                     inputRef.current?.focus();
                   }}
                   aria-label="Limpiar la búsqueda"
-                  className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-[var(--el-text-muted)] transition-colors hover:text-[var(--el-text)]"
+                  className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-[var(--el-text-muted)] transition-colors hover:text-[var(--el-text)] max-md:right-1 max-md:p-3"
                 >
                   <X className="size-4" aria-hidden />
                 </button>
@@ -383,19 +398,64 @@ export function RepositorioView({
 
           <div className="flex flex-col gap-4 md:flex-row">
             {/* ——— Filtros ——— */}
+            {/* En móvil el panel es una hoja FIJA sobre el contenido, no un
+                bloque del flujo. El <aside> es el primer hijo de este flex y el
+                botón que lo abre vive abajo, en la columna de resultados: al
+                abrirlo el panel se insertaba ARRIBA del botón, así que a 390px
+                el abogado tocaba “Filtros” y no veía aparecer nada (quedaba
+                fuera de pantalla, por encima) o los resultados le saltaban
+                ~600px. Fijo, se abre siempre a la vista. De md para arriba
+                vuelve a ser la columna de 240px de siempre. */}
+            {filtrosAbiertos ? (
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label="Cerrar los filtros"
+                onClick={() => setFiltrosAbiertos(false)}
+                className="fixed inset-0 z-40 touch-none bg-black/50 md:hidden"
+              />
+            ) : null}
             <aside
               className={cn(
                 "md:block md:w-60 md:shrink-0",
+                "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-50 max-md:max-h-[80dvh] max-md:overflow-y-auto max-md:overscroll-contain max-md:rounded-t-2xl max-md:border-t max-md:border-[var(--el-border)] max-md:bg-[var(--el-surface-card)] max-md:p-4 max-md:shadow-2xl",
+                // viewportFit=cover: la barra de gestos del iPhone taparía el
+                // último filtro si el padding de abajo no la compensara.
+                "max-md:pb-[calc(1rem+env(safe-area-inset-bottom))]",
                 filtrosAbiertos ? "block" : "hidden",
               )}
               aria-label="Filtros"
             >
+              <div className="mb-3 flex items-center justify-between md:hidden">
+                <h2 className="font-display text-sm font-semibold text-[var(--el-text)]">
+                  Filtros
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setFiltrosAbiertos(false)}
+                  aria-label="Cerrar los filtros"
+                >
+                  <X aria-hidden />
+                </Button>
+              </div>
+
               <PanelFiltros
                 filtros={filtros}
                 facetas={facetas}
                 onChange={aplicar}
                 onLimpiar={limpiar}
               />
+
+              {/* Cierre explícito abajo de todo: la hoja tapa los resultados,
+                  así que el filtro se aplica en vivo pero recién se ve al
+                  cerrar. El conteo lo anticipa. */}
+              <Button
+                className="mt-3 w-full md:hidden"
+                onClick={() => setFiltrosAbiertos(false)}
+              >
+                {cargando ? "Ver resultados" : `Ver ${conteo}`}
+              </Button>
             </aside>
 
             {/* ——— Resultados ——— */}
@@ -404,7 +464,7 @@ export function RepositorioView({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="md:hidden"
+                  className="h-10 md:hidden"
                   onClick={() => setFiltrosAbiertos((o) => !o)}
                   aria-expanded={filtrosAbiertos}
                 >
@@ -421,12 +481,16 @@ export function RepositorioView({
                   <button
                     type="button"
                     onClick={limpiar}
-                    className="text-xs text-[var(--el-violet-light)] hover:underline"
+                    className="text-xs text-[var(--el-violet-light)] hover:underline max-md:inline-flex max-md:min-h-10 max-md:items-center max-md:px-1"
                   >
                     Limpiar
                   </button>
                 ) : null}
-                <div className="flex-1" />
+                {/* El espaciador empuja “Ordenar” a la derecha en escritorio.
+                    En móvil la fila ya viene envuelta y el espaciador dejaba el
+                    <select> solo en un renglón propio pegado a la izquierda,
+                    con el label “Ordenar” colgado en el renglón de arriba. */}
+                <div className="flex-1 max-md:hidden" />
                 <label
                   htmlFor="repo-orden"
                   className="text-xs text-[var(--el-text-muted)]"
@@ -443,7 +507,10 @@ export function RepositorioView({
                         "relevancia",
                     })
                   }
-                  className="h-8 rounded-md border border-[var(--el-border-soft)] bg-transparent px-2 text-xs text-[var(--el-text)] outline-none focus-visible:border-[var(--el-violet)]/60"
+                  // max-md:h-10: globals.css le fuerza 16px a los <select> en
+                  // móvil (piso anti-zoom de iOS) y ese texto no entra en una
+                  // caja de 32px; además 32px es poco para el dedo.
+                  className="h-8 rounded-md border border-[var(--el-border-soft)] bg-transparent px-2 text-xs text-[var(--el-text)] outline-none focus-visible:border-[var(--el-violet)]/60 max-md:h-10 max-md:px-3"
                 >
                   {ORDENES_VALUES.map((o) => (
                     <option key={o} value={o} className="bg-[var(--el-canvas)]">
@@ -492,7 +559,7 @@ export function RepositorioView({
                         key={s}
                         type="button"
                         onClick={() => aplicar({ ...FILTROS_VACIOS, q: s })}
-                        className="rounded-full border border-[var(--el-border-soft)] px-2.5 py-1 text-xs text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/45 hover:text-[var(--el-text)]"
+                        className="rounded-full border border-[var(--el-border-soft)] px-2.5 py-1 text-xs text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/45 hover:text-[var(--el-text)] max-md:inline-flex max-md:min-h-10 max-md:items-center max-md:px-4 max-md:text-sm"
                       >
                         {s}
                       </button>

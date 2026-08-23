@@ -131,7 +131,10 @@ export function ListaHilos({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    // El pb de móvil deja pasar el botón flotante de LEXIE (fixed bottom-5,
+    // ~64px con su margen) y el indicador de home: sin él, el último hilo de la
+    // lista —y el botón "Cargar más"— quedaban abajo del botón flotante.
+    <div className="flex-1 overflow-y-auto max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]">
       <ul
         role="list"
         className="divide-y divide-[var(--el-border-soft)]"

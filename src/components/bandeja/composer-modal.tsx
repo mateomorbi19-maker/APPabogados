@@ -115,7 +115,9 @@ function ComposerForm({
 
   return (
     <>
-      <DialogHeader>
+      {/* pr-8 en móvil: la X de cerrar del diálogo mide 40px abajo de 768px y
+          se comía el renglón del título y la primera línea de la descripción. */}
+      <DialogHeader className="shrink-0 max-md:pr-8">
         <DialogTitle>{borrador.titulo}</DialogTitle>
         <DialogDescription>
           {puedeEnviar
@@ -124,7 +126,12 @@ function ComposerForm({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-3">
+      {/* El que scrollea es este bloque, no el popup entero: así la botonera de
+          abajo (Enviar) queda siempre a la vista. Con el teclado abierto en un
+          iPhone 390x844 el alto visible baja a ~340px, y antes el footer
+          quedaba abajo del teclado sin ninguna forma de llegar. El -mx-1/px-1
+          es para que el anillo de foco (3px) no lo recorte el overflow. */}
+      <div className="-mx-1 min-h-0 flex-1 space-y-3 overflow-y-auto px-1">
         <ChipsEmails
           label="Para"
           valores={para}
@@ -182,7 +189,11 @@ function ComposerForm({
             disabled={enviando || !puedeEnviar}
             onChange={(e) => setCuerpo(e.target.value.slice(0, MAX_CUERPO))}
             placeholder="Escribí el mensaje…"
-            className="max-h-[40vh] min-h-40 overflow-y-auto"
+            // En móvil el mínimo baja a 96px: con min-h-40 (160px) y el teclado
+            // abierto el textarea solo se comía todo el alto útil y los campos
+            // Para/Asunto quedaban fuera de alcance. dvh y no vh porque con el
+            // teclado 100vh sigue midiendo la pantalla entera.
+            className="max-h-[30dvh] min-h-24 overflow-y-auto sm:max-h-[40dvh] sm:min-h-40"
           />
           <p className="text-right text-[11px] tabular-nums text-[var(--el-text-muted)]">
             {cuerpo.length.toLocaleString("es-AR")} /{" "}
@@ -200,7 +211,7 @@ function ComposerForm({
         ) : null}
       </div>
 
-      <DialogFooter>
+      <DialogFooter className="shrink-0">
         <Button variant="outline" onClick={cerrar} disabled={enviando}>
           Cancelar
         </Button>
@@ -229,11 +240,20 @@ export function ComposerModal({
   return (
     <Dialog
       open={borrador !== null}
+      // Tocar afuera NO cierra el compositor: en el celular ese toque es el
+      // gesto con el que uno baja el teclado, y cerrar ahí significaba perder
+      // el borrador entero sin aviso. Se sale por Cancelar o por la X, que son
+      // decisiones explícitas.
+      disablePointerDismissal
       onOpenChange={(v) => {
         if (!v) onClose();
       }}
     >
-      <DialogContent className="sm:max-w-2xl">
+      {/* flex-col + el scroll adentro: el popup ya trae un max-h de pantalla
+          (ui/dialog.tsx), pero scrolleaba entero, así que el footer con Enviar
+          se iba abajo del teclado. Ahora el popup no scrollea y la botonera
+          queda fija abajo. */}
+      <DialogContent className="flex flex-col overflow-y-hidden sm:max-w-2xl">
         {borrador ? (
           <ComposerForm
             borrador={borrador}

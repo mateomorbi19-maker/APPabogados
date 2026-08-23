@@ -27,7 +27,11 @@ export function MapaMinimap() {
       maskStrokeWidth={2}
       pannable
       zoomable
-      className="!rounded-xl !border !border-[var(--el-glass-border)] !bg-[var(--el-glass)] !backdrop-blur-md"
+      // El minimapa toma el tamaño default de la librería (200x150 + margen de
+      // 15px): en un teléfono de 390px eso es el 55% del ancho y ~29% del alto
+      // del canvas, tapando los nodos de un mapa que ya abre chico. Abajo de
+      // 768px se esconde — el mapa completo se ve con el pinch.
+      className="max-md:hidden !rounded-xl !border !border-[var(--el-glass-border)] !bg-[var(--el-glass)] !backdrop-blur-md"
     />
   );
 }

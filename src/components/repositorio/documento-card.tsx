@@ -119,7 +119,15 @@ export function DocumentoCard({ doc, onMateria }: Props) {
             type="button"
             onClick={() => onMateria(slugMateria(doc.coleccion, label))}
             title={`Ver todo en ${label}`}
-            className="max-w-[14rem] truncate rounded-md border border-[var(--el-border-soft)] px-1.5 py-0.5 text-[11px] text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/45 hover:text-[var(--el-text)]"
+            // Estos chips filtran la grilla entera, así que son botones de
+            // verdad: 18px de alto no se aciertan con el dedo. En móvil van a
+            // 36px — no a 40 como las acciones de abajo — porque cada card ya
+            // ocupa media pantalla y sumarles alto reduce cuántos resultados
+            // entran de una vista; con el gap de 6px el objetivo efectivo
+            // queda igual arriba del piso. El alto se sube con padding y no
+            // con min-h + flex: `truncate` deja de elipsar si el botón pasa a
+            // ser contenedor flex.
+            className="max-w-[14rem] truncate rounded-md border border-[var(--el-border-soft)] px-1.5 py-0.5 text-[11px] text-[var(--el-text-soft)] transition-colors hover:border-[var(--el-violet)]/45 hover:text-[var(--el-text)] max-md:px-2.5 max-md:py-2.5 max-md:text-xs"
           >
             {label}
           </button>
@@ -134,16 +142,20 @@ export function DocumentoCard({ doc, onMateria }: Props) {
         ) : null}
       </div>
 
+      {/* max-md:h-10 en las dos acciones: `size="sm"` deja 36px y en la grilla
+          de una sola columna del celular hay una decena de estos pares
+          apilados, así que conviene el piso tocable de 40px. */}
       <div className="mt-auto flex items-center gap-2 pt-1.5">
         <Link
           href={`/dashboard/repositorio/${doc.id}`}
-          className={cn(buttonVariants({ size: "sm" }), "flex-1")}
+          className={cn(buttonVariants({ size: "sm" }), "flex-1 max-md:h-10")}
         >
           Leer
         </Link>
         <Button
           variant="outline"
           size="sm"
+          className="max-md:h-10"
           onClick={handleDescargar}
           disabled={bajando}
           aria-label={`Descargar ${doc.titulo}`}

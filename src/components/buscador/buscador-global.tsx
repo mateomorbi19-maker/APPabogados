@@ -12,7 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { fmtRelativo } from "@/lib/format";
@@ -261,14 +262,28 @@ function BuscadorDialog({
         showCloseButton={false}
         // Paleta anclada arriba, no centrada: el diálogo base viene con
         // `top-1/2 -translate-y-1/2` y tailwind-merge deja ganar a estas.
-        className="top-[12vh] max-h-[70vh] w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-2xl"
+        //
+        // En móvil se ancla más arriba y ocupa MENOS alto (3dvh + 56dvh contra
+        // 12vh + 70vh): el input se autofocusea al abrir, así que el teclado
+        // sube siempre y se come ~45-55% de la pantalla. Con los valores de
+        // escritorio, en un iPhone SE (667px) el diálogo terminaba en y≈547 y
+        // el teclado arrancaba en y≈400: dos filas visibles y el resto detrás
+        // del teclado, sin forma de alcanzarlo porque el scroll es interno.
+        // Con 3dvh/56dvh cierra en y≈393 y entra entero arriba del teclado.
+        // dvh y no vh porque vh es el viewport GRANDE (barra de URL replegada).
+        //
+        // Además pasa a columna flex: el alto de la lista sale de lo que sobra
+        // después del input en vez de un `calc(70vh - 3.5rem)` que había que
+        // mantener a mano cada vez que cambiaba el alto de esa fila — y que en
+        // móvil quedó mal apenas el botón de cerrar la llevó a 4rem.
+        className="top-[3dvh] flex max-h-[56dvh] w-[calc(100%-2rem)] translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:top-[12vh] sm:max-h-[70vh] sm:max-w-2xl"
         // Base UI enfoca el primer elemento tabbable; lo forzamos al input para
         // que el usuario pueda escribir apenas se abre.
         initialFocus={inputRef}
       >
         <DialogTitle className="sr-only">Buscar en la app</DialogTitle>
 
-        <div className="flex items-center gap-3 border-b border-[var(--el-border-soft)] px-4 py-3">
+        <div className="flex shrink-0 items-center gap-3 border-b border-[var(--el-border-soft)] px-4 py-3">
           <Search className="size-4 shrink-0 text-[var(--el-text-muted)]" />
           <input
             ref={inputRef}
@@ -276,14 +291,39 @@ function BuscadorDialog({
             onChange={(e) => setConsulta(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Buscar causa o imputado…"
+            // Sin estos atributos el teclado del teléfono sale genérico y con
+            // autocorrección encima: acá se tipean apellidos y carátulas
+            // ("Ferreyra" volvía "Ferreira") y la búsqueda ya normaliza tildes
+            // y mayúsculas, así que capitalizar tampoco aporta nada.
+            // `enterKeyHint` cambia el Enter por "Buscar", que es lo que hace.
+            inputMode="search"
+            enterKeyHint="search"
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
             className="min-w-0 flex-1 bg-transparent text-sm text-[var(--el-text)] outline-none placeholder:text-[var(--el-text-muted)]"
           />
           {vista.kind === "buscando" ? (
             <Loader2 className="size-4 shrink-0 animate-spin text-[var(--el-text-muted)]" />
           ) : null}
+          {/* Cerrar, solo abajo de 768px. En el teléfono no hay Esc y el
+              teclado —que sube solo al abrir— tapa todo el velo de abajo, que
+              es el otro punto de cierre: sin este botón había que bajar el
+              teclado a mano antes de poder salir de la paleta. En escritorio
+              sobra y ensuciaría la fila, por eso `md:hidden`. */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 md:hidden"
+            onClick={() => cambiarAbierto(false)}
+            aria-label="Cerrar el buscador"
+          >
+            <X className="size-4" />
+          </Button>
         </div>
 
-        <div className="max-h-[calc(70vh-3.5rem)] overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <CuerpoResultados
             vista={vista}
             consulta={consulta}

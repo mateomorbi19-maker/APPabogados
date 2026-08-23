@@ -7,10 +7,10 @@ export default async function ForbiddenPage() {
   const email = user?.primaryEmailAddress?.emailAddress ?? null;
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-12">
+    <main className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
       <div className="flex flex-col items-center gap-8 w-full max-w-md text-center">
         <div className="space-y-3">
-          <h1 className="font-serif text-4xl tracking-tight">
+          <h1 className="font-serif text-3xl tracking-tight sm:text-4xl">
             Acceso no autorizado
           </h1>
           <p className="text-sm text-muted-foreground">

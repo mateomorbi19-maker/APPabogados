@@ -41,9 +41,23 @@ type Props = {
 export function HistorialDetalle({ ejecucion, onOpenChange }: Props) {
   return (
     <Dialog open={ejecucion !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+      {/* dvh y no vh: en Safari iOS `vh` es el viewport GRANDE (el que
+          existiría sin la barra de URL), así que el diálogo centrado se
+          pasaba unos puntos por arriba y por abajo del área visible.
+          El pie va sticky porque el detalle de un `analizar_caso` (relato
+          completo + contexto + ResultadosAnalisis) mide varias pantallas: sin
+          eso, ni la X de la cabecera ni el botón Cerrar quedan a mano una vez
+          que bajaste. `bg-muted` opaco reemplaza al `bg-muted/50` del
+          primitivo, o el contenido se ve pasar por debajo del pie. */}
+      <DialogContent className="flex flex-col sm:max-w-3xl max-h-[85dvh] overflow-y-auto">
         {ejecucion ? <Contenido ejecucion={ejecucion} /> : null}
-        <DialogFooter>
+        {/* `flex flex-col` en el contenedor: el primitivo es `grid`, y adentro
+            de una grilla cada hijo vive en su propia celda, que ES su bloque
+            contenedor — el sticky quedaba con recorrido CERO y el pie
+            scrolleaba igual que antes. Mismo arreglo que resultados-analisis.
+            `bottom-4` y no `bottom-0` por el `-mb-4` del DialogFooter: con
+            offset 0 el borde del pie queda 16px abajo del area visible. */}
+        <DialogFooter className="sticky bottom-4 z-10 bg-muted">
           <DialogClose render={<Button variant="outline">Cerrar</Button>} />
         </DialogFooter>
       </DialogContent>

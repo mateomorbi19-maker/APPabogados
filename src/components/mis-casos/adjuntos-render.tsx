@@ -63,7 +63,7 @@ function Transcripcion({ texto }: { texto: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        className="inline-flex items-center min-h-10 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground md:min-h-0 md:text-[11px]"
       >
         {open ? "Ocultar transcripción" : "Ver transcripción"}
       </button>
@@ -151,8 +151,8 @@ function AdjuntoItem({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 shrink-0"
+          size="icon-sm"
+          className="shrink-0"
           onClick={descargar}
           disabled={descargando}
           aria-label="Descargar"

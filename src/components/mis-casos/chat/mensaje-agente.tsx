@@ -93,7 +93,7 @@ export function MensajeAgente({ mensaje, casoId }: Props) {
 
   if (!respuesta) {
     return (
-      <article className="max-w-[90%] rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
+      <article className="max-w-full sm:max-w-[90%] rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
         <p className="text-destructive font-medium mb-1">
           Respuesta del agente no parseable
         </p>
@@ -109,7 +109,10 @@ export function MensajeAgente({ mensaje, casoId }: Props) {
   // (convención de chat: el interlocutor va a la izquierda; el tinte
   // violeta queda para los mensajes propios del abogado).
   return (
-    <article className="max-w-[90%] rounded-md border border-border bg-card/60 px-3 py-3 space-y-3">
+    // Ancho completo abajo de 640px: el análisis del agente son varios
+    // bloques anidados (tesis, fundamento con viñetas, recomendaciones) y a
+    // 360px el 90% los dejaba en ~250px útiles, o sea 4 palabras por renglón.
+    <article className="max-w-full sm:max-w-[90%] rounded-md border border-border bg-card/60 px-3 py-3 space-y-3">
       <Header respuesta={respuesta} fecha={mensaje.creado_en} />
 
       {respuesta.modo === "conversacional" ? (
@@ -148,12 +151,15 @@ function FuentesRepositorio({
         {fuentes.map((f) => {
           const Icono = f.tipo === "doctrina" ? BookOpen : Gavel;
           return (
+            // py-1.5 + text-xs: apilados con space-y-1, cada link era un
+            // renglón de 11px (~15px de alto) a 4px del siguiente — con el
+            // dedo se abría el fallo de al lado.
             <li key={f.documento_id} className="flex items-start gap-1.5">
-              <Icono className="mt-0.5 size-3 shrink-0 text-primary" />
+              <Icono className="mt-1.5 size-3 shrink-0 text-primary" />
               <Link
                 href={`/dashboard/repositorio/${f.documento_id}`}
                 target="_blank"
-                className="text-[11px] leading-snug hover:text-primary hover:underline"
+                className="block py-1 text-xs leading-snug hover:text-primary hover:underline"
               >
                 {f.cita}
               </Link>
@@ -297,7 +303,7 @@ function BusquedasColapsable({
           />
         }
       >
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground text-left">
           Ver búsquedas que hizo el agente ({busquedas.length})
         </span>
         <ChevronDown className="size-3.5 transition-transform group-data-open:rotate-180" />
@@ -307,9 +313,11 @@ function BusquedasColapsable({
           {busquedas.map((b, i) => (
             <li
               key={i}
-              className="px-3 py-1.5 text-[11px] flex items-center justify-between gap-3"
+              className="px-3 py-1.5 text-[11px] flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5"
             >
-              <span className="font-mono truncate flex-1 min-w-0">
+              {/* basis-full en móvil: la métrica de la derecha mide ~130px y
+                  a 360px dejaba la query truncada en 4 caracteres. */}
+              <span className="font-mono truncate flex-1 min-w-0 max-md:basis-full">
                 {i + 1}. {b.query}
               </span>
               <span className="text-muted-foreground shrink-0">
@@ -352,7 +360,7 @@ function RecomendacionCard({ r }: { r: Recomendacion }) {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          className="inline-flex items-center min-h-10 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground md:min-h-0"
         >
           {open ? "Ocultar fundamento" : "Ver por qué"}
         </button>

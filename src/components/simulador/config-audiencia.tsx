@@ -189,7 +189,13 @@ function Selector<T extends string>({
             disabled={disabled}
             onClick={() => onChange(o.value)}
             className={cn(
-              "rounded-md border px-3 py-2 text-sm transition-colors disabled:opacity-50",
+              // A 360px cada celda de la grilla de 3 deja 81px de texto y
+              // "Querellante" / "Adversarial" miden ~79px a text-sm: son
+              // palabras únicas, no tienen dónde cortar y se salían del botón.
+              // Con text-xs y px-2 sobra ancho, y el max-sm:min-h-10 cumple el
+              // piso táctil de 40px que py-2 + text-sm no llegaba a dar (36px).
+              // Todo acotado a móvil: de sm para arriba el botón queda igual.
+              "flex items-center justify-center rounded-md border px-2 py-2 text-center text-xs transition-colors disabled:opacity-50 max-sm:min-h-10 sm:px-3 sm:text-sm",
               o.value === value
                 ? "border-primary/50 bg-primary/15 text-foreground font-medium"
                 : "border-border bg-card hover:bg-muted/50 text-muted-foreground",

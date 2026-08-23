@@ -35,7 +35,11 @@ export function EsqueletoCards({ cantidad = 6 }: { cantidad?: number }) {
 export function EsqueletoLector() {
   return (
     <div className="space-y-3" aria-hidden>
-      <Skeleton className="h-[70vh] min-h-[420px] w-full rounded-xl" />
+      {/* dvh y no vh: vh mide contra el viewport grande de iOS, así que el
+          esqueleto se pasaba de largo y saltaba al montar el visor. En móvil
+          además queda chico a propósito: ahí no se monta el iframe sino la
+          tarjeta para abrir el PDF en el visor del teléfono. */}
+      <Skeleton className="h-[70dvh] min-h-[420px] w-full rounded-xl max-md:h-52 max-md:min-h-0" />
     </div>
   );
 }

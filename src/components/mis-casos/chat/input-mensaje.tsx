@@ -352,6 +352,12 @@ export function InputMensaje({
         disabled={loading}
         rows={3}
         maxLength={PREGUNTA_MAX}
+        // El textarea crece con el contenido (field-sizing-content del
+        // primitivo). En un teléfono con el teclado abierto quedan ~250px de
+        // lista de mensajes: sin tope, dictar dos minutos empujaba la
+        // conversación entera fuera de la pantalla. Arriba de 768px sigue
+        // creciendo sin límite.
+        className="max-md:max-h-28"
         placeholder="Escribí o dictá tu pregunta. Adjuntá archivos si querés que el agente los analice."
       />
       <AdjuntosUploader
@@ -388,10 +394,15 @@ export function InputMensaje({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2">
+      {/* flex-wrap + ml-auto en vez de justify-between: cuando DictadoVoz
+          pasa a "grabando" su pastilla (dot + timer + Listo + X) mide ~160px
+          y la fila se iba a ~385px, o sea que a 360-390px el botón Enviar
+          quedaba cortado contra el borde justo mientras se dictaba. Con wrap
+          baja a un segundo renglón, pegado a la derecha. */}
+      <div className="flex flex-wrap items-center gap-2">
         {/* Selector de nivel de modelo. Labels Bajo/Medio/Alto — la UI
             nunca muestra los nombres oficiales de los modelos. */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DictadoVoz
             disabled={loading}
             onTexto={insertarDictado}
@@ -419,7 +430,11 @@ export function InputMensaje({
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={enviar} disabled={loading || !formOk}>
+        <Button
+          onClick={enviar}
+          disabled={loading || !formOk}
+          className="ml-auto"
+        >
           {loading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (

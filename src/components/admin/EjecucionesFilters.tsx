@@ -25,8 +25,13 @@ const ESTADOS: { value: EstadoEjecucion | "todos"; label: string }[] = [
   { value: "degradada", label: "Degradada" },
 ];
 
+// h-10 abajo de md: los dos <select> nativos y los tres <Input> de este form
+// median 36px, abajo del piso táctil de 40px. Desde md vuelven a h-9, que es
+// la densidad con la que se usa el panel en escritorio. El tamaño de fuente
+// no se toca acá: el piso de 16px en móvil (el que evita el zoom de Safari)
+// ya lo pone una regla global en globals.css.
 const SELECT_CLS =
-  "h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
+  "h-10 md:h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20";
 
 export function EjecucionesFilters({ usuarios }: Props) {
   const router = useRouter();
@@ -117,7 +122,7 @@ export function EjecucionesFilters({ usuarios }: Props) {
         </label>
         <Input
           type="date"
-          className="h-9"
+          className="h-10 md:h-9"
           value={desde}
           onChange={(e) => setDesde(e.target.value)}
         />
@@ -128,7 +133,7 @@ export function EjecucionesFilters({ usuarios }: Props) {
         </label>
         <Input
           type="date"
-          className="h-9"
+          className="h-10 md:h-9"
           value={hasta}
           onChange={(e) => setHasta(e.target.value)}
         />
@@ -140,17 +145,26 @@ export function EjecucionesFilters({ usuarios }: Props) {
         <Input
           type="text"
           placeholder="ej: homicidio, Sebastián, etc"
-          className="h-9"
+          className="h-10 md:h-9"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
+      {/* size="sm" mide 36px abajo de md (la escala de ui/button); estos dos
+          son los botones que cierran el flujo de filtrado, así que van al
+          piso táctil de 40. De md para arriba no cambia nada. */}
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm">
+        <Button type="submit" size="sm" className="max-md:h-10 max-md:px-4">
           Aplicar
         </Button>
         {haAlgunFiltroAplicado ? (
-          <Button type="button" size="sm" variant="ghost" onClick={limpiar}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="max-md:h-10 max-md:px-4"
+            onClick={limpiar}
+          >
             Limpiar
           </Button>
         ) : null}

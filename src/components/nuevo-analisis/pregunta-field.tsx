@@ -136,26 +136,36 @@ function OpcionesMultiples({
   const idOtro = `${pregunta.id}-otro`;
 
   return (
-    <div className="space-y-2">
+    // Zonas de toque en móvil (max-md:). La fila medía ~20px de alto y las
+    // separaba space-y-2 (8px); el Checkbox compensa con after:-inset-y-2, así
+    // que las zonas de dos opciones consecutivas se solapaban ~4px y tocar
+    // entre dos marcaba la de abajo. Acá el Label pasa a ser el área tocable
+    // (min-h-11 + py-2.5 ≈ 44px, ancho completo por flex-1) y el gap entre
+    // filas baja a 4px, con lo que las zonas dejan de pisarse. Un mistap en
+    // este control condiciona mal un análisis de ~90s y tokens reales.
+    <div className="space-y-2 max-md:space-y-1">
       {opciones.map((o) => {
         const cbId = `${pregunta.id}-${o}`;
         return (
-          <div key={o} className="flex items-start gap-2">
+          <div key={o} className="flex items-start gap-2 max-md:gap-3">
             <Checkbox
               id={cbId}
               checked={respuesta.opciones.includes(o)}
               onCheckedChange={(c) => toggleOpcion(o, c === true)}
               disabled={disabled}
-              className="mt-0.5"
+              className="mt-0.5 max-md:mt-3"
             />
-            <Label htmlFor={cbId} className="font-normal leading-snug">
+            <Label
+              htmlFor={cbId}
+              className="flex-1 cursor-pointer items-start font-normal leading-snug max-md:min-h-11 max-md:py-2.5"
+            >
               {o}
             </Label>
           </div>
         );
       })}
 
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2 max-md:gap-3">
         <Checkbox
           id={idOtro}
           checked={otroActivo}
@@ -170,9 +180,12 @@ function OpcionesMultiples({
             })
           }
           disabled={disabled}
-          className="mt-0.5"
+          className="mt-0.5 max-md:mt-3"
         />
-        <Label htmlFor={idOtro} className="font-normal leading-snug">
+        <Label
+          htmlFor={idOtro}
+          className="flex-1 cursor-pointer items-start font-normal leading-snug max-md:min-h-11 max-md:py-2.5"
+        >
           Otro
         </Label>
       </div>
@@ -185,7 +198,9 @@ function OpcionesMultiples({
           placeholder="Aclará lo que haga falta"
           disabled={disabled}
           aria-label={`Aclaración para: ${pregunta.label}`}
-          className="ml-6 w-[calc(100%-1.5rem)]"
+          // La sangría iguala el ancho del checkbox + el gap de la fila, que en
+          // móvil es gap-3 (16+12=28px) y en escritorio gap-2 (16+8=24px).
+          className="ml-6 w-[calc(100%-1.5rem)] max-md:ml-7 max-md:w-[calc(100%-1.75rem)]"
         />
       ) : null}
     </div>

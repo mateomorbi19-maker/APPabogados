@@ -56,6 +56,11 @@ function Fila({
       title={titulo ?? label}
       className={cn(
         "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs transition-colors",
+        // A 390px estas filas medían 24px de alto y la lista de materias tiene
+        // ~100 apiladas sin separación: errarle de fila con el dedo cambia la
+        // búsqueda entera. `max-md:` las lleva a 40px y deja la densidad de
+        // escritorio exactamente como estaba de 768px para arriba.
+        "max-md:py-2.5 max-md:text-sm",
         activo
           ? "bg-[var(--el-violet)]/18 text-[var(--el-text)]"
           : "text-[var(--el-text-soft)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--el-text)]",
@@ -122,7 +127,8 @@ export function PanelFiltros({
         <button
           type="button"
           onClick={onLimpiar}
-          className="inline-flex items-center gap-1.5 text-xs text-[var(--el-violet-light)] hover:underline"
+          // min-h-10 en móvil: como texto suelto el objetivo medía 16px de alto.
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--el-violet-light)] hover:underline max-md:min-h-10"
         >
           <X className="size-3" aria-hidden />
           Limpiar filtros
@@ -168,10 +174,16 @@ export function PanelFiltros({
             onChange={(e) => setQMateria(e.target.value)}
             placeholder="Filtrar materias…"
             aria-label="Filtrar la lista de materias"
-            className="h-8 w-full rounded-md border border-[var(--el-border-soft)] bg-transparent pr-2 pl-7 text-xs text-[var(--el-text)] outline-none placeholder:text-[var(--el-text-muted)] focus-visible:border-[var(--el-violet)]/60 focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/25"
+            // max-md:h-10 porque en móvil la tipografía de los campos la fuerza
+            // globals.css a 16px (piso anti-zoom de iOS): 16px adentro de una
+            // caja de 32px queda recortado, y además 32px es poco para tocar.
+            className="h-8 w-full rounded-md border border-[var(--el-border-soft)] bg-transparent pr-2 pl-7 text-xs text-[var(--el-text)] outline-none placeholder:text-[var(--el-text-muted)] focus-visible:border-[var(--el-violet)]/60 focus-visible:ring-2 focus-visible:ring-[var(--el-violet)]/25 max-md:h-10"
           />
         </div>
-        <div className="max-h-64 space-y-0.5 overflow-y-auto pr-0.5">
+        {/* overscroll-contain: en móvil el panel entero es una hoja que
+            scrollea, y sin esto el gesto sobre la lista de materias encadenaba
+            al llegar al final y se llevaba la hoja (o la página) de arriba. */}
+        <div className="max-h-64 space-y-0.5 overflow-y-auto overscroll-contain pr-0.5">
           <Fila
             label="Todas"
             activo={filtros.materia === null}
@@ -211,7 +223,7 @@ export function PanelFiltros({
       {facetas === null || facetas.tribunales.length > 0 ? (
         <section className={cn(SECCION_CLS, "space-y-1.5")}>
           <h3 className={TITULO_CLS}>Tribunal</h3>
-          <div className="max-h-56 space-y-0.5 overflow-y-auto pr-0.5">
+          <div className="max-h-56 space-y-0.5 overflow-y-auto overscroll-contain pr-0.5">
             <Fila
               label="Todos"
               activo={filtros.tribunal === null}
@@ -257,7 +269,7 @@ export function PanelFiltros({
                   {fmtNumber(d.cantidad)}
                 </span>
               </p>
-              <div className="flex flex-wrap gap-1 px-2">
+              <div className="flex flex-wrap gap-1 px-2 max-md:gap-2">
                 {d.anios.map((a) => (
                   <button
                     key={a}
@@ -268,6 +280,10 @@ export function PanelFiltros({
                     }
                     className={cn(
                       "rounded-md border px-1.5 py-0.5 text-[11px] tabular-nums transition-colors",
+                      // 18x34px es la mitad del mínimo tocable: en el celular
+                      // estos chips eran el filtro más difícil de acertar de
+                      // toda la sección. En móvil pasan a 40x48.
+                      "max-md:inline-flex max-md:min-h-10 max-md:min-w-12 max-md:items-center max-md:justify-center max-md:px-3 max-md:text-sm",
                       filtros.anio === a
                         ? "border-[var(--el-violet)] bg-[var(--el-violet)]/20 text-[var(--el-text)]"
                         : "border-[var(--el-border-soft)] text-[var(--el-text-soft)] hover:border-[var(--el-violet)]/45 hover:text-[var(--el-text)]",

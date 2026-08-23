@@ -21,6 +21,11 @@ type Props = {
 // El chat con el agente vive en su propia sub-ruta (PR4 sub-PR2):
 // experiencia separada, persistente, con history. El timeline es
 // expediente puro: solo eventos manuales del proceso real.
+//
+// Las tres tarjetas-CTA apilan en columna abajo de 640px: el label de acción
+// ("Abrir simulador" + flecha) mide ~130px y a 360px le dejaba ~165px al
+// título más la descripción, o sea 5-6 renglones de 12px por tarjeta. En
+// móvil el texto usa el ancho completo y la acción baja como fila propia.
 export function DetalleCaso({ caso, eventosIniciales }: Props) {
   const [eventos, setEventos] = useState<EventoCaso[]>(eventosIniciales);
 
@@ -33,7 +38,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
         href={`/dashboard/chat/${caso.id}`}
         className="block rounded-md border border-primary/30 bg-primary/5 px-4 py-3 hover:bg-primary/10 transition-colors group"
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="flex items-start gap-2 min-w-0">
             <Sparkles className="size-4 text-primary mt-0.5 shrink-0" />
             <div className="min-w-0">
@@ -45,7 +50,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
               </p>
             </div>
           </div>
-          <span className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
+          <span className="self-end sm:self-auto sm:shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
             Abrir chat
             <ArrowRight className="size-4" />
           </span>
@@ -56,7 +61,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
         href={`/dashboard/mapa-procesal/${caso.id}`}
         className="block rounded-md border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group"
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="flex items-start gap-2 min-w-0">
             <Network className="size-4 text-primary mt-0.5 shrink-0" />
             <div className="min-w-0">
@@ -67,7 +72,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
               </p>
             </div>
           </div>
-          <span className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
+          <span className="self-end sm:self-auto sm:shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
             Abrir mapa
             <ArrowRight className="size-4" />
           </span>
@@ -78,7 +83,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
         href={`/dashboard/simulador/${caso.id}`}
         className="block rounded-md border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors group"
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="flex items-start gap-2 min-w-0">
             <Gavel className="size-4 text-primary mt-0.5 shrink-0" />
             <div className="min-w-0">
@@ -95,7 +100,7 @@ export function DetalleCaso({ caso, eventosIniciales }: Props) {
               </p>
             </div>
           </div>
-          <span className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
+          <span className="self-end sm:self-auto sm:shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary group-hover:translate-x-0.5 transition-transform">
             Abrir simulador
             <ArrowRight className="size-4" />
           </span>

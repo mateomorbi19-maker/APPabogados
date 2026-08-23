@@ -75,7 +75,9 @@ export function AccionesMapa({ acciones, casoId }: Props) {
       {ejecutadas.length > 0 ? (
         <Link
           href={`/dashboard/mapa-procesal/${casoId}`}
-          className="inline-flex items-center gap-1 text-[11px] text-primary underline underline-offset-2 hover:text-foreground"
+          // Es la única salida al mapa desde el chat: como renglón de 11px
+          // era un target de ~15px de alto. Abajo de 768px va con 40px.
+          className="inline-flex items-center gap-1 min-h-10 text-xs text-primary underline underline-offset-2 hover:text-foreground md:min-h-0 md:text-[11px]"
         >
           Ver el mapa
           <ArrowRight className="size-3" />

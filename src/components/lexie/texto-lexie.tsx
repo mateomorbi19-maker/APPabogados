@@ -50,7 +50,14 @@ export function TextoLexie({ texto }: { texto: string }) {
                     aria-hidden
                     className="mt-[0.45rem] size-1 shrink-0 rounded-full bg-[var(--el-violet-light)]"
                   />
-                  <span>{conNegritas(l.replace(ES_VINETA, ""))}</span>
+                  {/* min-w-0: el texto de la viñeta es un flex item, así que
+                      sin esto no baja de su palabra más larga y una carátula o
+                      un link largo desbordaban la burbuja a 360px (el
+                      overflow-wrap del <li> se hereda pero no puede actuar si
+                      el item no puede achicarse). */}
+                  <span className="min-w-0">
+                    {conNegritas(l.replace(ES_VINETA, ""))}
+                  </span>
                 </li>
               ))}
             </ul>
