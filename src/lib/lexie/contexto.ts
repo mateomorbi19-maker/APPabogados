@@ -1,5 +1,6 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
+import { nombreCaso, sinCaratula } from "@/lib/casos/nombre";
 import { getEventosByUser } from "@/lib/agenda/queries";
 import { construirResumen, type ResumenInicio, type CasoResumen } from "@/lib/inicio/resumen";
 import { construirSaludo, type Saludo } from "@/lib/lexie/saludo";
@@ -19,6 +20,12 @@ const MAX_CASOS_EN_CONTEXTO = 40;
 export type CasoLexie = {
   id: string;
   titulo: string;
+  caratula: string | null;
+  expediente_numero: string | null;
+  organismo: string | null;
+  fuero: string | null;
+  estado_seguimiento: string;
+  delitos: string[] | null;
   rol: string;
   actualizado_en: string;
   caso_descripcion: string | null;
@@ -58,7 +65,9 @@ export async function cargarDatosLexie(
   const [casosRes, eventos] = await Promise.all([
     supabase
       .from("casos")
-      .select("id, titulo, rol, actualizado_en, caso_descripcion")
+      .select(
+        "id, titulo, caratula, expediente_numero, organismo, fuero, estado_seguimiento, delitos, rol, actualizado_en, caso_descripcion",
+      )
       .eq("usuario_id", usuarioId)
       .order("actualizado_en", { ascending: false }),
     // Un fallo de agenda NO puede dejar sin saludo al abogado: degrada a lista
@@ -72,7 +81,15 @@ export async function cargarDatosLexie(
 
   const casos: CasoLexie[] = (casosRes.data ?? []) as CasoLexie[];
   const resumen = construirResumen({
-    casos: casos as CasoResumen[],
+    // El saludo nombra causas en voz alta ("mañana tenés la audiencia de
+    // Ferreyra"), así que ve el nombre YA RESUELTO, no el título automático.
+    casos: casos.map((c) => ({
+      id: c.id,
+      titulo: nombreCaso(c),
+      sin_caratula: sinCaratula(c),
+      rol: c.rol,
+      actualizado_en: c.actualizado_en,
+    })) satisfies CasoResumen[],
     eventos: eventos.map((e) => ({
       id: e.id,
       titulo: e.titulo,
@@ -129,24 +146,23 @@ export function construirContextoModelo(datos: DatosLexie): string {
     );
   } else {
     const visibles = datos.casos.slice(0, MAX_CASOS_EN_CONTEXTO);
-    const filas = visibles
-      .map((c) => {
-        const relato = (c.caso_descripcion ?? "").replace(/\s+/g, " ").trim();
-        const corte = relato.slice(0, CHARS_RELATO);
-        const extracto = corte
-          ? `\n  ${corte}${relato.length > CHARS_RELATO ? "…" : ""}`
-          : "";
-        return `- **${c.titulo}** — ${c.rol} · actualizada ${c.actualizado_en.slice(0, 10)}\n  caso_id: ${c.id}${extracto}`;
-      })
-      .join("\n");
+    const filas = visibles.map(filaDeCausa).join("\n");
     const extra =
       datos.casos.length > visibles.length
         ? `\n\n(Hay ${datos.casos.length - visibles.length} causas más, ordenadas por antigüedad. Para encontrarlas usá \`buscar_mis_casos\`.)`
         : "";
+    // La advertencia sobre las carátulas se emite SOLO si queda alguna sin
+    // cargar, y dice cuántas. Dejarla fija haría que LEXIE siga desconfiando de
+    // un dato que ya es confiable: le diría al abogado "no me fío de este
+    // nombre" sobre una carátula que él mismo acaba de tipear.
+    const sinFicha = visibles.filter(sinCaratula).length;
+    const advertencia =
+      sinFicha > 0
+        ? `\n\nOJO: ${sinFicha} de estas causas todavía no tienen carátula cargada. En esas, el nombre en negrita es un texto automático sacado de la primera línea del relato, así que puede no parecer una carátula ("El 3 de julio de 2026, cerca de las 04:15" es un título, no una fecha suelta): guiate por el extracto para reconocerla y no se lo leas al abogado como si fuera el nombre del expediente. Y si te pregunta por los datos del expediente de una de esas causas, decile que todavía no están cargados y que los puede completar en la ficha de la causa.`
+        : "";
     partes.push(
       `## Causas de ${datos.nombre} (${datos.casos.length})\n\n` +
-        `Estas son TODAS las causas sobre las que podés trabajar. Usá los caso_id tal cual: no inventes ninguno.\n\n` +
-        `OJO CON LAS CARÁTULAS: varias son un texto automático sacado de la primera línea del relato, así que pueden no parecer una carátula ("El 3 de julio de 2026, cerca de las 04:15" es un título, no una fecha suelta). Si el título no dice nada, guiate por el extracto para reconocer la causa, y no se lo leas al abogado como si fuera el nombre del expediente.\n\n${filas}${extra}`,
+        `Estas son TODAS las causas sobre las que podés trabajar. Usá los caso_id tal cual: no inventes ninguno.${advertencia}\n\n${filas}${extra}`,
     );
   }
 
@@ -169,4 +185,45 @@ export function construirContextoModelo(datos: DatosLexie): string {
   }
 
   return partes.join("\n\n");
+}
+
+/**
+ * Una causa, como la ve el modelo.
+ *
+ * El extracto del relato existía porque la app no sabía NADA del expediente:
+ * sin él, LEXIE no podía decir de qué se trataba una causa sin abrirla entera
+ * con `leer_caso` (~2.300 tokens contra ~40). Con la ficha cargada el extracto
+ * pasa a ser el plan B: si hay carátula, delitos u organismo, eso identifica la
+ * causa mejor y más corto que 160 caracteres de relato.
+ *
+ * Los campos que faltan simplemente NO se emiten. Nunca se escribe
+ * "juzgado: no informado": una línea así en el contexto le da al modelo un
+ * dato para repetir, y "el juzgado figura como no informado" suena a que el
+ * sistema sabe algo cuando en realidad no sabe nada.
+ */
+function filaDeCausa(c: CasoLexie): string {
+  const cabecera = `- **${nombreCaso(c)}** — ${c.rol} · actualizada ${c.actualizado_en.slice(0, 10)}`;
+
+  const ficha: string[] = [];
+  if (c.expediente_numero) ficha.push(`exp. ${c.expediente_numero}`);
+  if (c.organismo) ficha.push(c.organismo);
+  if (c.fuero) ficha.push(`fuero ${c.fuero}`);
+  if (c.delitos && c.delitos.length > 0) ficha.push(c.delitos.join(", "));
+  if (c.estado_seguimiento && c.estado_seguimiento !== "activa") {
+    ficha.push(`causa ${c.estado_seguimiento.replace(/_/g, " ")}`);
+  }
+  const lineaFicha = ficha.length > 0 ? `\n  ${ficha.join(" · ")}` : "";
+
+  // El extracto solo cuando la ficha no alcanza para reconocer la causa: sin
+  // carátula (el nombre no dice nada) o sin ningún dato de expediente.
+  const necesitaExtracto = ficha.length === 0 || sinCaratula(c);
+  const relato = necesitaExtracto
+    ? (c.caso_descripcion ?? "").replace(/\s+/g, " ").trim()
+    : "";
+  const corte = relato.slice(0, CHARS_RELATO);
+  const extracto = corte
+    ? `\n  ${corte}${relato.length > CHARS_RELATO ? "…" : ""}`
+    : "";
+
+  return `${cabecera}\n  caso_id: ${c.id}${lineaFicha}${extracto}`;
 }

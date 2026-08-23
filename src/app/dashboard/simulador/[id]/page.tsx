@@ -11,6 +11,9 @@
 import { notFound } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
+import type { CasoNombrable } from "@/lib/types";
+import { nombreCaso } from "@/lib/casos/nombre";
+import { COLS_CASO_NOMBRE_FUERO } from "@/lib/casos/columnas";
 import { SimuladorShell } from "@/components/simulador/simulador-shell";
 import type { SimulacionAudiencia, TurnoSimulacion } from "@/lib/types";
 
@@ -44,13 +47,13 @@ export default async function SimuladorPage({
 
   const { data: caso, error: casoErr } = await supabase
     .from("casos")
-    .select("id, titulo, fuero")
+    .select(COLS_CASO_NOMBRE_FUERO)
     .eq("id", casoId)
     .eq("usuario_id", auth.usuario_id)
     .maybeSingle();
   if (casoErr || !caso) notFound();
 
-  const casoTipado = caso as { id: string; titulo: string; fuero: string | null };
+  const casoTipado = caso as CasoNombrable & { fuero: string | null };
 
   // Simulación más reciente del caso (en curso, finalizada o abandonada).
   // Si es la primera vez, no hay ninguna y el shell muestra la pantalla de

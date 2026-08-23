@@ -353,7 +353,21 @@ function CasosRecientes({
                   {/* line-clamp-2 en vez de truncate: cortar la carátula en un
                       renglón es justo lo que hace ilegible la lista en el
                       teléfono. En escritorio casi ninguna llega a dos líneas. */}
-                  <span className="line-clamp-2 text-sm font-medium text-[var(--el-text)] transition-colors group-hover:text-[var(--el-violet-light)]">
+                  {/* La causa sin carátula se muestra en cursiva y apagada:
+                      es un nombre PROVISORIO (los primeros 60 chars del
+                      relato), no el nombre del expediente. Va como estilo y no
+                      como badge "Falta carátula" porque hoy le faltaría a la
+                      mitad de las causas y una lista con cuatro alertas deja
+                      de leerse como una lista. */}
+                  <span
+                    className={cn(
+                      "line-clamp-2 text-sm font-medium transition-colors group-hover:text-[var(--el-violet-light)]",
+                      c.sin_caratula
+                        ? "italic text-[var(--el-text-soft)]"
+                        : "text-[var(--el-text)]",
+                    )}
+                    title={c.sin_caratula ? "Sin carátula cargada" : undefined}
+                  >
                     {c.titulo}
                   </span>
                   <span className="mt-0.5 block text-xs text-[var(--el-text-muted)]">

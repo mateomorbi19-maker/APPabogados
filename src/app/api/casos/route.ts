@@ -3,6 +3,9 @@ import { crearCasoInputSchema } from "@/lib/schemas";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonResponse, isDev } from "@/lib/http";
+import { COLS_CASO_LISTA } from "@/lib/casos/columnas";
+import { nombreCaso, sinCaratula } from "@/lib/casos/nombre";
+import type { CasoNombrable, EstadoSeguimiento } from "@/lib/types";
 
 // === POST /api/casos ===
 // Crea un caso a partir de una ejecución de "analizar_caso", tomando una
@@ -22,8 +25,14 @@ export async function POST(req: NextRequest): Promise<Response> {
       400,
     );
   }
-  const { titulo, ejecucion_origen_id, rol_estrategia, idx_estrategia } =
-    parsedBody.data;
+  const {
+    titulo,
+    ejecucion_origen_id,
+    rol_estrategia,
+    idx_estrategia,
+    caratula,
+    expediente_numero,
+  } = parsedBody.data;
 
   const wl = await requireUsuarioOr403();
   if (!wl.ok) {
@@ -118,6 +127,11 @@ export async function POST(req: NextRequest): Promise<Response> {
     .insert({
       usuario_id: wl.usuario_id,
       titulo,
+      // `?? null` explícito: el schema los deja `undefined` cuando el cliente
+      // no los manda, y PostgREST omitiría la columna del INSERT. Con NULL
+      // queda claro en la fila que el campo existe y está vacío.
+      caratula: caratula ?? null,
+      expediente_numero: expediente_numero ?? null,
       caso_descripcion: casoDescripcion,
       contexto,
       rol,
@@ -170,7 +184,7 @@ export async function GET(): Promise<Response> {
 
   const { data: casos, error: casosErr } = await supabase
     .from("casos")
-    .select("id, titulo, rol, contexto, creado_en")
+    .select(COLS_CASO_LISTA)
     .eq("usuario_id", wl.usuario_id)
     .order("creado_en", { ascending: false });
 
@@ -220,10 +234,12 @@ export async function GET(): Promise<Response> {
     else eventosPorCaso.set(e.caso_id, [e]);
   }
 
-  type CasoLite = {
-    id: string;
-    titulo: string;
+  type CasoLite = CasoNombrable & {
     rol: string;
+    fuero: string | null;
+    estado_seguimiento: EstadoSeguimiento;
+    expediente_numero: string | null;
+    organismo: string | null;
     contexto: Record<string, unknown> | null;
     creado_en: string;
   };
@@ -242,8 +258,16 @@ export async function GET(): Promise<Response> {
         : null;
     return {
       id: c.id,
-      titulo: c.titulo,
+      // `titulo` es el nombre RESUELTO (carátula si está cargada). La lista
+      // no necesita distinguirlos; el que sí lo necesita es el formulario de
+      // la ficha, que lee el caso completo.
+      titulo: nombreCaso(c),
+      sin_caratula: sinCaratula(c),
       rol: c.rol,
+      fuero: c.fuero,
+      estado_seguimiento: c.estado_seguimiento,
+      expediente_numero: c.expediente_numero,
+      organismo: c.organismo,
       jurisdiccion,
       creado_en: c.creado_en,
       ultimo_evento: ultimo

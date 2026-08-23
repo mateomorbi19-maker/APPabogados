@@ -6,6 +6,7 @@
 import { notFound } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
+import { COLS_CASO } from "@/lib/casos/columnas";
 import { DetalleCaso } from "@/components/mis-casos/detalle-caso";
 import { estrategiaSchema } from "@/lib/schemas";
 import type { Caso, EventoCaso } from "@/lib/types";
@@ -29,9 +30,7 @@ export default async function CasoDetallePage({
   const [casoRes, eventosRes] = await Promise.all([
     supabase
       .from("casos")
-      .select(
-        "id, usuario_id, titulo, caso_descripcion, contexto, rol, ejecucion_origen_id, estrategia_seleccionada_rol, estrategia_seleccionada_idx, estrategia_snapshot, creado_en, actualizado_en",
-      )
+      .select(COLS_CASO)
       .eq("id", id)
       .eq("usuario_id", auth.usuario_id)
       .maybeSingle(),

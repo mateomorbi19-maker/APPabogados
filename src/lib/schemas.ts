@@ -317,8 +317,121 @@ export const crearCasoInputSchema = z.object({
   ejecucion_origen_id: z.string().uuid(),
   rol_estrategia: rolEstrategiaSchema,
   idx_estrategia: z.number().int().min(0).max(2),
+  // Ficha (F4). Opcionales: el paso de creación los OFRECE porque es el único
+  // momento en que el abogado tiene el expediente delante, pero no los exige
+  // —una causa se puede abrir desde el celular con el relato y nada más.
+  caratula: fichaTextoOpcional(500),
+  expediente_numero: fichaTextoOpcional(120),
 });
 export type CrearCasoInput = z.infer<typeof crearCasoInputSchema>;
+
+// === Ficha de causa (Fase 9) ===
+
+// Los campos de la ficha son texto libre que después sale impreso en un
+// escrito o en un mensaje al cliente, así que se normalizan en el borde:
+// se recorta el espacio y la cadena vacía se guarda como NULL, no como "".
+// Sin eso, un input que se abre y se cierra sin escribir dejaría `caratula`
+// en "" y `nombreCaso()` tendría que defenderse de una causa llamada "".
+function fichaTextoOpcional(max: number) {
+  return z
+    .string()
+    .max(max)
+    .transform((v) => {
+      const t = v.trim();
+      return t.length > 0 ? t : null;
+    })
+    .nullable()
+    .optional();
+}
+
+export const estadoSeguimientoSchema = z.enum([
+  "activa",
+  "en_espera",
+  "archivada",
+]);
+
+export const rolParteSchema = z.enum([
+  "imputado",
+  "victima",
+  "querellante",
+  "denunciante",
+  "testigo",
+  "otro",
+]);
+
+export const situacionLibertadSchema = z.enum([
+  "libre",
+  "detenido",
+  "prision_preventiva",
+  "prision_domiciliaria",
+  "excarcelado",
+]);
+
+// PATCH del caso. TODO opcional: el formulario manda solo lo que cambió, y
+// `.strict()` para que un campo de más sea un 400 explícito y no algo que se
+// ignora en silencio.
+//
+// ⚠️ Este schema NO es la lista blanca de escritura. La lista blanca vive en
+// el handler, que enumera las columnas a mano. Derramar `parsed.data` en el
+// UPDATE haría que agregar un campo acá alcance para poder mover
+// `usuario_id` o `estrategia_snapshot`.
+export const editarCasoInputSchema = z
+  .object({
+    caratula: fichaTextoOpcional(500),
+    expediente_numero: fichaTextoOpcional(120),
+    organismo: fichaTextoOpcional(300),
+    secretaria: fichaTextoOpcional(200),
+    juez: fichaTextoOpcional(200),
+    fiscalia: fichaTextoOpcional(300),
+    // Se normaliza acá y no en el UI: recorta, descarta vacíos, deduplica
+    // (ignorando mayúsculas) y topea en 20. Un array vacío se guarda como
+    // NULL para que "sin delitos cargados" sea un solo valor y no dos.
+    delitos: z
+      .array(z.string().max(200))
+      .max(20)
+      .transform((arr) => {
+        const vistos = new Set<string>();
+        const out: string[] = [];
+        for (const d of arr) {
+          const t = d.trim();
+          if (!t) continue;
+          const k = t.toLowerCase();
+          if (vistos.has(k)) continue;
+          vistos.add(k);
+          out.push(t);
+        }
+        return out.length > 0 ? out : null;
+      })
+      .nullable()
+      .optional(),
+    estado_seguimiento: estadoSeguimientoSchema.optional(),
+    // El fuero pasa a ser editable desde la ficha. Hasta ahora lo escribía
+    // SOLO el mapa procesal al inicializarse.
+    fuero: z.enum(["nacion", "pba", "federal"]).nullable().optional(),
+    // El título de trabajo sigue siendo editable: es lo que ve el abogado
+    // mientras no cargue la carátula, y hasta la Fase 9 era inmutable.
+    titulo: z.string().min(1).max(500).optional(),
+  })
+  .strict();
+export type EditarCasoInput = z.infer<typeof editarCasoInputSchema>;
+
+export const crearParteInputSchema = z.object({
+  nombre: z.string().min(1).max(300),
+  rol: rolParteSchema,
+  es_cliente: z.boolean().default(false),
+  situacion_libertad: situacionLibertadSchema.nullable().optional(),
+});
+export type CrearParteInput = z.infer<typeof crearParteInputSchema>;
+
+export const editarParteInputSchema = z
+  .object({
+    nombre: z.string().min(1).max(300).optional(),
+    rol: rolParteSchema.optional(),
+    es_cliente: z.boolean().optional(),
+    situacion_libertad: situacionLibertadSchema.nullable().optional(),
+  })
+  .strict();
+export type EditarParteInput = z.infer<typeof editarParteInputSchema>;
 
 // Cada adjunto en el body apunta a un objeto ya subido al bucket
 // `eventos-caso-adjuntos` vía signed URL. El cliente sube primero (PUT

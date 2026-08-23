@@ -4,6 +4,9 @@
 import type { Estrategia, RolEstrategia } from "./schemas";
 import type { CategoriaEvento } from "./casos/categorias";
 import type { Adjunto } from "./casos/adjuntos";
+// `import type` se borra en compilación: no arrastra el zod de ese módulo al
+// bundle del cliente, que es el motivo por el que `Fuero` no vivía acá.
+import type { Fuero } from "./mapa-procesal/types";
 
 export type RolCaso = "defensor" | "querellante" | "ambos";
 // `tipo` es el ORIGEN del evento (quién lo creó). NO confundir con la
@@ -118,11 +121,51 @@ export type TipoEjecucion =
   | "analizar_caso"
   | "consulta_caso"
   | "simular_mapa"
-  | "simular_audiencia";
+  | "simular_audiencia"
+  | "lexie";
+
+// === Ficha de causa (Fase 9) ===
+
+// El estado de la causa PARA EL ESTUDIO. No confundir con la ETAPA PROCESAL
+// (instrucción, juicio, recursos…), que no se persiste: la deriva el mapa
+// procesal del nodo `ocurrido` más profundo. En el mockup son los dos badges
+// de la cabecera y es la confusión más fácil de cometer.
+export type EstadoSeguimiento = "activa" | "en_espera" | "archivada";
+
+// Rol PROCESAL de la persona. Es ortogonal a `es_cliente`: nuestro cliente
+// puede ser el imputado (defensa) o la víctima (querella).
+export type RolParte =
+  | "imputado"
+  | "victima"
+  | "querellante"
+  | "denunciante"
+  | "testigo"
+  | "otro";
+
+// Solo tiene sentido para imputados; `null` para el resto.
+export type SituacionLibertad =
+  | "libre"
+  | "detenido"
+  | "prision_preventiva"
+  | "prision_domiciliaria"
+  | "excarcelado";
+
+export type ParteCaso = {
+  id: string;
+  caso_id: string;
+  nombre: string;
+  rol: RolParte;
+  es_cliente: boolean;
+  situacion_libertad: SituacionLibertad | null;
+  creado_en: string;
+};
 
 export type Caso = {
   id: string;
   usuario_id: string;
+  // Nombre de trabajo. Hoy lo siembra `sugerirTitulo()` con los primeros 60
+  // chars del relato, así que en 4 de 8 causas es un pedazo de texto. NO se
+  // pisa con la carátula: conviven, y `nombreCaso()` decide cuál se muestra.
   titulo: string;
   caso_descripcion: string;
   contexto: Record<string, unknown> | null;
@@ -133,7 +176,24 @@ export type Caso = {
   estrategia_snapshot: Estrategia;
   creado_en: string;
   actualizado_en: string;
+  // Lo escribe el mapa procesal al inicializarse, y desde la ficha (F3).
+  fuero: Fuero | null;
+  // --- Ficha. Todo nullable a propósito: el campo que falta se muestra
+  // VACÍO con opción de cargarlo, nunca relleno con un valor verosímil.
+  caratula: string | null;
+  expediente_numero: string | null;
+  organismo: string | null;
+  secretaria: string | null;
+  juez: string | null;
+  fiscalia: string | null;
+  delitos: string[] | null;
+  estado_seguimiento: EstadoSeguimiento;
 };
+
+// Subconjunto que alcanza para nombrar una causa en un header o un breadcrumb.
+// Lo consumen las vistas inmersivas (mapa, simulador, chat) y la agenda, que
+// no necesitan el expediente entero para escribir el título de la pantalla.
+export type CasoNombrable = Pick<Caso, "id" | "titulo" | "caratula">;
 
 export type CasoConEventos = Caso & {
   eventos: EventoCaso[];

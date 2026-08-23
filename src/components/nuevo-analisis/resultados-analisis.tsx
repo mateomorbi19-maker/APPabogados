@@ -549,6 +549,14 @@ function ModalDesplegue({
   const colores = COLORES_TIPO[estrategia.tipo];
 
   const [titulo, setTitulo] = useState(() => sugerirTitulo(caso));
+  // Ficha mínima, acá y no después: este es el único momento del flujo en que
+  // el abogado tiene el expediente delante. Si la carátula sólo se pudiera
+  // cargar entrando de nuevo a la causa, cada causa nueva nacería con la ficha
+  // vacía — que es exactamente cómo llegamos a que 4 de 8 se llamen con un
+  // pedazo del relato. Los dos campos son OPCIONALES: una causa se abre desde
+  // el teléfono con el relato y nada más.
+  const [caratula, setCaratula] = useState("");
+  const [expediente, setExpediente] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -593,6 +601,11 @@ function ModalDesplegue({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           titulo: titulo.trim(),
+          // El schema del server recorta y convierte "" en NULL, así que se
+          // mandan crudos: lo que no se completó queda como faltante, no como
+          // cadena vacía.
+          caratula,
+          expediente_numero: expediente,
           ejecucion_origen_id: ejecucionId,
           rol_estrategia: rolEstrategia,
           // idx_estrategia es el ÍNDICE del array original, no el `numero` ni
@@ -698,21 +711,71 @@ function ModalDesplegue({
           // 2000px de scroll para llegar a "Crear caso". Campo y botón entran
           // juntos en pantalla.
           <>
-            <div className="space-y-2">
-              <Label htmlFor="titulo-caso">Título del caso</Label>
-              <Input
-                id="titulo-caso"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                disabled={loading}
-                maxLength={500}
-                autoFocus
-              />
-              {!tituloOk ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="caratula-caso">
+                  Carátula{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (opcional)
+                  </span>
+                </Label>
+                <Input
+                  id="caratula-caso"
+                  value={caratula}
+                  onChange={(e) => setCaratula(e.target.value)}
+                  disabled={loading}
+                  maxLength={500}
+                  placeholder="Rodríguez, Carlos Alberto s/ defraudación"
+                  autoFocus
+                />
                 <p className="text-xs text-muted-foreground">
-                  El título no puede estar vacío.
+                  El nombre oficial del expediente. Si lo cargás, es el que se
+                  va a ver en toda la app.
                 </p>
-              ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="expediente-caso">
+                  Nº de expediente{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (opcional)
+                  </span>
+                </Label>
+                <Input
+                  id="expediente-caso"
+                  value={expediente}
+                  onChange={(e) => setExpediente(e.target.value)}
+                  disabled={loading}
+                  maxLength={120}
+                  placeholder="12345/2026 · IPP 08-00-012345-26"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="titulo-caso">Título de trabajo</Label>
+                <Input
+                  id="titulo-caso"
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                  disabled={loading}
+                  maxLength={500}
+                />
+                {!tituloOk ? (
+                  <p className="text-xs text-muted-foreground">
+                    El título no puede estar vacío.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Cómo querés llamarla mientras no haya carátula. Se completa
+                    solo con el arranque del relato.
+                  </p>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                El resto de la ficha —juzgado, fiscalía, imputados— se carga
+                después, desde la causa.
+              </p>
             </div>
             <DialogFooter
               className={cn(

@@ -1,23 +1,27 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import type { ClaseEvento, EventoAgenda, Prioridad, TipoEvento } from "./types";
+import type { CasoNombrable } from "@/lib/types";
+import { nombreCaso } from "@/lib/casos/nombre";
 
 // Columnas de eventos_agenda (sin el join). nombre_caso se arma aparte.
 const COLS =
   "id, usuario_id, caso_id, titulo, descripcion, tipo, clase, prioridad, fecha_inicio, fecha_fin, todo_el_dia, google_calendar_event_id, google_updated, notas, completado, created_at, updated_at";
 
-// Mismo set + embed del titulo del caso asociado vía la FK caso_id -> casos.id.
-const COLS_CON_CASO = `${COLS}, casos(titulo)`;
+// Mismo set + embed del nombre del caso asociado vía la FK caso_id -> casos.id.
+// Se embeben las DOS columnas y no solo `titulo`: el nombre lo resuelve
+// `nombreCaso()`, que cae al título cuando la carátula no está cargada.
+const COLS_CON_CASO = `${COLS}, casos(id, titulo, caratula)`;
 
-// Forma cruda que devuelve supabase cuando embebe `casos(titulo)`: relación
+// Forma cruda que devuelve supabase cuando embebe `casos(...)`: relación
 // to-one, así que es objeto o null.
 type FilaConCaso = Omit<EventoAgenda, "nombre_caso"> & {
-  casos: { titulo: string } | null;
+  casos: CasoNombrable | null;
 };
 
 function mapFila(f: FilaConCaso): EventoAgenda {
   const { casos, ...rest } = f;
-  return { ...rest, nombre_caso: casos?.titulo ?? null };
+  return { ...rest, nombre_caso: casos ? nombreCaso(casos) : null };
 }
 
 export type EventoFiltros = {

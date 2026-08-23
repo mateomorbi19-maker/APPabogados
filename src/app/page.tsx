@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
+import type { CasoNombrable } from "@/lib/types";
+import { nombreCaso, sinCaratula } from "@/lib/casos/nombre";
 import { getEventosByUser } from "@/lib/agenda/queries";
 import { ConsumoProvider } from "@/lib/hooks/use-consumo";
 import { NavShell } from "@/components/nav/nav-shell";
@@ -28,12 +30,21 @@ export default async function InicioPage() {
   }
 
   const supabase = createServerClient();
+  // `caratula` además de `titulo`: el nombre lo resuelve `nombreCaso()`, que
+  // cae al título mientras la ficha no esté cargada.
   const { data: casosData } = await supabase
     .from("casos")
-    .select("id, titulo, rol, actualizado_en")
+    .select("id, titulo, caratula, rol, actualizado_en")
     .eq("usuario_id", result.usuario_id)
     .order("actualizado_en", { ascending: false });
-  const casos: CasoReciente[] = (casosData ?? []) as CasoReciente[];
+  type FilaCaso = CasoNombrable & { rol: string; actualizado_en: string };
+  const casos: CasoReciente[] = ((casosData ?? []) as FilaCaso[]).map((c) => ({
+    id: c.id,
+    titulo: nombreCaso(c),
+    sin_caratula: sinCaratula(c),
+    rol: c.rol,
+    actualizado_en: c.actualizado_en,
+  }));
 
   // Eventos futuros: desde ahora, asc por fecha_inicio (la query ordena así).
   let eventos: EventoProximo[] = [];

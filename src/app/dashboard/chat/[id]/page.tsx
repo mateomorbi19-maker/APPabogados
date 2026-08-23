@@ -16,6 +16,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
+import { COLS_CASO } from "@/lib/casos/columnas";
 import { ChatShell } from "@/components/mis-casos/chat/chat-shell";
 import type {
   Caso,
@@ -81,9 +82,7 @@ export default async function CasoChatPage({
   // Caso pertenece al usuario.
   const { data: caso, error: casoErr } = await supabase
     .from("casos")
-    .select(
-      "id, usuario_id, titulo, caso_descripcion, contexto, rol, ejecucion_origen_id, estrategia_seleccionada_rol, estrategia_seleccionada_idx, estrategia_snapshot, creado_en, actualizado_en",
-    )
+    .select(COLS_CASO)
     .eq("id", casoId)
     .eq("usuario_id", auth.usuario_id)
     .maybeSingle();

@@ -5,6 +5,9 @@
 import { notFound } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
+import type { CasoNombrable } from "@/lib/types";
+import { nombreCaso } from "@/lib/casos/nombre";
+import { COLS_CASO_NOMBRE } from "@/lib/casos/columnas";
 import { MapaProcesalView } from "@/components/mapa-procesal/mapa-procesal-view";
 
 const UUID_RE =
@@ -24,12 +27,14 @@ export default async function MapaProcesalPage({
   const supabase = createServerClient();
   const { data: caso } = await supabase
     .from("casos")
-    .select("id, titulo")
+    .select(COLS_CASO_NOMBRE)
     .eq("id", id)
     .eq("usuario_id", auth.usuario_id)
     .maybeSingle();
   if (!caso) notFound();
 
-  const { id: casoId, titulo } = caso as { id: string; titulo: string };
-  return <MapaProcesalView casoId={casoId} casoTitulo={titulo} />;
+  const nombrable = caso as CasoNombrable;
+  return (
+    <MapaProcesalView casoId={nombrable.id} casoTitulo={nombreCaso(nombrable)} />
+  );
 }

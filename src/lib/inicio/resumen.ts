@@ -22,7 +22,10 @@ export type EventoResumen = {
 
 export type CasoResumen = {
   id: string;
+  /** Nombre YA RESUELTO por `nombreCaso()`: la carátula si está cargada. */
   titulo: string;
+  /** `true` si todavía se llama por el título automático del relato. */
+  sin_caratula: boolean;
   rol: string;
   actualizado_en: string;
 };
