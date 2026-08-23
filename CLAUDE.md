@@ -652,6 +652,12 @@ Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; **
 - 5.4 ✅ Dockerfile en raíz (Next 16 standalone, multi-stage). Ya sufrió deploys reales: tiene el `--max-old-space-size=4096` por el OOM del type-check en el builder de Easypanel y el `--webpack` porque Turbopack necesita el SWC nativo, que la imagen slim no instala.
 - 5.5 ✅ pre-deploy checks (hardening RLS deny-by-default, revoke anon/authenticated, email Lautaro cargado en DB).
 - 5.6 ⏳ deploy manual a Easypanel reemplazando el servicio legacy en `lexstrategy.teotec.org`. Sin coexistencia, sin URL temporal beta, sin swap DNS.
+  **Checklist en [DEPLOY_5.6.md](DEPLOY_5.6.md).** Los dos bloqueos reales: las claves
+  de Clerk son de DESARROLLO (`pk_test`) y hay que crear la instancia de producción con
+  su dominio, sus credenciales de Google y sus scopes; y las `NEXT_PUBLIC_*` tienen que
+  ir como **build args** en Easypanel, porque Next las hornea en el bundle en tiempo de
+  build y si sólo van como env de runtime la app levanta pero falla en el browser sin
+  error claro.
 
 ### Fase 8 — LEXIE (asistente global)
 
