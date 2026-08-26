@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/themes";
 import { esES } from "@clerk/localizations";
 import { TemaProvider } from "@/components/tema/tema-provider";
+import { LexieDock } from "@/components/lexie/lexie-dock";
 import { RegistrarSW } from "@/components/pwa/registrar-sw";
 import { SCRIPT_ANTI_FLASH } from "@/components/tema/tema";
 import "./globals.css";
@@ -127,7 +128,18 @@ export default function RootLayout({
             dangerouslySetInnerHTML={{ __html: SCRIPT_ANTI_FLASH }}
           />
           <RegistrarSW />
-          <TemaProvider>{children}</TemaProvider>
+          <TemaProvider>
+            {children}
+            {/* LEXIE sube al layout RAÍZ y sale de NavShell.
+                Colgando del shell de navegación, la asistente global
+                simplemente no existía en las vistas inmersivas —Mapa procesal,
+                Simulador, chat de una causa, Admin—, que son justo donde más
+                sirve preguntar sin salir de lo que se está haciendo.
+                El propio dock decide si corresponde mostrarse: se apaga sin
+                sesión (login) y también si el abogado está logueado pero fuera
+                de la whitelist. */}
+            <LexieDock />
+          </TemaProvider>
         </body>
       </html>
     </ClerkProvider>

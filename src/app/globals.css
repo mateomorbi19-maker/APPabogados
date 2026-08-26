@@ -529,6 +529,85 @@
   }
 }
 
+/* ===========================================================================
+   LEXIE — la esfera flotante.
+
+   Misma receta que los orbes del mapa (radial-gradient con la luz fija arriba a
+   la izquierda + rim interior + halos concéntricos + specular), pero en el
+   violeta de marca y con la cáscara deformándose.
+
+   FUERA DE @layer, igual que los keyframes de arriba y por el mismo motivo: en
+   Tailwind v4 la capa `utilities` le gana a `components` sin importar la
+   especificidad, así que una utility de sombra desde el JSX borraría el glow.
+
+   El `border-radius` animado es lo que da la sensación de masa blanda en
+   reposo; el squash & stretch del movimiento lo pone fisica-esfera.ts por
+   `transform`, y los dos se componen sin pisarse porque viven en propiedades
+   distintas.
+   =========================================================================== */
+.el-lexie-orb {
+  background: radial-gradient(
+    circle at 32% 26%,
+    #ded3ff 0%,
+    #b9a4fb 18%,
+    #8b5cf6 46%,
+    #6d3ff0 72%,
+    #35235f 100%
+  );
+  box-shadow:
+    inset 0 0 0 1.5px rgba(214, 201, 255, 0.5),
+    inset 0 -8px 16px -6px rgba(20, 10, 45, 0.65),
+    0 0 26px rgba(139, 92, 246, 0.5),
+    0 0 62px rgba(139, 92, 246, 0.22);
+  animation: el-jelly 9s ease-in-out infinite;
+  transition: box-shadow 0.25s ease;
+}
+.el-lexie-orb:hover {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(224, 214, 255, 0.62),
+    inset 0 -8px 16px -6px rgba(20, 10, 45, 0.6),
+    0 0 34px rgba(139, 92, 246, 0.62),
+    0 0 78px rgba(139, 92, 246, 0.3);
+}
+/* Mientras se arrastra, el morphing de reposo estorba: la deformación real ya
+   la está manejando la física, y las dos animándose a la vez se leen como
+   temblor. */
+[data-arrastrando="true"] .el-lexie-orb {
+  animation: none;
+}
+
+/* Segunda capa de gradiente girando lento: le da al relleno un movimiento
+   interno tipo aceite, que es lo que separa una esfera "de plástico" de una que
+   parece tener algo adentro. */
+.el-lexie-flujo {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    rgba(196, 181, 253, 0.28) 18%,
+    transparent 38%,
+    rgba(109, 63, 240, 0.32) 62%,
+    transparent 84%
+  );
+  mix-blend-mode: screen;
+  animation: el-spin 14s linear infinite;
+}
+
+@keyframes el-jelly {
+  0%,
+  100% {
+    border-radius: 58% 42% 45% 55% / 48% 52% 48% 52%;
+  }
+  25% {
+    border-radius: 44% 56% 60% 40% / 55% 44% 56% 45%;
+  }
+  50% {
+    border-radius: 50% 50% 42% 58% / 42% 58% 42% 58%;
+  }
+  75% {
+    border-radius: 56% 44% 52% 48% / 58% 42% 56% 44%;
+  }
+}
+
 /* Chrome de React Flow re-estilado a vidrio (v3): el default de la librería
    (Controls, caja de selección) desentonaba. El MiniMap se estila por props en
    mapa-minimap.tsx. */
@@ -576,6 +655,17 @@
   .el-edge-flujo {
     animation: none;
     opacity: 0.55;
+  }
+  /* La esfera de LEXIE queda redonda y quieta. Se sigue pudiendo arrastrar y
+     abrir: lo que se apaga es el adorno, no la función. El wobble de la física
+     lo desactiva el propio componente leyendo la misma media query. */
+  .el-lexie-orb {
+    animation: none;
+    border-radius: 9999px;
+  }
+  .el-lexie-flujo {
+    animation: none;
+    opacity: 0.35;
   }
 }
 

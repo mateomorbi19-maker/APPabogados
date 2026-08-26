@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { BuscadorProvider } from "@/components/buscador/buscador-global";
-import { LexieLauncher } from "@/components/lexie/lexie-launcher";
 import { AppSidebar } from "./app-sidebar";
 import { TopBar } from "./top-bar";
 
@@ -43,23 +42,22 @@ export function NavShell({
             {ancho === "completo" ? (
               children
             ) : (
-              // pb-24 en móvil: el botón flotante de LEXIE se monta acá abajo
-              // (línea ~60) sobre TODAS las secciones, es `fixed bottom-5
-              // right-5` y en móvil queda icon-only. Con el py-6 original se
+              // pb-24 en móvil: la esfera de LEXIE flota sobre TODAS las
+              // secciones y arranca abajo a la derecha. Con el py-6 original se
               // superponía al último elemento del documento — que en el flujo
               // de análisis es justo el CTA ("Continuar", "Analizar caso"),
               // alineado a la derecha: tocarlo abría LEXIE en vez de disparar
               // el análisis. El hueco lo reserva el shell y no cada sección.
+              //
+              // Se conserva aunque la esfera ahora sea arrastrable: el hueco
+              // protege la POSICIÓN POR DEFECTO, que es donde la va a encontrar
+              // quien nunca la movió.
               <div className="mx-auto max-w-6xl px-4 pt-6 pb-24 md:px-6 md:pb-6">
                 {children}
               </div>
             )}
           </main>
         </div>
-        {/* LEXIE va acá y no dentro de <main>: es global a la app, tiene que
-            poder abrirse desde cualquier sección y quedar por encima del
-            contenido sin que el ancho del main la recorte. */}
-        <LexieLauncher />
       </div>
     </BuscadorProvider>
   );

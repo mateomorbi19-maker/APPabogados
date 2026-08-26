@@ -70,6 +70,32 @@ export async function getMensajes(
 }
 
 /**
+ * Cuántos mensajes del hilo se le re-mandan al modelo en cada turno.
+ *
+ * Existe porque el hilo NO tenía techo: `getMensajes` trae la conversación
+ * entera y la ruta la re-manda completa en cada vuelta, mientras `archivada`
+ * nunca se escribía desde ningún lado. Una conversación activa crecía para
+ * siempre hasta reventar la ventana del modelo con `prompt is too long`, y a
+ * partir de ahí TODOS los turnos siguientes fallaban igual, sin forma de salir
+ * desde la app. Es el mismo modo de falla que brickeó una conversación del chat
+ * por caso, por otra vía.
+ *
+ * 24 son unos 12 intercambios: mucho más de lo que dura una consulta de trabajo
+ * diario ("¿qué tengo mañana?"), y acotado a unos pocos miles de tokens.
+ */
+const MAX_MENSAJES_HISTORIAL = 24;
+
+export type HistorialReconstruido = {
+  mensajes: Anthropic.MessageParam[];
+  /**
+   * Se recortó el arranque del hilo. La ruta lo usa para volver a inyectar el
+   * bloque de contexto: si el mensaje que lo traía quedó afuera del recorte,
+   * LEXIE perdería la lista de causas y la agenda sin enterarse.
+   */
+  truncado: boolean;
+};
+
+/**
  * Historial en el formato de la Messages API.
  *
  * SANEO DEL INVARIANTE user/assistant: la API rechaza dos mensajes seguidos del
@@ -84,7 +110,8 @@ export async function getMensajes(
  */
 export function reconstruirHistorial(
   mensajes: MensajeLexie[],
-): Anthropic.MessageParam[] {
+  maxMensajes: number = MAX_MENSAJES_HISTORIAL,
+): HistorialReconstruido {
   const out: Anthropic.MessageParam[] = [];
   for (const m of mensajes) {
     const role = m.tipo === "usuario" ? "user" : "assistant";
@@ -103,7 +130,46 @@ export function reconstruirHistorial(
   // del usuario se agrega después). Si terminara en user, ese user quedaría
   // pegado al nuevo.
   while (out.length > 0 && out[out.length - 1].role === "user") out.pop();
-  return out;
+
+  // El recorte va al final, sobre el historial ya saneado: recortar antes
+  // podría partir un par fusionado y devolver el invariante roto.
+  let truncado = false;
+  if (out.length > maxMensajes) {
+    out.splice(0, out.length - maxMensajes);
+    truncado = true;
+  }
+  // La API también exige que el PRIMER mensaje sea del usuario. Un recorte que
+  // cae justo sobre una respuesta del agente dejaría un `assistant` al frente y
+  // devolvería un 400 en cada turno — exactamente el bug que este techo vino a
+  // evitar.
+  while (out.length > 0 && out[0].role === "assistant") {
+    out.shift();
+    truncado = true;
+  }
+
+  return { mensajes: out, truncado };
+}
+
+/**
+ * Archiva la conversación activa del abogado. El próximo GET/POST arranca una
+ * nueva por `getOCrearConversacionActiva`.
+ *
+ * Es la salida de emergencia que no existía: `archivada` se leía pero no se
+ * escribía en ningún lado del código, así que un hilo que quedaba en mal estado
+ * —o simplemente muy largo— no se podía resetear ni desde el UI ni desde la API.
+ */
+export async function archivarConversacionActiva(
+  usuarioId: string,
+): Promise<void> {
+  const supabase = createServerClient();
+  // El filtro por usuario_id va DENTRO del update: el server entra con
+  // service_role y bypassa RLS, así que es el único control de propiedad real.
+  const { error } = await supabase
+    .from("conversaciones_lexie")
+    .update({ archivada: true })
+    .eq("usuario_id", usuarioId)
+    .eq("archivada", false);
+  if (error) throw new Error(`archivarConversacion: ${error.message}`);
 }
 
 export async function guardarTurno({
@@ -224,5 +290,15 @@ export async function hayCambiosDesde(
     .limit(1)
     .maybeSingle();
   if (error || !data) return false;
-  return (data as { actualizado_en: string }).actualizado_en > desdeIso;
+
+  // Comparar como INSTANTES, no como strings. Los dos lados son `timestamptz`
+  // serializados por PostgREST, y difieren en la cantidad de dígitos
+  // fraccionarios ("...:35.993285+00:00" contra "...:35.99+00:00") y a veces en
+  // el offset. Lexicográficamente eso daba `true` de forma permanente, y el
+  // bloque de contexto —las 40 causas y la agenda— se re-inyectaba en TODOS los
+  // turnos, rompiendo justo el prefijo cacheado que este chequeo venía a cuidar.
+  const ultimo = Date.parse((data as { actualizado_en: string }).actualizado_en);
+  const desde = Date.parse(desdeIso);
+  if (Number.isNaN(ultimo) || Number.isNaN(desde)) return false;
+  return ultimo > desde;
 }

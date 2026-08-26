@@ -379,10 +379,15 @@ qué hay en su agenda, y contesta preguntas de trabajo diario ("¿qué tengo
 mañana?", "¿de qué se trata la causa de Ferreyra?", "¿qué jurisprudencia tenemos
 sobre requisa sin orden?").
 
-- `GET /api/lexie` — saludo + hilo abierto. Lo llama el panel al abrirse.
-- `POST /api/lexie` — un turno. Body `{ mensaje, nivel? }`. `maxDuration = 120`.
+- `GET /api/lexie` — saludo + hilo abierto. Lo llama la ventana al abrirse.
+- `POST /api/lexie` — un turno. Body `{ mensaje, nivel?, pathname? }`. `maxDuration = 120`.
+- `DELETE /api/lexie` — archiva la conversación activa. El próximo GET arranca
+  una nueva. **Es la salida de emergencia que faltaba:**
+  `conversaciones_lexie.archivada` se leía pero no se escribía desde ningún
+  lado, así que un hilo en mal estado no se podía resetear y cada turno
+  siguiente fallaba igual.
 
-**La v1 es de SOLO LECTURA.** Cinco tools, ninguna escribe:
+**La v1 es de SOLO LECTURA.** Seis tools, ninguna escribe:
 `mi_agenda`, `buscar_mis_casos`, `leer_caso`
 ([lexie-tools.ts](src/lib/agent/lexie-tools.ts)) más `buscar_jurisprudencia` /
 `leer_jurisprudencia` y `buscar_documentos_legales`, reusadas tal cual. El
@@ -408,6 +413,30 @@ extracto existe porque **las carátulas reales son malas**: varias son la primer
 línea del relato, así que sin él LEXIE no puede decir de qué se trata una causa
 sin abrir el expediente entero (~2.300 tokens contra ~40).
 
+**LEXIE sabe en qué pantalla estás, por dos canales distintos y a propósito:**
+
+- **El manual de la app va en el SYSTEM** ([lexie-manual.ts](src/lib/agent/lexie-manual.ts)):
+  qué hace cada sección, las tres herramientas de una causa, y el camino de
+  clics de lo que más se pide ("cargar un imputado → Mis casos → la causa →
+  bloque Personas → Agregar"). Es idéntico para los tres abogados y no cambia
+  entre turnos, así que entra en el **prefijo cacheado** y se paga una vez.
+- **La ubicación actual va en el MENSAJE del turno**
+  ([ubicacion.ts](src/lib/lexie/ubicacion.ts), ~40 tokens): el cliente manda
+  **solo el `pathname`**, leído en el momento de enviar y no al abrir —la
+  ventana ya no se desmonta al navegar, así que una ruta capturada al abrirla
+  quedaría vencida. El servidor lo traduce a
+  `[Pantalla actual: Mis casos → «Pérez, Juan s/ robo»]`.
+
+**El nombre de la entidad lo resuelve el SERVIDOR, nunca el cliente**
+([resolver-ubicacion.ts](src/lib/lexie/resolver-ubicacion.ts)): el id que viene
+en el pathname lo eligió el browser, así que se trata con la misma desconfianza
+que un id que viene del modelo — se verifica propiedad dentro de la misma query
+que trae el nombre. Un pathname manipulado no revela ni la carátula de una causa
+ajena. `ubicacion.ts` NO reusa `seccionActiva()` de `nav-items.ts` por dos
+razones: ese módulo importa `lucide-react` (que no tiene por qué entrar al
+bundle del server), y `NAV_ITEMS` no conoce las tres vistas inmersivas —chat,
+mapa, simulador— que no están en la sidebar.
+
 **El saludo NO lo escribe el modelo** ([saludo.ts](src/lib/lexie/saludo.ts)):
 son string templates sobre datos ya calculados, con la prioridad que fijó
 Gonzalo — urgencias a 48 h > eventos de hoy > rapport personal. Cero tokens por
@@ -422,7 +451,56 @@ update-only, así que un evento creado desde el celular no está en la app. Sin
 ese aviso, "no tenés nada" sería correcto respecto de la base y falso respecto
 de la realidad.
 
-Verificación (lo gratis + un turno pago de ~USD 0,04; `--sin-modelo` saltea el pago):
+**El hilo tiene techo: 24 mensajes** (`MAX_MENSAJES_HISTORIAL` en
+[queries.ts](src/lib/lexie/queries.ts)). No lo tenía, y esa era una bomba de
+tiempo: `getMensajes` traía la conversación entera, la ruta la re-mandaba
+completa en cada turno y nada archivaba nunca. El recorte va **después** del
+saneo del invariante user/assistant, y descarta también un `assistant` que quede
+al frente —la API exige que el primer mensaje sea del usuario, y un corte en el
+lugar equivocado devolvería un 400 en cada turno, que es justo lo que el techo
+vino a evitar. Cuando recorta, `reconstruirHistorial` devuelve `truncado: true`
+y la ruta **vuelve a inyectar el contexto**: el bloque de causas viajaba pegado
+al primer mensaje del hilo y el recorte se lo llevaría puesto.
+
+### La esfera y la ventana de LEXIE
+
+El launcher era un FAB `fixed bottom-5 right-5` y el panel era un diálogo modal
+con velo negro y `overflow:hidden` sobre `<body>` y `<html>`. Hoy son cuatro
+piezas en [src/components/lexie/](src/components/lexie/):
+
+- **[esfera-lexie.tsx](src/components/lexie/esfera-lexie.tsx)** — arrastrable a
+  cualquier punto, con gradiente violeta (misma receta que los orbes del mapa) y
+  deformación gelatinosa. La posición se guarda en `localStorage["el-lexie-pos"]`
+  como **fracción del viewport**, no en píxeles: guardada en un monitor de 2560
+  aparecería fuera de pantalla en el celular.
+- **[fisica-esfera.ts](src/lib/lexie/fisica-esfera.ts)** — módulo PURO (sin
+  React, sin DOM) con dos resortes: uno de posición, que persigue al dedo con
+  lag, y uno de deformación, subamortiguado a propósito para que siga oscilando
+  cuando la esfera frena. Sin dependencias nuevas — el repo no tiene ninguna
+  librería de animación y eso es deliberado.
+- **[ventana-lexie.tsx](src/components/lexie/ventana-lexie.tsx)** — el **primer
+  overlay NO MODAL del repo**: sin velo, sin scroll-lock, sin `aria-modal`. Se
+  puede navegar y clickear detrás mientras está abierta. Arrastrable por la
+  barra, redimensionable, con pantalla completa; geometría en
+  `localStorage["el-lexie-ventana"]`, siempre clampeada al viewport al montar.
+- **[lexie-dock.tsx](src/components/lexie/lexie-dock.tsx)** — las monta.
+
+Dos invariantes que sostienen todo esto:
+
+1. **Nada que cambie por frame vive en el estado de React.** Posición y
+   deformación se escriben directo sobre el nodo; el loop de `requestAnimationFrame`
+   se apaga solo cuando la física entra en reposo.
+2. **`createPortal` a `<body>` no es opcional.** Un ancestro con
+   `backdrop-filter` —la TopBar tiene uno— se vuelve bloque contenedor de sus
+   descendientes `fixed`. Está documentado en `mobile-nav.tsx`, que ya se comió
+   ese bug.
+
+**El dock sube al layout raíz y sale de `NavShell`**, así que LEXIE ahora existe
+también en Mapa procesal, Simulador, chat de una causa y Admin — las vistas
+inmersivas donde antes simplemente no estaba. z-index: ventana 40, esfera 41,
+por debajo de los 50 de Base UI para que ⌘K y los diálogos le sigan ganando.
+
+Verificación (lo gratis + un turno pago de ~USD 0,03; `--sin-modelo` saltea el pago):
 `DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie.ts`
 
 ### Motor del agente — [motor.ts](src/lib/agent/motor.ts)
@@ -611,9 +689,15 @@ DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/
 
 Medición al 2026-08-07 (Sonnet 4.5): system solo **2.181** tokens · con la tool de
 RAG **3.043** · análisis con Repositorio autorizado **4.592** · chat del caso
-**5.938**. El prefijo estático ya supera holgadamente el mínimo de caché (1.024),
-así que **el prompt caching sigue siendo la optimización pendiente más obvia** —
-hoy esos ~6.000 tokens se pagan enteros en cada turno del chat.
+**5.938**. El prefijo estático supera holgadamente el mínimo de caché (1.024).
+
+⚠️ Este párrafo cerraba diciendo que el prompt caching era "la optimización
+pendiente más obvia". **Ya no lo es: se hizo en la Fase 8.2** y hoy lo aplica el
+motor con dos breakpoints (ver la sección del motor). El texto quedó stale.
+
+Medición al 2026-08-26, LEXIE con el manual de la app incorporado: prefijo de
+**~5.930** tokens (system + 6 tools), escritos a caché en el primer turno del
+hilo y leídos a 0,1x en los siguientes. Un turno de apertura sale ~USD 0,027.
 
 ## Convenciones
 
@@ -669,6 +753,8 @@ Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; **
 - 8.5 ✅ protocolo de saludo, server-side y sin tokens.
 - 8.6 ✅ panel global (botón flotante + Ctrl/⌘+J).
 - 8.7 ✅ PWA instalable en iOS y Android.
+- 8.8 ✅ esfera arrastrable + ventana flotante no-modal + conciencia de pantalla
+  y manual de la app. Se elimina `lexie-launcher.tsx` y `lexie-panel.tsx`.
 
 Pendientes conocidos:
 - `run-agent.ts` (`/analizar-caso`) sigue con su propio loop; migrarlo al motor es 8.1b.

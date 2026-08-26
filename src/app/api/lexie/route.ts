@@ -8,7 +8,10 @@ import { AgentError } from "@/lib/agent/run-agent";
 import { runLexie } from "@/lib/agent/run-lexie";
 import { LEXIE_SYSTEM_PROMPT } from "@/lib/agent/lexie-prompt";
 import { cargarDatosLexie, construirContextoModelo } from "@/lib/lexie/contexto";
+import { describirUbicacion, lineaDeUbicacion } from "@/lib/lexie/ubicacion";
+import { resolverNombreEntidad } from "@/lib/lexie/resolver-ubicacion";
 import {
+  archivarConversacionActiva,
   getMensajes,
   getOCrearConversacionActiva,
   guardarTurno,
@@ -32,7 +35,41 @@ export const maxDuration = 120;
 const bodySchema = z.object({
   mensaje: z.string().min(1, "El mensaje no puede estar vacío").max(4000),
   nivel: z.enum(NIVELES_MODELO).optional(),
+  // En qué pantalla de la app está parado el abogado. Se manda SOLO el
+  // pathname: el nombre de lo que tiene abierto lo resuelve el servidor, y
+  // recién después de verificar que la causa sea suya (ver resolver-ubicacion).
+  // Opcional a propósito — un cliente viejo, o una pantalla que no mapea a
+  // ninguna sección, mandan el turno sin esto y funciona igual.
+  pathname: z.string().max(512).optional(),
 });
+
+// Traduce el mensaje crudo de la API de Anthropic a algo que el abogado pueda
+// accionar. Antes TODO `API_ERROR` decía "probá de nuevo en un momento", que es
+// un consejo inútil cuando la causa es determinística: entre el 21 y el 23 de
+// agosto de 2026 la cuenta se quedó sin crédito y los tres abogados leyeron ese
+// mismo mensaje reintentando algo que no podía funcionar.
+function mensajeDeErrorDeApi(code: string, detalle: string): string {
+  if (code !== "API_ERROR") {
+    return "La consulta se hizo demasiado larga y no pude cerrarla. Probá acotarla un poco, o empezá una conversación nueva.";
+  }
+  const d = detalle.toLowerCase();
+  if (d.includes("credit balance") || d.includes("billing")) {
+    return "La cuenta de Anthropic se quedó sin crédito. Hay que recargarla para que pueda contestar.";
+  }
+  if (d.includes("authentication") || d.includes("invalid x-api-key")) {
+    return "La clave de Anthropic no es válida. Es un problema de configuración, no tuyo.";
+  }
+  if (d.includes("rate_limit") || d.includes("429")) {
+    return "Demasiadas consultas seguidas. Esperá unos segundos y probá otra vez.";
+  }
+  if (d.includes("prompt is too long") || d.includes("context")) {
+    return "Esta conversación se hizo muy larga. Empezá una nueva con el botón de arriba y volvé a preguntarme.";
+  }
+  if (d.includes("overloaded")) {
+    return "El modelo está sobrecargado en este momento. Probá de nuevo en un minuto.";
+  }
+  return "Se cortó la conexión con el modelo. Probá de nuevo en un momento.";
+}
 
 // GET /api/lexie — lo que el panel necesita para abrirse: el saludo y el hilo
 // que haya quedado abierto.
@@ -77,6 +114,32 @@ export async function GET() {
   }
 }
 
+// DELETE /api/lexie — archiva la conversación activa. El próximo GET arranca
+// una nueva, vacía.
+//
+// Es la salida de emergencia que faltaba. `conversaciones_lexie.archivada` se
+// leía en getOCrearConversacionActiva pero no se escribía en ningún lado del
+// código: un hilo que quedaba en mal estado —o simplemente muy largo— no se
+// podía resetear ni desde el UI ni desde la API, y cada turno siguiente fallaba
+// igual. El chat por caso sí tenía "Nueva conversación" desde el día uno.
+export async function DELETE() {
+  const wl = await requireUsuarioOr403();
+  if (!wl.ok) {
+    return jsonResponse({ ok: false, error: wl.message }, wl.status);
+  }
+
+  try {
+    await archivarConversacionActiva(wl.usuario_id);
+    return jsonResponse({ ok: true }, 200);
+  } catch (e) {
+    console.error("[DELETE lexie] error:", e);
+    return jsonResponse(
+      { ok: false, error: "No pude cerrar la conversación." },
+      500,
+    );
+  }
+}
+
 export async function POST(req: Request) {
   const t0 = Date.now();
 
@@ -104,7 +167,20 @@ export async function POST(req: Request) {
   const nivel = parsed.data.nivel ?? NIVEL_DEFAULT;
   const { modelId } = MODELO_POR_NIVEL[nivel];
 
-  const rate = await enforceTokenLimit(wl.usuario_id);
+  // enforceTokenLimit THROWEA si la vista de consumo falla (es fallo de infra).
+  // Sin este try, ese throw salía como un 500 de Next en HTML, el `r.json()` del
+  // cliente reventaba, y el abogado leía "se cortó la conexión" —que apunta al
+  // modelo— cuando el problema estaba en la base.
+  let rate;
+  try {
+    rate = await enforceTokenLimit(wl.usuario_id);
+  } catch (e) {
+    console.error("[POST lexie] enforceTokenLimit falló:", e);
+    return jsonResponse(
+      { ok: false, error: "No pude verificar tu consumo del mes. Probá de nuevo." },
+      500,
+    );
+  }
   if (!rate.ok) {
     return jsonResponse(
       {
@@ -119,12 +195,29 @@ export async function POST(req: Request) {
   let contextoInicial: string | null = null;
   let mensajesPrevios;
   let nombre = wl.nombre;
+  let lineaUbicacion: string | null = null;
 
   try {
     const conv = await getOCrearConversacionActiva(wl.usuario_id);
     conversacionId = conv.id;
     const historial = await getMensajes(conv.id);
-    mensajesPrevios = reconstruirHistorial(historial);
+    const reconstruido = reconstruirHistorial(historial);
+    mensajesPrevios = reconstruido.mensajes;
+    const truncado = reconstruido.truncado;
+
+    // La pantalla en la que está parado ahora. Se lee por turno y no al abrir
+    // el panel: la ventana de LEXIE no se desmonta al navegar, así que una
+    // ubicación capturada al abrirla quedaría stale apenas cambie de sección.
+    const ubicacion = parsed.data.pathname
+      ? describirUbicacion(parsed.data.pathname)
+      : null;
+    if (ubicacion) {
+      const nombreEntidad = await resolverNombreEntidad(
+        ubicacion,
+        wl.usuario_id,
+      );
+      lineaUbicacion = lineaDeUbicacion(ubicacion, nombreEntidad);
+    }
 
     // El contexto pesado (causas + agenda + fecha) va en el primer mensaje del
     // hilo. Después ya vive en el historial, dentro del prefijo cacheado.
@@ -151,7 +244,10 @@ export async function POST(req: Request) {
         historial[historial.length - 1]?.creado_en ?? null,
       ));
 
-    if (mensajesPrevios.length === 0 || debeRefrescar) {
+    // Y también si el hilo se recortó: el bloque de contexto viajaba pegado al
+    // PRIMER mensaje de la conversación, así que un recorte se lo lleva puesto
+    // y LEXIE se queda sin la lista de causas ni la agenda, sin enterarse.
+    if (mensajesPrevios.length === 0 || debeRefrescar || truncado) {
       const datos = await cargarDatosLexie(wl.usuario_id, wl.nombre);
       nombre = datos.nombre;
       contextoInicial = construirContextoModelo(datos);
@@ -175,7 +271,11 @@ export async function POST(req: Request) {
 
   try {
     const res = await runLexie({
-      pregunta: mensaje,
+      // La línea de pantalla va SOLO al modelo. Lo que se persiste (y lo que se
+      // ve en el hilo) es el mensaje tal como lo escribió el abogado: si se
+      // guardara con el prefijo, el corchete aparecería en el chat y volvería a
+      // entrar por el historial en cada turno siguiente, ya vencido.
+      pregunta: lineaUbicacion ? `${lineaUbicacion}\n\n${mensaje}` : mensaje,
       contextoInicial,
       systemPrompt: LEXIE_SYSTEM_PROMPT,
       modelId,
@@ -252,7 +352,7 @@ export async function POST(req: Request) {
     if (e instanceof AgentError) {
       // Los tokens parciales SE COBRARON: se registran igual, si no el consumo
       // del mes queda por debajo del gasto real.
-      await supabase.from("ejecuciones").insert({
+      const { error: ejecErrFallo } = await supabase.from("ejecuciones").insert({
         usuario_id: wl.usuario_id,
         tipo: "lexie",
         modelo: modelId,
@@ -272,10 +372,17 @@ export async function POST(req: Request) {
         },
       });
 
-      const amigable =
-        e.code === "API_ERROR"
-          ? "Se cortó la conexión con el modelo. Probá de nuevo en un momento."
-          : "La consulta se hizo demasiado larga y no pude cerrarla. Probá acotarla un poco.";
+      // Este chequeo faltaba, y es la razón por la que hoy no hay UNA sola fila
+      // que documente los fallos del 21 al 23 de agosto: el insert se caía en
+      // silencio y el único rastro del apagón quedaba en logs efímeros.
+      if (ejecErrFallo) {
+        console.error(
+          "[POST lexie] no pude registrar la ejecución fallida:",
+          ejecErrFallo,
+        );
+      }
+
+      const amigable = mensajeDeErrorDeApi(e.code, e.message);
       console.error(`[POST lexie] AgentError ${e.code}:`, e.message);
       return jsonResponse({ ok: false, error: amigable, code: e.code }, 502);
     }

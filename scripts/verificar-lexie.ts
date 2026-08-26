@@ -15,6 +15,8 @@ import { createServerClient } from "../src/lib/supabase/server";
 import { cargarDatosLexie, construirContextoModelo } from "../src/lib/lexie/contexto";
 import { construirSaludo, franjaHoraria } from "../src/lib/lexie/saludo";
 import { ejecutarToolLexie, rangoAFechas } from "../src/lib/agent/lexie-tools";
+import { describirUbicacion, lineaDeUbicacion } from "../src/lib/lexie/ubicacion";
+import { resolverNombreEntidad } from "../src/lib/lexie/resolver-ubicacion";
 import { runLexie } from "../src/lib/agent/run-lexie";
 import { LEXIE_SYSTEM_PROMPT } from "../src/lib/agent/lexie-prompt";
 import type { ResumenInicio } from "../src/lib/inicio/resumen";
@@ -173,13 +175,61 @@ async function main() {
     mal("mi_agenda no devolvió el shape esperado");
   }
 
-  // ============ 7. Un turno real (PAGO) ============
+  // ============ 7. Conciencia de pantalla (puro + base, gratis) ============
+  console.log("\n=== 5. En qué pantalla está el abogado ===");
+  const unCaso = datos.casos[0]?.id ?? "00000000-0000-0000-0000-000000000000";
+  const rutas: Array<[string, string | null]> = [
+    ["/", "Inicio"],
+    ["/analisis", "Nuevo análisis"],
+    ["/dashboard/mis-casos", "Mis casos"],
+    [`/dashboard/mis-casos/${unCaso}`, "Mis casos"],
+    ["/dashboard/agenda", "Agenda"],
+    ["/dashboard/bandeja", "Bandeja de entrada"],
+    ["/dashboard/repositorio", "Repositorio"],
+    ["/consumo", "Mi consumo"],
+    ["/admin", "Admin"],
+    // Las tres inmersivas: no están en el menú, así que son las que un mapa
+    // basado solo en NAV_ITEMS se perdería.
+    [`/dashboard/chat/${unCaso}`, "Chat de la causa"],
+    [`/dashboard/mapa-procesal/${unCaso}`, "Mapa procesal"],
+    [`/dashboard/simulador/${unCaso}`, "Simulador"],
+    // Y las que NO tienen que resolver a nada.
+    ["/sign-in", null],
+    ["/una/ruta/que/no/existe", null],
+  ];
+  for (const [ruta, esperada] of rutas) {
+    const u = describirUbicacion(ruta);
+    const dio = u?.seccion ?? null;
+    if (dio === esperada) ok(`${ruta} → ${esperada ?? "(sin ubicación)"}`);
+    else mal(`${ruta} dio ${dio ?? "null"}, esperaba ${esperada ?? "null"}`);
+  }
+
+  // El guard de propiedad de la línea de pantalla: un pathname con la causa de
+  // OTRO abogado no puede devolver su carátula.
+  if (ajeno) {
+    const u = describirUbicacion(`/dashboard/mis-casos/${ajeno.id}`);
+    const nombre = u ? await resolverNombreEntidad(u, usuarioId) : "(sin ubicación)";
+    if (nombre === null) ok("la pantalla de una causa ajena no revela su nombre");
+    else mal(`FUGA: la línea de pantalla devolvió "${nombre}" de otro abogado`);
+  }
+
+  if (datos.casos.length > 0) {
+    const u = describirUbicacion(`/dashboard/mis-casos/${datos.casos[0].id}`);
+    const nombre = u ? await resolverNombreEntidad(u, usuarioId) : null;
+    if (nombre) {
+      ok(`la pantalla de una causa propia se nombra: ${lineaDeUbicacion(u!, nombre)}`);
+    } else {
+      mal("no pude nombrar una causa propia desde su pathname");
+    }
+  }
+
+  // ============ 8. Un turno real (PAGO) ============
   if (SIN_MODELO) {
-    console.log("\n=== 5. Turno del agente: SALTEADO (--sin-modelo) ===");
+    console.log("\n=== 6. Turno del agente: SALTEADO (--sin-modelo) ===");
     return resultado();
   }
 
-  console.log("\n=== 5. Un turno real del agente ===");
+  console.log("\n=== 6. Un turno real del agente ===");
   const t0 = Date.now();
   const res = await runLexie({
     pregunta:
