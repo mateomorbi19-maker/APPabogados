@@ -101,13 +101,15 @@ function posicionInicial(): { x: number; y: number } {
 }
 
 export function EsferaLexie({
-  abierto,
-  onToggle,
+  onAbrir,
   ocupada = false,
 }: {
-  abierto: boolean;
-  onToggle: () => void;
-  /** LEXIE está pensando: la esfera lo muestra sin necesidad de tener el chat a la vista. */
+  onAbrir: () => void;
+  /**
+   * LEXIE está pensando. Hoy no llega a verse —la esfera se desmonta mientras
+   * el chat está abierto— pero se conserva para cuando el turno siga corriendo
+   * con el chat cerrado.
+   */
   ocupada?: boolean;
 }) {
   const nodoRef = useRef<HTMLButtonElement>(null);
@@ -259,8 +261,8 @@ export function EsferaLexie({
   // abriría el chat cada vez.
   const onClick = useCallback(() => {
     if (desplazamientoRef.current > UMBRAL_TAP) return;
-    onToggle();
-  }, [onToggle]);
+    onAbrir();
+  }, [onAbrir]);
 
   return (
     <button
@@ -271,8 +273,7 @@ export function EsferaLexie({
       onPointerUp={soltar}
       onPointerCancel={soltar}
       onClick={onClick}
-      aria-label={abierto ? "Cerrar LEXIE" : "Abrir LEXIE, la asistente del estudio"}
-      aria-expanded={abierto}
+      aria-label="Abrir LEXIE, la asistente del estudio"
       title="LEXIE — arrastrame donde quieras (Ctrl+J)"
       // `fixed` a 0,0 y todo el movimiento por transform: cambiar `left`/`top`
       // dispararía layout en cada frame, mientras que un transform se resuelve
