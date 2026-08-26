@@ -47,3 +47,16 @@ notas-migracion/
 # Permission allowlist de la sesión Claude (config local, no del proyecto)
 .claude/settings.json
 .claude/settings.local.json
+
+# Artefacto temporal: el swagger de PostgREST que se baja para inspeccionar el
+# schema (`.spec.tmp.json`, ~100 KB). Se regenera con un curl, no es fuente.
+*.tmp.json
+
+# Copia local de skills de terceros que instala `npx skills add`. Duplica lo
+# que ya vive versionado en .claude/skills/, y son 170 archivos de librería que
+# no son código de este proyecto.
+/.agents/
+
+# Bytecode de Python (las skills traen algún script .py)
+__pycache__/
+*.py[cod]
