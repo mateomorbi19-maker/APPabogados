@@ -22,7 +22,16 @@ export default async function MisCasosLayout({
   }
   return (
     <ConsumoProvider>
-      <NavShell nombreUsuario={result.nombre} isAdmin={result.role === "admin"}>
+      {/* `ancho="completo"` y no el default: con el centrado en max-w-6xl, en un
+          monitor ancho la lista de causas quedaba flotando en el medio de la
+          pantalla, con ~250px muertos entre la sidebar de navegación y la
+          primera causa. Esta sección es master-detail y quiere el ancho entero;
+          el límite de lectura lo pone el propio detalle. */}
+      <NavShell
+        nombreUsuario={result.nombre}
+        isAdmin={result.role === "admin"}
+        ancho="completo"
+      >
         <MisCasosShell>{children}</MisCasosShell>
       </NavShell>
     </ConsumoProvider>

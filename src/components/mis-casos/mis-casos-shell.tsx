@@ -92,7 +92,7 @@ export function MisCasosShell({ children }: Props) {
 
   if (estado.kind === "loading") {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-16 px-4">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </div>
     );
@@ -100,7 +100,7 @@ export function MisCasosShell({ children }: Props) {
 
   if (estado.kind === "error") {
     return (
-      <div className="rounded border border-destructive bg-destructive/10 p-6 text-sm text-destructive">
+      <div className="m-4 rounded border border-destructive bg-destructive/10 p-6 text-sm text-destructive md:m-6">
         <p className="font-medium mb-1">Error cargando casos</p>
         <p>{estado.message}</p>
       </div>
@@ -111,7 +111,11 @@ export function MisCasosShell({ children }: Props) {
   // que listar. Cuando aparezca el primer caso, este branch deja de
   // renderizarse.
   if (estado.casos.length === 0) {
-    return <MisCasosEmptyState />;
+    return (
+      <div className="mx-auto max-w-6xl px-4 pt-6 pb-24 md:px-6 md:pb-6">
+        <MisCasosEmptyState />
+      </div>
+    );
   }
 
   // Master-detail: en móvil no hay dos columnas, así que con un caso abierto
@@ -121,16 +125,34 @@ export function MisCasosShell({ children }: Props) {
   // detalle trae su propio "Mis casos" para volver (header-caso.tsx). El
   // sticky de escritorio queda intacto.
   return (
-    <div className="grid gap-6 grid-cols-1 md:grid-cols-[220px_1fr]">
+    // Dos columnas a sangre, sin contenedor centrado: la lista arranca pegada a
+    // la sidebar de navegación y el detalle se queda con todo el resto.
+    //
+    // La lista tiene su PROPIO scroll (`sticky` + alto del viewport menos la
+    // top bar de 56px): antes scrolleaba junto con el detalle, así que leer el
+    // final de un expediente largo dejaba la lista de causas fuera de la
+    // pantalla y había que volver arriba para cambiar de causa.
+    <div className="flex min-h-[calc(100dvh-3.5rem)]">
       <aside
         className={cn(
-          "md:sticky md:top-20 md:self-start",
-          idActivo && "hidden md:block",
+          "shrink-0 border-[var(--el-border)] md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-[264px] md:overflow-y-auto md:overscroll-contain md:border-r",
+          // Master-detail en móvil: con una causa abierta, la lista completa
+          // quedaba ARRIBA del detalle. Abajo de 768px es lista O detalle.
+          idActivo ? "hidden md:block" : "w-full",
         )}
       >
         <ListaCasos casos={estado.casos} idActivo={idActivo} />
       </aside>
-      <section className="min-w-0">{children}</section>
+      <section className="min-w-0 flex-1">
+        {/* El límite de lectura lo pone el detalle, no el shell: una ficha a
+            1600px de ancho es ilegible, pero la lista sí quiere estar pegada al
+            borde. `pb-24` en móvil deja aire para la esfera de LEXIE, que en el
+            resto de la app lo reserva NavShell y acá no, por ir a ancho
+            completo. */}
+        <div className="mx-auto min-w-0 max-w-5xl px-4 pt-6 pb-24 md:px-6 md:pb-8">
+          {children}
+        </div>
+      </section>
     </div>
   );
 }

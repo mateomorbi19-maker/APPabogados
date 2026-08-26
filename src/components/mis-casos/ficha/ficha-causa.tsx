@@ -1,22 +1,26 @@
 "use client";
 // La ficha de causa: la identidad del expediente.
 //
-// Dos decisiones de forma que vienen del mockup y NO se copiaron tal cual:
+// Dos decisiones de forma que se conservan del diseño original:
 //
-//   - Grilla de 2 columnas, no de 4. El mockup corre a ancho completo; esta
-//     pantalla vive dentro de una columna de ~740px (max-w-6xl menos la
-//     sidebar de 220px). A 4 columnas, "Juzgado Federal Criminal Nº 3" entra
-//     en cuatro renglones.
 //   - El campo vacío se MUESTRA, con un botón "Cargar" que abre el formulario
 //     enfocado ahí. Esconder los campos sin dato haría que la ficha parezca
 //     completa cuando está a medias, y que nadie descubra que puede cargarlos.
-//     Es la misma regla que ya rige para la jurisprudencia: si falta, se
-//     declara; no se rellena con algo verosímil.
+//     Es la misma regla que rige para la jurisprudencia: si falta, se declara;
+//     no se rellena con algo verosímil.
+//   - La etapa procesal NO es un campo editable: la deriva el mapa.
+//
+// Lo que SÍ cambió (ago 2026): la grilla era de 2 columnas con divisores y una
+// celda por fila, y gastaba ~450px de alto para ocho datos de los cuales cinco
+// suelen estar vacíos diciendo "Cargar". Ahora es una grilla densa de hasta 3
+// columnas SIN divisores internos, separada por aire en vez de por líneas.
+// Mismo contenido, la mitad del alto, y de paso se va el cálculo de paridad que
+// decidía en qué celda pintar el borde derecho (y que se desincronizaba con
+// cada campo que ocupaba dos columnas).
 
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { fmtFecha } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { FUERO_LABEL } from "@/lib/mapa-procesal/types";
@@ -50,12 +54,7 @@ export function FichaCausa({
     setFormOpen(true);
   };
 
-  const campos: {
-    campo: CampoFicha;
-    label: string;
-    valor: string | null;
-    ancho?: boolean;
-  }[] = [
+  const campos: { campo: CampoFicha; label: string; valor: string | null }[] = [
     {
       campo: "expediente_numero",
       label: "Nº de expediente",
@@ -66,20 +65,10 @@ export function FichaCausa({
       label: "Fuero",
       valor: caso.fuero ? FUERO_LABEL[caso.fuero as Fuero] : null,
     },
-    {
-      campo: "organismo",
-      label: "Juzgado / Tribunal",
-      valor: caso.organismo,
-      ancho: true,
-    },
+    { campo: "organismo", label: "Juzgado / Tribunal", valor: caso.organismo },
     { campo: "secretaria", label: "Secretaría", valor: caso.secretaria },
     { campo: "juez", label: "Juez", valor: caso.juez },
-    {
-      campo: "fiscalia",
-      label: "Fiscalía",
-      valor: caso.fiscalia,
-      ancho: true,
-    },
+    { campo: "fiscalia", label: "Fiscalía", valor: caso.fiscalia },
   ];
 
   const faltantes = campos.filter((c) => !c.valor).length;
@@ -89,8 +78,8 @@ export function FichaCausa({
       className="rounded-xl border border-[var(--el-border)] bg-[var(--el-surface-card)] shadow-[var(--el-shadow-card)]"
       aria-labelledby="ficha-titulo"
     >
-      <header className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
-        <div className="min-w-0">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+        <div className="flex min-w-0 items-baseline gap-2">
           <h2
             id="ficha-titulo"
             className="text-sm font-medium text-[var(--el-text)]"
@@ -99,10 +88,8 @@ export function FichaCausa({
           </h2>
           {/* El contador de faltantes va acá y no como badge en cada campo:
               uno solo dice cuánto trabajo queda, seis dicen que algo anda mal. */}
-          <p className="mt-0.5 text-xs text-[var(--el-text-muted)]">
-            {faltantes === 0
-              ? "Completa"
-              : `${faltantes} ${faltantes === 1 ? "dato" : "datos"} sin cargar`}
+          <p className="text-xs text-[var(--el-text-muted)]">
+            {faltantes === 0 ? "· Completa" : `· ${faltantes} sin cargar`}
           </p>
         </div>
         <Button
@@ -116,77 +103,54 @@ export function FichaCausa({
         </Button>
       </header>
 
-      <dl className="grid grid-cols-1 border-t border-[var(--el-border)] sm:grid-cols-2">
-        {campos.map((c, i) => {
-          // En qué columna cae realmente esta celda. NO alcanza la paridad del
-          // índice: los campos `ancho` ocupan DOS celdas, así que cada uno
-          // corre la paridad de todo lo que viene después y el borde derecho
-          // terminaba pintado en la columna equivocada.
-          const columna =
-            campos.slice(0, i).reduce((n, x) => n + (x.ancho ? 2 : 1), 0) % 2;
-          return (
-          <div
-            key={c.campo}
-            className={cn(
-              "min-w-0 border-b border-[var(--el-border)] px-4 py-3 sm:px-5",
-              c.ancho && "sm:col-span-2",
-              // El borde derecho solo en la columna izquierda de la grilla de
-              // 2, y nunca en las filas que ocupan el ancho completo.
-              !c.ancho && columna === 0 && "sm:border-r",
-            )}
-          >
+      <div className="border-t border-[var(--el-border)] px-4 py-4 sm:px-5">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+          {campos.map((c) => (
+            <div key={c.campo} className="min-w-0">
+              <dt className="text-[11px] uppercase tracking-wide text-[var(--el-text-muted)]">
+                {c.label}
+              </dt>
+              <dd className="mt-1 text-sm text-[var(--el-text)]">
+                {c.valor ? (
+                  <span className="break-words">{c.valor}</span>
+                ) : (
+                  <BotonCargar onClick={() => abrir(c.campo)} />
+                )}
+              </dd>
+            </div>
+          ))}
+
+          {/* Delitos: chips, porque una causa real casi nunca tiene uno solo.
+              A ancho completo para que no se corten en una columna. */}
+          <div className="min-w-0 sm:col-span-2 lg:col-span-3">
             <dt className="text-[11px] uppercase tracking-wide text-[var(--el-text-muted)]">
-              {c.label}
+              Delitos
             </dt>
-            <dd className="mt-0.5 text-sm text-[var(--el-text)]">
-              {c.valor ? (
-                <span className="break-words">{c.valor}</span>
+            <dd className="mt-1 text-sm text-[var(--el-text)]">
+              {caso.delitos && caso.delitos.length > 0 ? (
+                <ul className="flex flex-wrap gap-1.5">
+                  {caso.delitos.map((d) => (
+                    <li
+                      key={d}
+                      className="rounded-md border border-[var(--el-border)] bg-[var(--el-glass)] px-2 py-0.5 text-xs break-words"
+                    >
+                      {d}
+                    </li>
+                  ))}
+                </ul>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => abrir(c.campo)}
-                  className="rounded text-sm text-[var(--el-text-muted)] underline decoration-dotted underline-offset-4 transition-colors hover:text-[var(--el-violet-light)]"
-                >
-                  Cargar
-                </button>
+                <BotonCargar onClick={() => abrir("delitos")} />
               )}
             </dd>
           </div>
-          );
-        })}
+        </dl>
+      </div>
 
-        {/* Delitos: chips, porque una causa real casi nunca tiene uno solo. */}
-        <div className="min-w-0 border-b border-[var(--el-border)] px-4 py-3 sm:col-span-2 sm:px-5">
-          <dt className="text-[11px] uppercase tracking-wide text-[var(--el-text-muted)]">
-            Delitos
-          </dt>
-          <dd className="mt-1 text-sm text-[var(--el-text)]">
-            {caso.delitos && caso.delitos.length > 0 ? (
-              <ul className="flex flex-wrap gap-1.5">
-                {caso.delitos.map((d) => (
-                  <li
-                    key={d}
-                    className="rounded-md border border-[var(--el-border)] bg-[var(--el-glass)] px-2 py-0.5 text-xs break-words"
-                  >
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <button
-                type="button"
-                onClick={() => abrir("delitos")}
-                className="rounded text-sm text-[var(--el-text-muted)] underline decoration-dotted underline-offset-4 transition-colors hover:text-[var(--el-violet-light)]"
-              >
-                Cargar
-              </button>
-            )}
-          </dd>
-        </div>
-
-        {/* Etapa procesal: DERIVADA del mapa, no editable. Si fuera un campo
-            más de la ficha se contradiría con el mapa el primer día. */}
-        <div className="min-w-0 px-4 py-3 sm:border-r sm:border-[var(--el-border)] sm:px-5">
+      {/* Los dos DERIVADOS, separados del resto: ninguno se edita acá. La etapa
+          sale del mapa y la última actuación del timeline; mezclarlos con los
+          campos cargables invitaba a buscarles un "Cargar" que no existe. */}
+      <dl className="flex flex-wrap gap-x-8 gap-y-2 border-t border-[var(--el-border)] px-4 py-3 sm:px-5">
+        <div className="min-w-0">
           <dt className="text-[11px] uppercase tracking-wide text-[var(--el-text-muted)]">
             Etapa procesal
           </dt>
@@ -209,7 +173,7 @@ export function FichaCausa({
         {/* Última ACTUACIÓN, no `actualizado_en`: esa columna la pisa un
             trigger en cada UPDATE, así que corregir una coma en la ficha diría
             "actualizado hoy" con el expediente quieto hace tres meses. */}
-        <div className="min-w-0 px-4 py-3 sm:px-5">
+        <div className="min-w-0">
           <dt className="text-[11px] uppercase tracking-wide text-[var(--el-text-muted)]">
             Última actuación
           </dt>
@@ -234,5 +198,17 @@ export function FichaCausa({
         onSaved={onCasoChange}
       />
     </section>
+  );
+}
+
+function BotonCargar({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded text-sm text-[var(--el-text-muted)] underline decoration-dotted underline-offset-4 transition-colors hover:text-[var(--el-violet-light)]"
+    >
+      Cargar
+    </button>
   );
 }

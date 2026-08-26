@@ -451,6 +451,17 @@ update-only, así que un evento creado desde el celular no está en la app. Sin
 ese aviso, "no tenés nada" sería correcto respecto de la base y falso respecto
 de la realidad.
 
+**Trampa de PostgREST — el insert por LOTES no respeta los DEFAULT.** En un
+`.insert([a, b])`, PostgREST arma UNA sentencia con la **unión de las claves de
+todos los objetos**: la fila que no trae una clave recibe `NULL` explícito en esa
+columna en vez de omitirla, y un `NULL` explícito **no dispara el DEFAULT**.
+`guardarTurno` insertaba el mensaje del usuario sin `metadata` junto al del
+agente con `metadata`, y moría con *"null value in column metadata violates
+not-null constraint"* — después de que el modelo ya había contestado y ya se
+había cobrado. No se vio nunca hasta el 2026-08-26 porque ningún turno de LEXIE
+había llegado tan lejos. **En un insert por lotes, todas las filas tienen que
+traer las mismas claves.**
+
 **El hilo tiene techo: 24 mensajes** (`MAX_MENSAJES_HISTORIAL` en
 [queries.ts](src/lib/lexie/queries.ts)). No lo tenía, y esa era una bomba de
 tiempo: `getMensajes` traía la conversación entera, la ruta la re-mandaba
@@ -461,6 +472,27 @@ lugar equivocado devolvería un 400 en cada turno, que es justo lo que el techo
 vino a evitar. Cuando recorta, `reconstruirHistorial` devuelve `truncado: true`
 y la ruta **vuelve a inyectar el contexto**: el bloque de causas viajaba pegado
 al primer mensaje del hilo y el recorte se lo llevaría puesto.
+
+### Layout de Mis casos
+
+`/dashboard/mis-casos` usa `NavShell ancho="completo"`, no el centrado por
+defecto. Con `max-w-6xl` centrado, en un monitor ancho la lista de causas
+quedaba flotando en el medio con ~250px muertos entre la sidebar de navegación y
+la primera causa. Es master-detail: quiere el ancho entero, y el límite de
+lectura lo pone el detalle (`max-w-5xl`), no el shell.
+
+La lista tiene **scroll propio** (`sticky top-14` + `h-[calc(100dvh-3.5rem)]`):
+antes scrolleaba junto con el detalle, así que leer el final de un expediente
+largo dejaba la lista fuera de pantalla y había que volver arriba para cambiar
+de causa. Abajo de 768px sigue siendo lista **o** detalle, nunca los dos.
+
+La **ficha** es una grilla densa de hasta 3 columnas sin divisores internos.
+Antes eran 2 columnas con bordes y una celda por fila: ~450px de alto para ocho
+datos de los cuales cinco suelen decir "Cargar". Se fue con eso el cálculo de
+paridad que decidía dónde pintar el borde derecho y que se desincronizaba con
+cada campo a dos columnas. Los dos campos DERIVADOS (etapa procesal y última
+actuación) van separados al pie: no se editan ahí, y mezclarlos con los
+cargables invitaba a buscarles un "Cargar" que no existe.
 
 ### La esfera y la ventana de LEXIE
 

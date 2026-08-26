@@ -546,6 +546,12 @@
    distintas.
    =========================================================================== */
 .el-lexie-orb {
+  /* Forma base, EXPLÍCITA y no heredada del keyframe.
+     Sin esto la esfera se volvía un CUADRADO en cuanto se pausaba la
+     animación: el redondeo lo ponía únicamente `el-jelly`, así que el
+     `animation: none` de [data-arrastrando] devolvía el border-radius a 0.
+     Se veía justo al arrastrar con el dedo, que es cuando más se mira. */
+  border-radius: 58% 42% 45% 55% / 48% 52% 48% 52%;
   background: radial-gradient(
     circle at 32% 26%,
     #ded3ff 0%,
@@ -572,8 +578,11 @@
 /* Mientras se arrastra, el morphing de reposo estorba: la deformación real ya
    la está manejando la física, y las dos animándose a la vez se leen como
    temblor. */
+/* Al arrastrar se congela el morphing de reposo —la deformación real ya la
+   maneja la física, y las dos juntas se leen como temblor—, pero la forma
+   redondeada se conserva por el border-radius base de arriba. */
 [data-arrastrando="true"] .el-lexie-orb {
-  animation: none;
+  animation-play-state: paused;
 }
 
 /* Segunda capa de gradiente girando lento: le da al relleno un movimiento

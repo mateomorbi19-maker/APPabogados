@@ -189,7 +189,25 @@ export async function guardarTurno({
   const { data, error } = await supabase
     .from("mensajes_lexie")
     .insert([
-      { conversacion_id: conversacionId, tipo: "usuario", contenido: pregunta },
+      {
+        conversacion_id: conversacionId,
+        tipo: "usuario",
+        contenido: pregunta,
+        // `metadata: {}` EXPLÍCITO, aunque la columna tenga DEFAULT '{}'.
+        //
+        // En un insert por LOTES, PostgREST arma una sola sentencia con la
+        // UNIÓN de las claves de todos los objetos del array: como la fila del
+        // agente trae `metadata`, esta fila recibe un NULL explícito en esa
+        // columna en vez de omitirla, y un NULL explícito NO dispara el
+        // DEFAULT. Resultado: "null value in column metadata violates
+        // not-null constraint", y el turno entero se cae DESPUÉS de que el
+        // modelo ya contestó y ya se cobró.
+        //
+        // No se había visto nunca porque hasta hoy ningún turno de LEXIE llegó
+        // hasta acá: morían antes, en el primer messages.create, mientras la
+        // cuenta de Anthropic estuvo en cero.
+        metadata: {},
+      },
       {
         conversacion_id: conversacionId,
         tipo: "agente",

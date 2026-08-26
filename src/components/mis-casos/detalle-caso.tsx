@@ -59,7 +59,7 @@ export function DetalleCaso({
       : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <HeaderCaso caso={caso} etapa={etapa} />
 
       <AccesosRapidos casoId={caso.id} />

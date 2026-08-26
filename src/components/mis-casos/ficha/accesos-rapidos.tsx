@@ -11,6 +11,10 @@
 //
 // En móvil se apilan a una columna: a 360px, tres cajas en fila dejan ~105px
 // cada una y "Simulador de audiencias" entra en cuatro renglones.
+//
+// Ago 2026: pasan de tarjeta vertical (ícono / título / dos renglones de
+// descripción, ~92px de alto) a fila horizontal con el ícono al costado y la
+// descripción truncada a una línea. Son links, no contenido.
 
 import Link from "next/link";
 import { Sparkles, Network, Gavel } from "lucide-react";
@@ -56,19 +60,25 @@ export function AccesosRapidos({ casoId }: Props) {
             <li key={a.label}>
               <Link
                 href={a.href(casoId)}
-                className="flex h-full flex-col gap-1.5 rounded-xl border border-[var(--el-border)] bg-[var(--el-surface-card)] px-4 py-3 transition-colors hover:border-[var(--el-violet)] hover:bg-[var(--el-glass)]"
+                title={a.sub}
+                className="flex h-full items-center gap-3 rounded-xl border border-[var(--el-border)] bg-[var(--el-surface-card)] px-3.5 py-2.5 transition-colors hover:border-[var(--el-violet)] hover:bg-[var(--el-glass)]"
               >
-                <Icono className="size-5 text-[var(--el-violet-light)]" />
-                <span className="text-sm font-medium text-[var(--el-text)]">
-                  {a.label}
-                  {a.beta ? (
-                    <span className="ml-2 align-middle rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                      Beta
-                    </span>
-                  ) : null}
-                </span>
-                <span className="text-xs leading-snug text-[var(--el-text-muted)]">
-                  {a.sub}
+                <Icono className="size-5 shrink-0 text-[var(--el-violet-light)]" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-[var(--el-text)]">
+                    {a.label}
+                    {a.beta ? (
+                      <span className="ml-2 align-middle rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                        Beta
+                      </span>
+                    ) : null}
+                  </span>
+                  {/* La descripción se lee una vez en la vida y ocupaba dos
+                      renglones fijos en cada una de las tres tarjetas. Queda a
+                      una línea truncada, y completa en el `title`. */}
+                  <span className="block truncate text-xs leading-snug text-[var(--el-text-muted)]">
+                    {a.sub}
+                  </span>
                 </span>
               </Link>
             </li>

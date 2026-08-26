@@ -25,7 +25,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { useCapacidadDelBrowser } from "@/lib/hooks/use-cliente";
+import { useCapacidadDelBrowser, useMediaQuery } from "@/lib/hooks/use-cliente";
 import { EsferaLexie } from "./esfera-lexie";
 import { VentanaLexie } from "./ventana-lexie";
 import { LexieChat } from "./lexie-chat";
@@ -46,6 +46,10 @@ export function LexieDock() {
   // cascading render que el lint del repo prohíbe; `useCapacidadDelBrowser` es
   // el helper que ya existe para esto: devuelve false en el server (así el
   // markup hidrata sin desajuste) y true en el cliente, en el mismo commit.
+  // En el teléfono la ventana es una hoja de 68dvh: la esfera encima le tapa el
+  // chat y no tiene para dónde correrse. En escritorio la ventana es flotante y
+  // la esfera al lado sigue siendo el ancla, así que ahí se queda.
+  const esMovil = useMediaQuery("(max-width: 639px)");
   const montado = useCapacidadDelBrowser(HAY_DOM);
   const [abierto, setAbierto] = useState(false);
   const [ocupada, setOcupada] = useState(false);
@@ -95,11 +99,13 @@ export function LexieDock() {
           <LexieChat key={hilo} onOcupadaChange={setOcupada} />
         </VentanaLexie>
       )}
-      <EsferaLexie
-        abierto={abierto}
-        onToggle={() => setAbierto((v) => !v)}
-        ocupada={ocupada}
-      />
+      {!(abierto && esMovil) && (
+        <EsferaLexie
+          abierto={abierto}
+          onToggle={() => setAbierto((v) => !v)}
+          ocupada={ocupada}
+        />
+      )}
     </div>,
     document.body,
   );

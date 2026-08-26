@@ -59,7 +59,7 @@ export function HeaderCaso({ caso, etapa }: Props) {
             de que apareciera cualquier otra cosa. */}
         <h1
           className={cn(
-            "font-serif text-xl sm:text-2xl md:text-3xl leading-tight min-w-0 break-words",
+            "font-serif text-xl sm:text-2xl leading-tight min-w-0 break-words",
             provisorio && "italic text-muted-foreground",
           )}
           title={provisorio ? "Sin carátula cargada" : undefined}
@@ -81,7 +81,9 @@ export function HeaderCaso({ caso, etapa }: Props) {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* Badges y metadatos en la MISMA fila: eran dos renglones separados que
+          juntos gastaban ~48px arriba de todo para cuatro datos cortos. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         {etapa ? (
           <Badge
             className="bg-[rgba(139,92,246,0.22)] text-violet-800 dark:text-[#CDBEFF]"
@@ -103,25 +105,25 @@ export function HeaderCaso({ caso, etapa }: Props) {
             {FUERO_LABEL[caso.fuero as Fuero]}
           </Badge>
         ) : null}
-      </div>
 
-      <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <dt className="uppercase tracking-wider">Creado</dt>
-          <dd>{fmtFecha(caso.creado_en)}</dd>
-        </div>
-        {caso.expediente_numero ? (
-          <>
-            <span aria-hidden="true">·</span>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <dt className="uppercase tracking-wider">Expediente</dt>
-              <dd className="tabular-nums break-all">
-                {caso.expediente_numero}
-              </dd>
-            </div>
-          </>
-        ) : null}
-      </dl>
+        <dl className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <dt className="uppercase tracking-wider">Creado</dt>
+            <dd>{fmtFecha(caso.creado_en)}</dd>
+          </div>
+          {caso.expediente_numero ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <dt className="uppercase tracking-wider">Expediente</dt>
+                <dd className="tabular-nums break-all">
+                  {caso.expediente_numero}
+                </dd>
+              </div>
+            </>
+          ) : null}
+        </dl>
+      </div>
 
       <EliminarCasoModal
         open={eliminarOpen}
