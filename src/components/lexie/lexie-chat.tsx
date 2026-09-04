@@ -50,17 +50,31 @@ function enfocarSiEsEscritorio(campo: HTMLTextAreaElement | null) {
 
 export function LexieChat({
   onOcupadaChange,
+  precarga,
 }: {
   /** Para que la esfera pueda mostrar que LEXIE está pensando aunque la ventana esté tapada. */
   onOcupadaChange?: (ocupada: boolean) => void;
+  /**
+   * Texto que otra pantalla dejó escrito para el abogado (ver lexie-dock).
+   * Se siembra en el campo, no se envía: el `n` distingue dos pedidos con el
+   * mismo texto.
+   */
+  precarga?: { texto: string; n: number } | null;
 }) {
   const [cargando, setCargando] = useState(true);
   const [saludo, setSaludo] = useState<Saludo | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   // Con el dedo no hay Shift+Enter: el atajo solo existe con mouse.
   const atajoEnter = usePunteroFino();
-  const [texto, setTexto] = useState("");
+  const [texto, setTexto] = useState(precarga?.texto ?? "");
   const [enviando, setEnviando] = useState(false);
+  // Precarga durante el render, sin efecto (ver la nota de ficha-form.tsx):
+  // si el pedido llega con el chat ya montado, se pisa el campo en el acto.
+  const [precargaVista, setPrecargaVista] = useState(precarga?.n ?? 0);
+  if (precarga && precarga.n !== precargaVista) {
+    setPrecargaVista(precarga.n);
+    setTexto(precarga.texto);
+  }
   const [dictando, setDictando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

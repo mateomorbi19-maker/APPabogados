@@ -12,6 +12,7 @@ import { getNodosDelCaso } from "@/lib/mapa-procesal/queries";
 import { etapaActual } from "@/lib/mapa-procesal/etapa-actual";
 import { DetalleCaso } from "@/components/mis-casos/detalle-caso";
 import { estrategiaSchema } from "@/lib/schemas";
+import { listarEscritos } from "@/lib/escritos/queries";
 import type { Caso, EventoCaso, ParteCaso } from "@/lib/types";
 
 const UUID_RE =
@@ -36,7 +37,7 @@ export default async function CasoDetallePage({
   // mapa. `getNodosDelCaso` no valida propiedad —la validó el SELECT de
   // `casos` de acá al lado, con el mismo `id`— y su query está scopeada por
   // caso_id, así que no puede devolver nodos de otra causa.
-  const [casoRes, eventosRes, partesRes, nodos] = await Promise.all([
+  const [casoRes, eventosRes, partesRes, nodos, escritos] = await Promise.all([
     supabase
       .from("casos")
       .select(COLS_CASO)
@@ -59,6 +60,13 @@ export default async function CasoDetallePage({
     // que es lo mismo que ve una causa sin mapa. No puede tirar la pantalla.
     getNodosDelCaso(id).catch((e) => {
       console.error("[caso detalle] error nodos del mapa:", e);
+      return [];
+    }),
+    // Los escritos redactados para la causa. Mismo criterio que el mapa: si
+    // la tabla todavía no existe (migración 20260904120000 sin aplicar), la
+    // ficha se muestra igual con la lista vacía y el error queda en logs.
+    listarEscritos(id, auth.usuario_id).catch((e) => {
+      console.error("[caso detalle] error escritos:", e);
       return [];
     }),
   ]);
@@ -107,6 +115,7 @@ export default async function CasoDetallePage({
       caso={caso}
       eventosIniciales={eventos}
       partesIniciales={partes}
+      escritosIniciales={escritos}
       etapa={etapa}
       mapaInicializado={nodos.length > 0}
     />

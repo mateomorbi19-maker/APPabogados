@@ -27,7 +27,7 @@ export const LEXIE_MANUAL_APP = [
   "LAS SECCIONES DEL MENÚ, en orden: " +
     "**Inicio** — el tablero de entrada: sus causas ordenadas por última actividad, lo que viene en la agenda y el buscador. " +
     "**Nuevo análisis** — donde se analiza un caso desde cero: describe el caso, la app le arma un formulario a medida con las preguntas que de verdad cambian la estrategia, y devuelve estrategias fundadas con citas del Código Penal, el procesal y los manuales de litigación. Puede pedirlas como defensor, como querellante o las dos. " +
-    "**Mis casos** — el listado de causas; al abrir una está la ficha del expediente (carátula, número, organismo, juzgado, fiscalía, delitos), las personas de la causa, el análisis original y el timeline de movimientos. " +
+    "**Mis casos** — el listado de causas; al abrir una está la ficha del expediente (carátula, número, organismo, juzgado, fiscalía, delitos), las personas de la causa (con su DNI), los escritos redactados para la causa, el análisis original y el timeline de movimientos. " +
     "**Agenda** — audiencias, vencimientos, presentaciones, reuniones y tareas, con sincronización con Google Calendar. " +
     "**Bandeja de entrada** — el correo del estudio (Gmail): leer, responder, archivar, mandar a la papelera. " +
     "**Repositorio** — la biblioteca de fallos y doctrina del estudio, con buscador y lector de PDF. " +
@@ -42,7 +42,10 @@ export const LEXIE_MANUAL_APP = [
     "**Analizar un caso nuevo** → menú «Nuevo análisis», escribir el relato, contestar el formulario, elegir si autoriza el Repositorio y confirmar. " +
     "**Guardar un análisis como causa** → al final del análisis, elegir una de las estrategias propuestas; ahí se crea la causa. " +
     "**Corregir la carátula o cargar el expediente, el juzgado o la fiscalía** → Mis casos → la causa → bloque «Ficha», botón Editar. Los campos vacíos aparecen con un botón «Cargar». " +
-    "**Cargar un imputado, una víctima, un querellante o un testigo** → Mis casos → la causa → bloque «Personas», botón Agregar; ahí se elige el rol y se marca si es el cliente. " +
+    "**Cargar un imputado, una víctima, un querellante o un testigo** → Mis casos → la causa → bloque «Partes», botón Agregar persona; ahí se elige el rol, se carga el DNI y se marca si es el cliente. " +
+    "**Generar un escrito judicial para una causa** → Mis casos → la causa → bloque «Escritos» → «Generar escrito». Paso 1: elegir el modelo entre los 50 del estudio (pestaña «Del estudio», con buscador y categorías) o los propios (pestaña «Míos»). Paso 2: revisar los datos del expediente que van al encabezado —los que falten quedan marcados como [COMPLETAR] en el texto—, completar los datos profesionales (firma, matrícula, domicilios; se guardan para siempre) y escribir instrucciones. El redactor tarda entre 30 y 90 segundos, verifica artículos y busca precedentes. El escrito se abre para corregirlo, se baja en PDF y, cuando ya se presentó en el portal judicial, se marca «Presentado»: eso guarda el PDF definitivo en el timeline de la causa. " +
+    "**Cargar un modelo de escrito propio** → en ese mismo diálogo, botón «Nuevo modelo»: título, suma, cuerpo tipo con placeholders entre dobles llaves, claves. También se puede «Duplicar como propio» uno del estudio para adaptarlo. " +
+    "**Datos profesionales del abogado (firma, matrícula, domicilio constituido y electrónico)** → se piden en el paso 2 de Generar escrito y quedan guardados en el perfil. " +
     "**Agendar una audiencia o un vencimiento** → menú «Agenda», botón de nuevo evento; se puede asociar a una causa. " +
     "**Buscar una causa** → Ctrl+K (o ⌘K en Mac) desde cualquier pantalla; busca por carátula, expediente, nombre de una persona de la causa, delito, organismo o cualquier palabra del relato. " +
     "**Cambiar el fuero de una causa** → se puede solo mientras el mapa procesal esté vacío; una vez armado el mapa queda congelado, y para cambiarlo hay que reiniciar el mapa, que borra lo cargado. " +

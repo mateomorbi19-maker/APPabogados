@@ -17,6 +17,11 @@ import {
   lexieTools,
   type ContextoLexie,
 } from "@/lib/agent/lexie-tools";
+import {
+  ejecutarToolEscritos,
+  escritosEscrituraTools,
+  escritosLecturaTools,
+} from "@/lib/agent/escritos-tools";
 
 // El agente de LEXIE. Es el tercer consumidor del motor y el primero que se
 // escribió con él ya existente: son ~120 líneas contra las 700 del loop
@@ -35,6 +40,11 @@ import {
 const CAP_LEXIE = 8;
 const CAP_REPOSITORIO = 5;
 const CAP_NORMATIVA = 6;
+// Catálogo de modelos de escrito: dos o tres consultas alcanzan para
+// recomendar. Y UNA escritura por turno: guardar un modelo que ella redactó,
+// sólo a pedido del abogado. Es la única mutación que LEXIE tiene.
+const CAP_ESCRITOS = 4;
+const CAP_ESCRITOS_ESCRITURA = 1;
 
 export type RunLexieInput = {
   pregunta: string;
@@ -114,6 +124,32 @@ export async function runLexie(input: RunLexieInput): Promise<RunLexieResult> {
       },
     },
     {
+      nombre: "escritos",
+      tools: escritosLecturaTools,
+      cap: CAP_ESCRITOS,
+      paralelizable: true,
+      mensajeCapAgotado: `Alcanzaste el límite de ${CAP_ESCRITOS} consultas al catálogo de escritos en este mensaje. Recomendá con lo que ya viste.`,
+      avisoCapAgotado: `Alcanzaste el límite de consultas al catálogo de escritos (${CAP_ESCRITOS}) en este mensaje.`,
+      ejecutar: async (tu, c) => {
+        herramientasUsadas.push(tu.name);
+        return ejecutarToolEscritos(tu.name, tu.input, { usuarioId: c.usuarioId });
+      },
+    },
+    {
+      nombre: "escritos_escritura",
+      tools: escritosEscrituraTools,
+      cap: CAP_ESCRITOS_ESCRITURA,
+      // Mutación: en serie, y una sola por turno.
+      paralelizable: false,
+      mensajeCapAgotado:
+        "Ya guardaste un modelo en este mensaje. Si el abogado quiere otro, que te lo pida en el próximo.",
+      avisoCapAgotado: "Ya guardaste un modelo en este mensaje.",
+      ejecutar: async (tu, c) => {
+        herramientasUsadas.push(tu.name);
+        return ejecutarToolEscritos(tu.name, tu.input, { usuarioId: c.usuarioId });
+      },
+    },
+    {
       nombre: "normativa",
       tools: [buscarDocumentosTool],
       cap: CAP_NORMATIVA,
@@ -161,9 +197,9 @@ export async function runLexie(input: RunLexieInput): Promise<RunLexieResult> {
       ],
       modelId: input.modelId,
       maxTokens: input.maxTokens ?? 4000,
-      // 8 + 5 + 6 = 19 de presupuesto, con techo de 14 vueltas. El techo no
-      // cubre la suma a propósito: el modelo agrupa varias tool calls por
-      // iteración, y la síntesis la garantiza la última vuelta sin tools.
+      // 8 + 5 + 6 + 4 + 1 = 24 de presupuesto, con techo de 14 vueltas. El
+      // techo no cubre la suma a propósito: el modelo agrupa varias tool calls
+      // por iteración, y la síntesis la garantiza la última vuelta sin tools.
       maxIterations: input.maxIterations ?? 14,
       familias,
       contexto: ctx,

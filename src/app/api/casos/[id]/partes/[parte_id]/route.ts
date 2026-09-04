@@ -76,6 +76,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
   if (d.es_cliente !== undefined) cols.es_cliente = d.es_cliente;
   if (d.situacion_libertad !== undefined)
     cols.situacion_libertad = d.situacion_libertad;
+  if (d.documento !== undefined) cols.documento = d.documento;
 
   if (Object.keys(cols).length === 0) {
     return jsonResponse({ ok: false, error: "No hay nada para actualizar" }, 400);

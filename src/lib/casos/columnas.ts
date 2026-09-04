@@ -46,8 +46,16 @@ export const COLS_CASO_NOMBRE = "id, titulo, caratula";
 // y supabase-js pierde el tipo de la fila.
 export const COLS_CASO_NOMBRE_FUERO = "id, titulo, caratula, fuero";
 
+// Nombre + expediente: lo que necesita el PDF de un escrito para armar el
+// nombre del archivo ("Excarcelacion - 12345 2026.pdf") y el evento del
+// timeline al presentarlo.
+export const COLS_CASO_NOMBRE_EXPEDIENTE =
+  "id, titulo, caratula, expediente_numero";
+
 // Todas las columnas de `partes_caso`. La tabla es chica y siempre se lee
 // entera; no hay subconjuntos.
+// `documento` llegó con la migración 20260904120000 (escritos): sin ella
+// aplicada, TODOS los reads de partes devuelven 42703 → 500.
 export const COLS_PARTE =
-  "id, caso_id, nombre, rol, es_cliente, situacion_libertad, creado_en";
+  "id, caso_id, nombre, rol, es_cliente, situacion_libertad, documento, creado_en";
 

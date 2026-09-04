@@ -157,6 +157,9 @@ export type ParteCaso = {
   rol: RolParte;
   es_cliente: boolean;
   situacion_libertad: SituacionLibertad | null;
+  // DNI u otro documento, texto libre. Lo consumen los escritos ("{{IMPUTADO}},
+  // DNI {{DNI}}"); null se muestra vacío y el redactor deja [COMPLETAR: DNI].
+  documento: string | null;
   creado_en: string;
 };
 

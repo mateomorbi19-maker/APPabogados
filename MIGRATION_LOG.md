@@ -511,7 +511,7 @@ WHERE table_schema = 'public'
 
 ---
 
-## 2026-08-22 · 12:00:00 UTC — `20260822120000_ficha_de_causa.sql` · ⏳ PENDIENTE DE APLICAR
+## 2026-08-22 · 12:00:00 UTC — `20260822120000_ficha_de_causa.sql` · ✅ APLICADA (verificado el 2026-09-04)
 
 **Contexto:** Fase 9 / sub-paso 9.1. La causa gana su identidad. Hoy `casos` tiene 13 columnas y ninguna dice cómo se llama oficialmente el expediente, qué número tiene, ante qué organismo tramita ni quién está imputado. Medido contra la base el 2026-08-22: **de 8 causas, 4 se llaman con un pedazo del relato** — una es literalmente `"El 3 de julio de 2026, cerca de las 04:15"`. Eso degrada a la vez la lista de causas, el buscador global, el contexto de LEXIE y el header del chat, porque los cuatro leen `casos.titulo`.
 
@@ -529,7 +529,7 @@ El orden lo había fijado [REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](REPORTERIA_AL_
 
 **Acoplamiento código ↔ migración: ALTO.** No hay un solo `select("*")` sobre `casos` en el repo — son **13 call sites** que enumeran columnas a mano. Una columna nombrada en un SELECT que la base no tiene devuelve 42703 y PostgREST lo traduce a **500 en todos los reads del caso**. Es exactamente el patrón de `riesgo_alto`. Por eso esta migración va **sola y antes** que una línea de TypeScript.
 
-**Aplicación:** ⏳ **pendiente.** La corre Mateo a mano en el SQL Editor. Claude Code no puede: no hay MCP de Supabase con acceso a `xvdlnevcvcsgxbngwliv` ni URL directa de Postgres en `.env.local` — sólo PostgREST con la service_role key, que sirve para leer y para verificar, no para DDL.
+**Aplicación:** ✅ la corrió Mateo a mano en el SQL Editor. Verificado por PostgREST el 2026-09-04: las 8 columnas de `casos` responden y `partes_caso` existe (1 fila). Este LOG la daba por pendiente hasta ese día — otra vez el drift corta para el lado del repo.
 
 **Verificación** (después de correrla):
 
@@ -544,4 +544,46 @@ ORDER BY column_name;
 SELECT estado_seguimiento, count(*) FROM casos GROUP BY 1;   -- activa | 8
 
 SELECT relrowsecurity FROM pg_class WHERE relname = 'partes_caso';  -- t
+```
+
+---
+
+## 2026-09-04 · 12:00:00 UTC — `20260904120000_escritos.sql` · ✅ APLICADA
+
+**Contexto:** Fase 10 / sub-paso 10.1. Escritos judiciales: desde la ficha de la causa se elige un modelo (los 50 del estudio, en código, o uno propio), el redactor lo adapta a los datos del expediente, sale en PDF y se marca como presentado. Pedido de Gonzalo del 8/8/2026.
+
+**Tipo:** aditiva. 4 columnas en `usuarios` + 1 columna en `partes_caso` + 2 tablas nuevas + 1 CHECK recreado con el patrón defensivo por definición. Cero cambios destructivos, cero backfill.
+
+**Contenido:**
+
+- `usuarios.nombre_completo`, `matricula`, `domicilio_constituido`, `domicilio_electronico` — el perfil PROFESIONAL (cómo firma, T° F°, domicilios). Todas nullable. Van en el encabezado de todo escrito. `nombre` y `email` no se tocan: son el identificador lógico del sistema.
+- `partes_caso.documento text` — el DNI. Es identidad, no contacto: la decisión de esperar a la P1 de REPORTERIA para teléfono/mail/dirección sigue en pie.
+- `modelos_escrito` — modelos PROPIOS de cada abogado (`usuario_id NOT NULL`, `origen` `abogado|lexie`, `archivado`). **Los 50 del estudio no están acá**: viven en `src/lib/escritos/catalogo-estudio.ts`.
+- `escritos_generados` — un escrito redactado para una causa: `contenido` (markdown liviano; el PDF se arma a pedido), `estado` `borrador|presentado`, `modelo_id text` (slug del catálogo o UUID de la tabla; no puede ser FK), `ejecucion_id` FK nullable a `ejecuciones`, `usuario_id` redundante a propósito (predicado de propiedad).
+- Trigger propio `escritos_set_actualizado_en` en las dos tablas. **Sin** trigger sobre `casos.actualizado_en`: generar un borrador no es actividad procesal; presentarlo sí, y eso ya lo registra el evento del timeline.
+- `ejecuciones.tipo` suma `'generar_escrito'` (los 6 valores previos se conservan).
+- RLS ENABLE + REVOKE a `anon`/`authenticated` en las dos tablas nuevas.
+
+**Acoplamiento código ↔ migración: ALTO en `partes_caso`.** `COLS_PARTE` ya incluye `documento`, así que hasta aplicarla **todos los reads de partes devuelven 500** (misma clase de bug que `riesgo_alto` y que la ficha). El resto degrada: el catálogo del estudio y la recomendación de LEXIE funcionan sin la migración; `POST /api/casos/[id]/escritos` sondea `escritos_generados` ANTES de llamar al modelo y devuelve 503 en vez de cobrar una redacción que no se puede guardar.
+
+**Aplicación:** ✅ la corrió Mateo a mano en el SQL Editor el 2026-09-04. Verificado el mismo día por PostgREST (`scripts/verificar-escritos.ts --sin-modelo`: TODO OK) y con un smoke de escritura que creó y borró un modelo propio, un modelo de LEXIE, un escrito, una ejecución `generar_escrito` y un PDF en el bucket — todo con aislamiento por usuario verificado.
+
+**Verificación** (después de correrla), gratis y de solo lectura:
+
+```bash
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-escritos.ts --sin-modelo
+```
+
+```sql
+SELECT table_name, column_name FROM information_schema.columns
+WHERE (table_name = 'usuarios' AND column_name IN ('nombre_completo','matricula','domicilio_constituido','domicilio_electronico'))
+   OR (table_name = 'partes_caso' AND column_name = 'documento');       -- 5 filas
+
+SELECT relname, relrowsecurity FROM pg_class
+WHERE relname IN ('modelos_escrito','escritos_generados');               -- t, t
+
+SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con
+JOIN pg_class rel ON rel.oid = con.conrelid
+WHERE rel.relname = 'ejecuciones' AND con.contype = 'c'
+  AND pg_get_constraintdef(con.oid) ILIKE '%tipo%';                     -- 7 valores
 ```

@@ -1,11 +1,15 @@
 "use client";
 // Alta y edición de una persona de la causa.
 //
-// Sin teléfono, mail ni DNI a propósito. La pregunta que define si el contacto
+// Sin teléfono ni mail a propósito. La pregunta que define si el contacto
 // hace falta —¿el reporte al cliente es por causa o por persona?— sigue sin
 // contestar en REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md, y modelar datos de
 // contacto antes de esa respuesta es adivinar. La tabla 1:N, en cambio,
 // funciona igual con las dos respuestas posibles, así que no es una apuesta.
+//
+// El DNI sí está (Fase 10): es un dato de IDENTIDAD, no de contacto, y el
+// encabezado de todo escrito lo pide ("{{IMPUTADO}}, DNI {{DNI}}"). Sin él, el
+// redactor deja [COMPLETAR: DNI] y el abogado lo escribe a mano cada vez.
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -47,6 +51,7 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
   const [rol, setRol] = useState<RolParte>("imputado");
   const [esCliente, setEsCliente] = useState(false);
   const [situacion, setSituacion] = useState<SituacionLibertad | "">("");
+  const [documento, setDocumento] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +68,7 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
       setRol(parte?.rol ?? "imputado");
       setEsCliente(parte?.es_cliente ?? false);
       setSituacion(parte?.situacion_libertad ?? "");
+      setDocumento(parte?.documento ?? "");
       setError(null);
     }
   }
@@ -91,6 +97,8 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
       rol,
       es_cliente: esCliente,
       situacion_libertad: situacionFinal,
+      // "" viaja como "" y el schema del server la convierte en NULL.
+      documento: documento,
     };
 
     try {
@@ -151,6 +159,22 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
               placeholder="Rodríguez, Carlos Alberto"
               autoFocus
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="p-documento">Documento</Label>
+            <Input
+              id="p-documento"
+              value={documento}
+              onChange={(e) => setDocumento(e.target.value)}
+              disabled={loading}
+              maxLength={80}
+              placeholder="DNI 30.123.456"
+            />
+            <p className="text-xs text-muted-foreground">
+              Va en el encabezado de los escritos. Si falta, el escrito lo deja
+              marcado para completar.
+            </p>
           </div>
 
           <div className="space-y-2">

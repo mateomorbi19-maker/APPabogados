@@ -2,6 +2,7 @@ import { z } from "zod";
 import { CATEGORIAS_EVENTO } from "@/lib/casos/categorias";
 import { MIME_TYPES_PERMITIDOS } from "@/lib/casos/adjuntos";
 import { NIVELES_MODELO, NIVEL_DEFAULT } from "@/lib/agent/modelos";
+import { CATEGORIAS_ESCRITO, ROLES_SUGERIDOS } from "@/lib/escritos/types";
 
 export const rolSchema = z.enum(["defensor", "querellante", "ambos"]);
 export type RolInput = z.infer<typeof rolSchema>;
@@ -424,6 +425,9 @@ export const crearParteInputSchema = z.object({
   rol: rolParteSchema,
   es_cliente: z.boolean().default(false),
   situacion_libertad: situacionLibertadSchema.nullable().optional(),
+  // DNI u otro documento, texto libre (Fase 10, escritos). Misma
+  // normalización que la ficha: "" se guarda como NULL.
+  documento: fichaTextoOpcional(80),
 });
 export type CrearParteInput = z.infer<typeof crearParteInputSchema>;
 
@@ -433,6 +437,7 @@ export const editarParteInputSchema = z
     rol: rolParteSchema.optional(),
     es_cliente: z.boolean().optional(),
     situacion_libertad: situacionLibertadSchema.nullable().optional(),
+    documento: fichaTextoOpcional(80),
   })
   .strict();
 export type EditarParteInput = z.infer<typeof editarParteInputSchema>;
@@ -621,3 +626,71 @@ export const crearMensajeInputSchema = z.object({
   nivel: z.enum(NIVELES_MODELO).default(NIVEL_DEFAULT),
 });
 export type CrearMensajeInput = z.infer<typeof crearMensajeInputSchema>;
+
+// === Escritos judiciales (Fase 10) ===
+
+// Un modelo de escrito PROPIO del abogado. Los del estudio no pasan por acá:
+// viven en código y no se editan desde la app.
+export const modeloEscritoInputSchema = z
+  .object({
+    categoria: z.enum(CATEGORIAS_ESCRITO).default("otro"),
+    titulo: z.string().trim().min(3).max(200),
+    suma: z.string().trim().min(3).max(300),
+    cuando: fichaTextoOpcional(500),
+    base_normativa: fichaTextoOpcional(1000),
+    // El cuerpo tipo. 20.000 caracteres son unas seis páginas: más que eso es
+    // un escrito entero pegado como modelo, que igual sirve.
+    cuerpo: z.string().trim().min(20).max(20000),
+    claves: fichaTextoOpcional(1000),
+    rol_sugerido: z.enum(ROLES_SUGERIDOS).default("ambos"),
+  })
+  .strict();
+export type ModeloEscritoInput = z.infer<typeof modeloEscritoInputSchema>;
+
+export const editarModeloEscritoInputSchema = z
+  .object({
+    categoria: z.enum(CATEGORIAS_ESCRITO).optional(),
+    titulo: z.string().trim().min(3).max(200).optional(),
+    suma: z.string().trim().min(3).max(300).optional(),
+    cuando: fichaTextoOpcional(500),
+    base_normativa: fichaTextoOpcional(1000),
+    cuerpo: z.string().trim().min(20).max(20000).optional(),
+    claves: fichaTextoOpcional(1000),
+    rol_sugerido: z.enum(ROLES_SUGERIDOS).optional(),
+  })
+  .strict();
+export type EditarModeloEscritoInput = z.infer<
+  typeof editarModeloEscritoInputSchema
+>;
+
+// Generar un escrito para una causa. `modelo_id` es slug del catálogo o UUID
+// de un modelo propio; el server resuelve cuál y verifica propiedad.
+export const generarEscritoInputSchema = z
+  .object({
+    modelo_id: z.string().trim().min(1).max(120),
+    instrucciones: fichaTextoOpcional(4000),
+    nivel: z.enum(NIVELES_MODELO).default(NIVEL_DEFAULT),
+  })
+  .strict();
+export type GenerarEscritoInput = z.infer<typeof generarEscritoInputSchema>;
+
+// Editar un escrito generado: el abogado corrige el texto antes de presentar.
+export const editarEscritoInputSchema = z
+  .object({
+    titulo: z.string().trim().min(1).max(300).optional(),
+    contenido: z.string().min(1).max(200000).optional(),
+  })
+  .strict();
+export type EditarEscritoInput = z.infer<typeof editarEscritoInputSchema>;
+
+// Perfil profesional del abogado (usuarios). Todo opcional y anulable: el
+// formulario manda sólo lo que cambió, y "" se guarda como NULL.
+export const perfilProfesionalInputSchema = z
+  .object({
+    nombre_completo: fichaTextoOpcional(200),
+    matricula: fichaTextoOpcional(120),
+    domicilio_constituido: fichaTextoOpcional(300),
+    domicilio_electronico: fichaTextoOpcional(120),
+  })
+  .strict();
+export type PerfilProfesionalInput = z.infer<typeof perfilProfesionalInputSchema>;

@@ -43,6 +43,7 @@ src/
     app-shell.tsx, header/, consumo/, nuevo-analisis/, ui/
   lib/
     agent/                        # run-agent.ts, run-agent-consulta.ts, prompts, parse, pricing, tools
+    escritos/                     # modelos de escrito + redactor + PDF (Fase 10; ver sección)
     auth/                         # whitelist, enforce-rate
     rag/                          # embed, match-documents
     supabase/server.ts            # cliente con service_role key (server-side)
@@ -63,6 +64,8 @@ scripts/
   verificar-coherencia-mapa.ts    # valida las 12 reglas del mapa contra la base (read-only)
   verificar-lexie.ts              # smoke de LEXIE (--sin-modelo saltea el turno pago)
   verificar-motor.ts              # smoke del tool-use loop genérico
+  construir-catalogo-escritos.ts  # data/50-modelos-escritos-penales.md → src/lib/escritos/catalogo-estudio.ts
+  verificar-escritos.ts           # smoke de escritos (--sin-modelo saltea la redacción paga)
 
 legacy/                           # Sistema viejo (Express + index.html + n8n).
                                   # Apagado, queda por referencia histórica.
@@ -371,6 +374,113 @@ filtrado sigue siendo **en memoria** — con 3 usuarios sale más barato que
 mantener un `tsvector` con su trigger e índice. No toca el LLM ni el RAG, así
 que puede correr a cada tecla.
 
+### Escritos judiciales — `/api/casos/:id/escritos`, `/api/escritos/modelos`, `/api/perfil`
+
+Pedido de Gonzalo (8/8/2026): desde la ficha de la causa, sin salir de ella,
+elegir un modelo de escrito, que se genere el PDF "amoldado al expediente con
+los datos esenciales", y llevarlo al portal judicial. Con dos flujos de
+modelos —los que cargó el estudio y los que trae cada abogado— y con LEXIE
+recomendando cuál presentar. Ver la Fase 10 más abajo.
+
+**Los 50 modelos del estudio viven en código, no en la base.**
+[scripts/data/50-modelos-escritos-penales.md](scripts/data/50-modelos-escritos-penales.md)
+es el documento redactado por el estudio;
+`npx tsx scripts/construir-catalogo-escritos.ts` lo parsea a
+[src/lib/escritos/catalogo-estudio.ts](src/lib/escritos/catalogo-estudio.ts)
+(módulo generado, no editar a mano). Mismo criterio que el catálogo del
+Repositorio: son iguales para los tres abogados, se corrigen por git y no
+dependen de una migración. Los modelos **propios** de cada abogado —y los que
+LEXIE redacta a pedido— van a la tabla `modelos_escrito`, con `origen`
+(`abogado` | `lexie`) para que se vea de dónde salió cada uno. Un modelo se
+identifica por **slug** (catálogo) o **UUID** (tabla); `esModeloDelEstudio()`
+en [types.ts](src/lib/escritos/types.ts) es la única forma correcta de
+distinguirlos.
+
+- `GET /api/escritos/modelos` — resúmenes (sin cuerpo) de los 50 + los propios.
+- `POST /api/escritos/modelos` — "Nuevo modelo" del abogado (origen `abogado`).
+- `GET|PATCH|DELETE /api/escritos/modelos/[id]` — el completo; editar y
+  archivar sólo aplican a los propios (un modelo del estudio devuelve 409:
+  se duplica como propio para adaptarlo).
+- `GET|PATCH /api/perfil` — el **perfil profesional** del abogado
+  (`nombre_completo`, `matricula`, `domicilio_constituido`,
+  `domicilio_electronico` en `usuarios`): lo que va en el encabezado y la firma
+  de todo escrito. Se completa la primera vez desde el propio diálogo de
+  generación. Nunca toca `nombre` ni `email`, que administra Clerk.
+- `GET|POST /api/casos/[id]/escritos` — lista y **genera**. `maxDuration = 120`.
+  Body `{ modelo_id, instrucciones?, nivel? }`.
+- `GET|PATCH|DELETE /api/casos/[id]/escritos/[escrito_id]` — leer, corregir
+  el texto/título, borrar.
+- `GET .../[escrito_id]/pdf` — el PDF, armado **a pedido** desde el texto
+  (`?descargar=1` fuerza la descarga).
+- `POST .../[escrito_id]/presentar` — marca presentado: sube el PDF definitivo
+  al bucket `eventos-caso-adjuntos` y crea un evento `escrito_presentado` en
+  el timeline con ese adjunto. Rechaza con 409 si quedan marcas `[COMPLETAR]`.
+
+**El redactor** ([run-escrito.ts](src/lib/escritos/run-escrito.ts)) es el
+cuarto consumidor del motor genérico: familias `normativa` (cap 4) y
+`repositorio` (cap 3), 8 vueltas, salida de hasta 8.000 tokens. El prompt
+([prompt.ts](src/lib/escritos/prompt.ts)) recibe el modelo elegido, el bloque
+"Datos del expediente" ([datos-causa.ts](src/lib/escritos/datos-causa.ts):
+tribunal, carátula, expediente, imputado y DNI desde `partes_caso`, fiscalía,
+delitos, perfil del abogado, fecha) y el contexto entero de la causa vía
+`buildContextoCaso` con mapa. Medido el 2026-09-04 sobre una causa real:
+**38 s, USD 0,092**, 2 búsquedas normativas y 1 consulta al repositorio.
+
+**La regla del dato faltante, tres veces.** El redactor NUNCA inventa un DNI,
+una fecha, una foja, un monto ni un nombre: donde falta, escribe
+`[COMPLETAR: qué]` y esa marca queda **literal en el texto y en el PDF**. El
+escrito sale firmado por el abogado y va a un portal judicial: un hueco visible
+es la salida correcta, el dato verosímil es el bug. Es la misma regla que rige
+la ficha ("el campo vacío se muestra vacío"). El detalle del escrito cuenta y
+lista las marcas, y "Marcar como presentado" está bloqueado hasta que no quede
+ninguna (el server lo rechaza igual). Para causas de PBA, cuyo código procesal
+no está en la base, las citas al procesal provincial van con `[VERIFICAR: ...]`.
+
+**El texto se persiste; el PDF no.** `escritos_generados.contenido` es
+markdown liviano (`# suma`, `## sección`, párrafos, `**negritas**`) y
+[render-pdf.ts](src/lib/escritos/render-pdf.ts) lo convierte con `pdf-lib`
+(JS puro, sin fuentes en disco: importa para el Dockerfile de Easypanel):
+Times 12, márgenes forenses, párrafos justificados con sangría, suma centrada,
+petitorio con sangría francesa, firma a la derecha y "Página N de M". Corregir
+una coma y volver a bajar no cuesta tokens. Las fuentes estándar sólo
+codifican WinAnsi (cubre el español entero); flechas y símbolos matemáticos se
+reemplazan en vez de dejar que el render tire.
+
+**La interfaz vive en la ficha** ([src/components/mis-casos/escritos/](src/components/mis-casos/escritos/)):
+el bloque "Escritos" lista lo generado para la causa; "Generar escrito" abre un
+diálogo de dos pasos —modelo (pestañas «Del estudio» / «Míos», buscador,
+categoría, filtro por el rol del estudio en la causa; «Nuevo modelo»,
+«Duplicar como propio», «¿Cuál conviene? Preguntale a LEXIE») y datos e
+instrucciones (qué del expediente se va a usar y qué falta, el perfil
+profesional editable, instrucciones, nivel del modelo)— y el escrito se abre
+en su detalle para corregirlo, bajar el PDF y marcarlo como presentado. El
+botón de LEXIE dispara el `CustomEvent` de window `lexie-abrir` con un
+mensaje precargado: el dock abre la ventana y el chat siembra el texto en el
+campo, **sin autoenviar** (misma regla que el dictado por voz). Cierra el
+diálogo antes, porque es modal (z-50) y LEXIE flota abajo (z-40).
+
+**LEXIE recomienda y, si no hay modelo, redacta y guarda.** Tres tools en
+[escritos-tools.ts](src/lib/agent/escritos-tools.ts): `buscar_modelos_escrito`
+y `leer_modelo_escrito` (lectura, cap 4) y `guardar_modelo_escrito` —**la
+primera tool de escritura de LEXIE**— en su propia familia con cap 1 por turno
+y en serie. El prompt le exige mostrar el texto antes y guardar sólo a pedido
+explícito; el `usuario_id` sale del contexto del servidor y el origen queda
+fijo en `lexie`. LEXIE no genera el escrito de la causa: manda al abogado al
+botón de la ficha, que es el que tiene todos los datos del expediente.
+
+**Sin la migración aplicada, lo que depende sólo del catálogo sigue andando:**
+`listarModelos` y `getPerfilProfesional` detectan "la tabla/columna no
+existe" y degradan con un `warn`; `POST .../escritos` sondea la tabla
+**antes** de llamar al modelo y devuelve 503, porque cobrar una redacción y no
+poder guardarla es el peor orden posible.
+
+Verificación (todo gratis salvo una redacción real de ~USD 0,09, que
+`--sin-modelo` saltea; no escribe nada en la base):
+
+```bash
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-escritos.ts --sin-modelo
+```
+
 ### LEXIE — `/api/lexie` (asistente global)
 
 LEXIE es el agente conversacional GLOBAL de la app: a diferencia del chat del
@@ -387,12 +497,16 @@ sobre requisa sin orden?").
   lado, así que un hilo en mal estado no se podía resetear y cada turno
   siguiente fallaba igual.
 
-**La v1 es de SOLO LECTURA.** Seis tools, ninguna escribe:
+**Es de SOLO LECTURA, con una única excepción.** Ocho tools de lectura:
 `mi_agenda`, `buscar_mis_casos`, `leer_caso`
-([lexie-tools.ts](src/lib/agent/lexie-tools.ts)) más `buscar_jurisprudencia` /
-`leer_jurisprudencia` y `buscar_documentos_legales`, reusadas tal cual. El
-system prompt le prohíbe decir que hizo algo que no hizo y le pide mandar al
-abogado a la sección correspondiente (Agenda, Bandeja, chat del caso).
+([lexie-tools.ts](src/lib/agent/lexie-tools.ts)), `buscar_jurisprudencia` /
+`leer_jurisprudencia` y `buscar_documentos_legales` reusadas tal cual, y
+`buscar_modelos_escrito` / `leer_modelo_escrito` sobre el catálogo de
+escritos. La novena, `guardar_modelo_escrito`, es la única que escribe (un
+modelo de escrito en la biblioteca del abogado, a pedido explícito; ver la
+sección de Escritos). El system prompt le prohíbe decir que hizo algo que no
+hizo y le pide mandar al abogado a la sección correspondiente (Agenda, Bandeja,
+chat del caso, botón Generar escrito).
 
 **El aislamiento entre abogados es la regla dura de esta feature.** En el chat
 del caso el `casoId` sale de la URL y ninguna tool tiene parámetro `caso_id`:
@@ -607,8 +721,8 @@ Response:
 Proyecto: `xvdlnevcvcsgxbngwliv` (región us-west-2, Postgres 17.6). RLS habilitada en todas las tablas; el server siempre accede con `service_role` key.
 
 **Tablas de tracking / usuario:**
-- `usuarios`: `id UUID, nombre UNIQUE, email, clerk_user_id, role (admin|user), limite_tokens_mensual=1.000.000, created_at`.
-- `ejecuciones`: `usuario_id FK, tipo (pre_analisis|analizar_caso|consulta_caso), modelo, input_tokens, output_tokens, total_tokens (GENERATED), costo_usd, latencia_ms, ejecutado_en, metadata jsonb`. Las ejecuciones con `metadata.refunded=true` se excluyen del consumo mensual.
+- `usuarios`: `id UUID, nombre UNIQUE, email, clerk_user_id, role (admin|user), limite_tokens_mensual=1.000.000, created_at` + el **perfil profesional** de la Fase 10 (`nombre_completo, matricula, domicilio_constituido, domicilio_electronico`, todos nullable).
+- `ejecuciones`: `usuario_id FK, tipo (pre_analisis|analizar_caso|consulta_caso|simular_mapa|simular_audiencia|lexie|generar_escrito), modelo, input_tokens, output_tokens, total_tokens (GENERATED), costo_usd, latencia_ms, ejecutado_en, metadata jsonb`. Las ejecuciones con `metadata.refunded=true` se excluyen del consumo mensual.
 - `casos`: la causa. Identidad + ficha + estrategia elegida. Las columnas de la
   **ficha** (`caratula`, `expediente_numero`, `organismo`, `secretaria`, `juez`,
   `fiscalia`, `delitos text[]`) son **todas nullable**; `estado_seguimiento` es el
@@ -616,7 +730,16 @@ Proyecto: `xvdlnevcvcsgxbngwliv` (región us-west-2, Postgres 17.6). RLS habilit
   la ficha. Ver la Fase 9 y la migración `20260822120000`.
 - `partes_caso`: personas de una causa (imputado, víctima, querellante, testigo).
   `es_cliente` es **ortogonal al rol**: en una querella el cliente es la víctima.
-  Sin datos de contacto hasta que se conteste la P1 de REPORTERIA.
+  Sin datos de contacto hasta que se conteste la P1 de REPORTERIA; el
+  `documento` (DNI) sí está desde la Fase 10, porque es identidad y el
+  encabezado de todo escrito lo pide.
+- `modelos_escrito`: modelos de escrito PROPIOS de cada abogado (`origen`
+  `abogado` | `lexie`), archivables. Los 50 del estudio NO están acá: viven en
+  `src/lib/escritos/catalogo-estudio.ts`.
+- `escritos_generados`: un escrito redactado para una causa (`contenido` en
+  markdown liviano, `estado` `borrador` | `presentado`, `modelo_id` como text
+  —slug o UUID—, `ejecucion_id` FK nullable). Con `usuario_id` redundante a
+  propósito: es el predicado de propiedad de cada escritura.
 - `eventos_caso`: eventos dentro de un caso (adjuntos, cambios de estado).
 - `conversaciones_caso`: conversaciones de chat por caso (máx. 1 activa por vez).
 - `mensajes_conversacion`: mensajes individuales de cada conversación (tipo `usuario` o `agente`).
@@ -807,8 +930,8 @@ plan completo, las decisiones tomadas y lo que queda explícitamente afuera
 mockup, autocompletado con IA e integración con portales judiciales).
 
 - 9.0 ✅ documentación sincerada contra la base.
-- 9.1 ⏳ migración `20260822120000_ficha_de_causa.sql` — **la corre Mateo a mano.
-  Hasta que se aplique, todo lo demás de esta fase devuelve 500.**
+- 9.1 ✅ migración `20260822120000_ficha_de_causa.sql` — **aplicada** (verificado
+  contra la base el 2026-09-04: las columnas de la ficha y `partes_caso` existen).
 - 9.2 ✅ `src/lib/casos/columnas.ts` + `PATCH /api/casos/[id]`.
 - 9.3 ✅ bloque de ficha en el detalle del caso, con formulario.
 - 9.4 ✅ `nombreCaso()` en los once consumidores + carátula al crear la causa.
@@ -874,5 +997,37 @@ organismo y ámbito intra/externo) queda **condicionado** a que el timeline se
 empiece a usar. Al 2026-08-22 hay 10 eventos de caso en toda la base, 8 creados
 por el sistema y 2 por un abogado, y cero adjuntos: el problema del timeline no
 es que le falten campos.
+
+### Fase 10 — Escritos judiciales
+
+Ver la sección "Escritos judiciales" de las API routes para el diseño.
+
+- 10.0 ✅ catálogo: `scripts/data/50-modelos-escritos-penales.md` → módulo generado.
+- 10.1 ✅ migración `20260904120000_escritos.sql` — **aplicada** por Mateo el
+  2026-09-04 y verificada contra la base (las dos tablas, las 5 columnas y el
+  CHECK de `ejecuciones` responden; los caminos de escritura —modelo propio,
+  modelo de LEXIE, perfil, escrito, evento con PDF en el bucket— se probaron
+  con datos de prueba borrados después). Si algún día se restaura un backup
+  anterior: el catálogo del estudio y la recomendación de LEXIE siguen
+  funcionando; generar devuelve 503 a propósito antes de gastar; guardar un
+  modelo propio y **todos los reads de `partes_caso` devuelven 500**.
+- 10.2 ✅ perfil profesional del abogado (`/api/perfil`) + DNI en `partes_caso`.
+- 10.3 ✅ redactor sobre el motor + PDF con `pdf-lib`.
+- 10.4 ✅ rutas de modelos, escritos, PDF y presentación.
+- 10.5 ✅ bloque "Escritos" en la ficha con los cuatro diálogos.
+- 10.6 ✅ LEXIE: recomienda del catálogo, redacta si no hay modelo y lo guarda
+  a pedido (`guardar_modelo_escrito`, su primera tool de escritura).
+
+Pendientes conocidos:
+- La interfaz **no se verificó en el navegador** (la app está detrás de Google
+  OAuth y no había sesión): pasa `tsc`, `eslint`, `next build --webpack`, un
+  render SSR de los componentes con datos de prueba, y la capa de datos entera
+  contra la base real. Primer QA manual: abrir una causa, «Generar escrito»,
+  elegir el modelo 2 (vista del legajo), revisar el paso 2, generar, bajar el
+  PDF, marcar presentado y ver el evento en el timeline.
+- Compartir un modelo propio con los otros dos abogados: hoy cada uno ve sólo
+  los suyos. Es una columna de visibilidad cuando alguien lo pida.
+- Los modelos del estudio se corrigen editando el `.md` y regenerando; no hay
+  UI para eso, a propósito.
 
 El plan detallado de las fases vive en la memoria del proyecto, no en el repo.

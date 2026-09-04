@@ -1,17 +1,20 @@
 "use client";
 import { useState } from "react";
 import type { Caso, EventoCaso, ParteCaso } from "@/lib/types";
+import type { EscritoGeneradoLista } from "@/lib/escritos/types";
 import { HeaderCaso } from "./header-caso";
 import { AnalisisOriginalColapsable } from "./analisis-original-colapsable";
 import { TimelineProcesal } from "./timeline-procesal";
 import { FichaCausa } from "./ficha/ficha-causa";
 import { PartesCausa } from "./ficha/partes-causa";
 import { AccesosRapidos } from "./ficha/accesos-rapidos";
+import { EscritosCausa } from "./escritos/escritos-causa";
 
 type Props = {
   caso: Caso;
   eventosIniciales: EventoCaso[];
   partesIniciales: ParteCaso[];
+  escritosIniciales: EscritoGeneradoLista[];
   /** Etapa procesal derivada del mapa en el server. */
   etapa: { label: string; nodoTitulo: string } | null;
   /** `true` si el caso ya tiene nodos de mapa procesal: congela el fuero. */
@@ -24,7 +27,12 @@ type Props = {
 //
 // Orden de la pantalla, de arriba abajo:
 //   header (nombre + badges) → accesos a las tres herramientas → ficha →
-//   partes → análisis original colapsable → timeline procesal.
+//   partes → escritos → análisis original colapsable → timeline procesal.
+//
+// Los escritos van después de las partes y antes del análisis porque son
+// trabajo del abogado sobre la causa (lo que va a presentar), no historia: el
+// flujo entero —modelo, datos, redacción, PDF, presentación— vive en ese
+// bloque, sin salir de la ficha (pedido textual de Gonzalo).
 //
 // La ficha va ANTES del análisis y del timeline porque es lo que identifica la
 // causa: hasta ahora lo primero que se veía después del título eran tres
@@ -33,12 +41,15 @@ export function DetalleCaso({
   caso: casoInicial,
   eventosIniciales,
   partesIniciales,
+  escritosIniciales,
   etapa,
   mapaInicializado,
 }: Props) {
   const [caso, setCaso] = useState<Caso>(casoInicial);
   const [eventos, setEventos] = useState<EventoCaso[]>(eventosIniciales);
   const [partes, setPartes] = useState<ParteCaso[]>(partesIniciales);
+  const [escritos, setEscritos] =
+    useState<EscritoGeneradoLista[]>(escritosIniciales);
 
   // El movimiento más reciente del expediente. Es lo que muestra la ficha como
   // "última actuación", en vez de `casos.actualizado_en`: esa columna la pisa
@@ -76,6 +87,14 @@ export function DetalleCaso({
         casoId={caso.id}
         partes={partes}
         onPartesChange={setPartes}
+      />
+
+      <EscritosCausa
+        caso={caso}
+        partes={partes}
+        escritos={escritos}
+        onEscritosChange={setEscritos}
+        onEventoNuevo={(ev) => setEventos((prev) => [...prev, ev])}
       />
 
       <AnalisisOriginalColapsable caso={caso} />

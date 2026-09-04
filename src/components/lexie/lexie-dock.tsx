@@ -55,6 +55,14 @@ export function LexieDock() {
   // resetear su estado desde un efecto, que es el patrón de cascading renders
   // que el lint del repo marca.
   const [hilo, setHilo] = useState(0);
+  // Un mensaje que otra pantalla quiere dejar escrito en el campo de LEXIE
+  // (por ejemplo "¿qué escrito me conviene?" desde la ficha de una causa).
+  // Va con un contador para que el mismo texto pedido dos veces se vuelva a
+  // sembrar: el chat compara el número, no el string. NUNCA se autoenvía —
+  // el abogado lo lee y decide, igual que con el dictado por voz.
+  const [precarga, setPrecarga] = useState<{ texto: string; n: number } | null>(
+    null,
+  );
 
   // Ctrl/⌘ + J abre y cierra, igual que antes.
   useEffect(() => {
@@ -66,6 +74,22 @@ export function LexieDock() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // `lexie-abrir`: cualquier componente puede abrir la ventana, con o sin un
+  // mensaje precargado. Es un CustomEvent de window y no un contexto de React
+  // a propósito: el dock vive en el layout raíz y quien lo dispara está en
+  // cualquier punto del árbol, muchas veces adentro de un diálogo modal.
+  useEffect(() => {
+    const onAbrir = (e: Event) => {
+      const detail = (e as CustomEvent<{ mensaje?: unknown }>).detail;
+      const mensaje =
+        typeof detail?.mensaje === "string" ? detail.mensaje : null;
+      if (mensaje) setPrecarga((p) => ({ texto: mensaje, n: (p?.n ?? 0) + 1 }));
+      setAbierto(true);
+    };
+    window.addEventListener("lexie-abrir", onAbrir);
+    return () => window.removeEventListener("lexie-abrir", onAbrir);
   }, []);
 
   const nuevaConversacion = useCallback(async () => {
@@ -92,7 +116,11 @@ export function LexieDock() {
           onCerrar={() => setAbierto(false)}
           onNuevaConversacion={() => void nuevaConversacion()}
         >
-          <LexieChat key={hilo} onOcupadaChange={setOcupada} />
+          <LexieChat
+            key={hilo}
+            onOcupadaChange={setOcupada}
+            precarga={precarga}
+          />
         </VentanaLexie>
       )}
       {/* La esfera es el botón de ABRIR: con el chat abierto no tiene función y

@@ -131,6 +131,7 @@ export async function POST(
       rol: parsed.data.rol,
       es_cliente: parsed.data.es_cliente,
       situacion_libertad: parsed.data.situacion_libertad ?? null,
+      documento: parsed.data.documento ?? null,
     })
     .select(COLS_PARTE)
     .single();
