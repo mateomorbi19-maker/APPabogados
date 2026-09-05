@@ -5,6 +5,7 @@ import type { FamiliaTools } from "@/lib/agent/motor";
 import type { AccionLexie } from "@/lib/lexie/acciones";
 import type { ContextoLexie, ResultadoToolLexie } from "@/lib/agent/lexie-tools";
 
+
 // El contrato que cumple cada DOMINIO de LEXIE (agenda, ficha, escritos,
 // correo). Existe para que los cuatro se puedan escribir por separado sin
 // tocar los archivos compartidos: run-lexie.ts, ejecutar-accion.ts,
@@ -36,10 +37,51 @@ export type CtxEjecucion = {
   usuarioId: string;
   nombre: string;
   clerkUserId: string;
-  conversacionId: string;
+  /** Sólo en el camino del botón; las tools no lo necesitan. */
+  conversacionId?: string;
   /** Resuelto a demanda: sólo las acciones de correo lo necesitan. */
   gmail: () => Promise<gmail_v1.Gmail | null>;
 };
+
+/** El contexto de ejecución cuando la confirmación llega por TEXTO (desde una tool). */
+export function ctxEjecucionDesdeTools(ctx: ContextoLexie): CtxEjecucion {
+  return {
+    usuarioId: ctx.usuarioId,
+    nombre: ctx.nombre,
+    clerkUserId: ctx.clerkUserId,
+    gmail: async () => ctx.gmail,
+  };
+}
+
+/**
+ * Ejecuta una pendiente confirmada por TEXTO: el mismo ejecutor que usa el
+ * botón, el mismo payload persistido, y la clave queda consumida para que el
+ * modelo no la repita en la misma vuelta. El tool_result le dice al modelo
+ * sólo lo que pasó; la tarjeta ya muestra el detalle.
+ */
+export async function ejecutarPorTexto(
+  ctx: ContextoLexie,
+  pendiente: AccionLexie,
+  dominio: DominioLexie,
+): Promise<ResultadoToolLexie> {
+  if (pendiente.clave) ctx.clavesConsumidas.add(pendiente.clave);
+  const r = await dominio.ejecutarPendiente(pendiente, ctxEjecucionDesdeTools(ctx));
+  const base: AccionLexie = r ?? {
+    ...pendiente,
+    estado: "error",
+    error: `No hay ejecutor para ${pendiente.tool}.`,
+  };
+  const accion: AccionLexie = { ...base, payload: undefined, confirmado_por: "texto" };
+  const contentJSON =
+    accion.estado === "ok"
+      ? JSON.stringify({ ok: true, resumen: accion.resumen, ...(accion.datos ?? {}) })
+      : JSON.stringify({
+          ok: false,
+          motivo: accion.error ?? accion.motivo ?? "No se pudo ejecutar.",
+          sugerencia: accion.sugerencia ?? "Contale al abogado qué pasó, sin adornos.",
+        });
+  return { contentJSON, accion };
+}
 
 export type DominioLexie = {
   nombre: string;
