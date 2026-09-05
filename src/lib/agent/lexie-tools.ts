@@ -5,11 +5,15 @@ import { buildContextoCaso } from "@/lib/casos/build-contexto-caso";
 import { casoEsDelUsuario, getEventosByUser } from "@/lib/agenda/queries";
 import {
   ahoraPartesAR,
+  DIAS_ABBR,
+  dowDe,
+  fmtHora,
+  isoAPartesAR,
   partesAIsoAR,
   sumarDias,
   type PartesFecha,
 } from "@/lib/agenda/tz-ar";
-import { TIPOS_EVENTO } from "@/lib/agenda/types";
+import { TIPOS_EVENTO, type EventoAgenda } from "@/lib/agenda/types";
 import type { gmail_v1 } from "@googleapis/gmail";
 import type { AccionLexie } from "@/lib/lexie/acciones";
 
@@ -130,14 +134,45 @@ export const LEXIE_TOOL_NAMES = {
 // con offset -03:00 (que se equivoca, y cuando se equivoca devuelve la agenda
 // de otro día sin que nadie lo note). El servidor traduce el rango a fechas
 // usando la hora de pared argentina.
-const RANGOS = [
+// Exportados porque `agenda_buscar_evento` (agenda-tools.ts) acepta los
+// mismos rangos: una sola lista para las dos tools.
+export const RANGOS = [
   "hoy",
   "manana",
   "proximos_7_dias",
   "proximos_30_dias",
   "esta_semana_laboral",
 ] as const;
-type Rango = (typeof RANGOS)[number];
+export type Rango = (typeof RANGOS)[number];
+
+const p2 = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Cuándo es un evento, en hora argentina y con día de semana:
+ * "mar 10/09/2026 10:00–11:00", "mar 10/09/2026 (todo el día)".
+ *
+ * Hasta la Fase 11 `mi_agenda` devolvía el ISO crudo tal como sale de
+ * Postgres —en UTC—, y una audiencia a las 22:00 figuraba al día siguiente.
+ * El modelo no tiene que convertir zonas horarias: se le da el texto que va a
+ * repetir. Vive acá y no en agenda-tools.ts porque ese módulo importa éste
+ * (RANGOS, el contexto) y el ciclo inverso reventaría en la carga.
+ */
+export function cuandoLegible(
+  e: Pick<EventoAgenda, "fecha_inicio" | "fecha_fin" | "todo_el_dia">,
+): string {
+  const i = isoAPartesAR(e.fecha_inicio);
+  const dia = `${DIAS_ABBR[dowDe(i)]} ${p2(i.d)}/${p2(i.mo + 1)}/${i.y}`;
+  if (e.todo_el_dia) return `${dia} (todo el día)`;
+  let s = `${dia} ${fmtHora(i.h, i.mi)}`;
+  if (e.fecha_fin) {
+    const f = isoAPartesAR(e.fecha_fin);
+    const mismoDia = f.y === i.y && f.mo === i.mo && f.d === i.d;
+    s += mismoDia
+      ? `–${fmtHora(f.h, f.mi)}`
+      : ` → ${DIAS_ABBR[dowDe(f)]} ${p2(f.d)}/${p2(f.mo + 1)} ${fmtHora(f.h, f.mi)}`;
+  }
+  return s;
+}
 
 function inicioDelDia(p: PartesFecha): PartesFecha {
   return { ...p, h: 0, mi: 0 };
@@ -289,15 +324,19 @@ export async function ejecutarToolLexie(
         // Un evento que empezó ayer y sigue hoy no aparece en "hoy". Con
         // audiencias y vencimientos —que son puntuales— no se nota; si algún
         // día hay eventos de varios días, hay que cambiar el filtro.
+        // `evento_id` es lo que las tools de escritura exigen: nunca se edita
+        // ni se borra por título. `cuando` va formateado en hora argentina con
+        // día de semana; `sincronizado_google` le dice al modelo si un cambio
+        // va a llegar al celular del abogado.
         eventos: eventos.map((e) => ({
+          evento_id: e.id,
           titulo: e.titulo,
           tipo: TIPOS_EVENTO[e.tipo]?.label ?? e.tipo,
           clase: e.clase,
           prioridad: e.prioridad,
-          cuando: e.todo_el_dia
-            ? `${e.fecha_inicio.slice(0, 10)} (todo el día)`
-            : e.fecha_inicio,
+          cuando: cuandoLegible(e),
           causa: e.nombre_caso ?? null,
+          sincronizado_google: !!e.google_calendar_event_id,
           completado: e.completado,
           descripcion: e.descripcion,
         })),
