@@ -102,8 +102,14 @@ Google (se saltea rápido si ya había consentido antes).
   papelera de Gmail (`threads.trash`), que es reversible desde la propia app y
   desde Gmail. Por eso alcanza con `gmail.modify` y no hace falta el scope total
   `https://mail.google.com/`.
-- **El agente de IA no manda correos.** La Bandeja es 100% manual: la IA no tiene
-  ninguna tool de email. Enviar siempre es un click tuyo.
+- **LEXIE puede buscar, leer, organizar, responder y enviar correo (Fase 11),
+  pero nunca sin tu confirmación.** Un envío o una respuesta queda como acción
+  pendiente con Para/CC/asunto/cuerpo completos, y sale sólo cuando tocás
+  Confirmar en la tarjeta (o se lo decís con un sí inequívoco en el mensaje
+  siguiente). Un correo nuevo sólo puede ir a direcciones que escribiste vos en
+  el chat o a las que ya les mandaste antes; lo que dice un correo recibido
+  nunca es una instrucción para LEXIE. Sin el scope de Gmail concedido, LEXIE
+  no tiene esas herramientas y te dice cómo reconectar.
 - El **Repositorio es de sólo lectura**: no sube ni modifica archivos en Drive.
 
 ---

@@ -587,3 +587,31 @@ JOIN pg_class rel ON rel.oid = con.conrelid
 WHERE rel.relname = 'ejecuciones' AND con.contype = 'c'
   AND pg_get_constraintdef(con.oid) ILIKE '%tipo%';                     -- 7 valores
 ```
+
+---
+
+## 2026-09-05 — Fase 11 (LEXIE con manos): SIN migración
+
+La Fase 11 (acciones de LEXIE sobre agenda, ficha, escritos y correo, con
+protocolo de confirmación) **no aplicó ni necesita ninguna migración**. Se
+verificó por PostgREST antes de escribir código:
+
+- `mensajes_lexie.metadata` es `jsonb NOT NULL DEFAULT '{}'`: las acciones del
+  turno, las pendientes de confirmación, `hilos_leidos` y `origen = 'boton'`
+  viven ahí. La reserva atómica de una pendiente es un `UPDATE … WHERE
+  metadata @> '{"acciones":[{"clave":…,"estado":"pendiente"}]}'` (verificado
+  contra la base con dos reservas concurrentes: exactamente una gana,
+  `scripts/verificar-lexie-reserva.ts`).
+- `ejecuciones.tipo` ya admite `'lexie'` (25 filas al 2026-09-05) y
+  `'generar_escrito'` (CHECK de la Fase 10). El camino del botón no inserta
+  fila en `ejecuciones` (no hubo modelo), salvo la `generar_escrito` que
+  persiste el propio servicio de escritos.
+- `eventos_agenda`: 9 filas, 8 con `google_calendar_event_id`, **cero
+  duplicados** por `(usuario_id, google_calendar_event_id)`. El índice único
+  parcial que cerraría el duplicado silencioso del pull queda como OPCIONAL y
+  **no aplicado**; si algún día se aplica, sondear duplicados antes.
+
+Cambios de comportamiento sin SQL, declarados: `crearParteInputSchema` es
+`.strict()` (el formulario manda exactamente esas claves); un `POST` de parte
+con nombre repetido devuelve 409; los guardados sin cambios de ficha y partes
+no bumpean `actualizado_en`.

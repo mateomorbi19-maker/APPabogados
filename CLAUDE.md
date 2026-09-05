@@ -66,6 +66,9 @@ scripts/
   verificar-motor.ts              # smoke del tool-use loop genérico
   construir-catalogo-escritos.ts  # data/50-modelos-escritos-penales.md → src/lib/escritos/catalogo-estudio.ts
   verificar-escritos.ts           # smoke de escritos (--sin-modelo saltea la redacción paga)
+  verificar-lexie-*.ts            # Fase 11: reserva atómica, agenda, ficha, escritos, correo, tarjetas (todo gratis)
+  verificar-*-servicio.ts         # Fase 11: los servicios extraídos de las rutas, contra la base real
+  verificar-gmail-texto.ts        # Fase 11: correo aplanado sin lo oculto (puro, sin red)
 
 legacy/                           # Sistema viejo (Express + index.html + n8n).
                                   # Apagado, queda por referencia histórica.
@@ -208,8 +211,12 @@ OAuth de Google que administra Clerk, igual que la Agenda (helper compartido en
 Sin scopes concedidos, las lecturas devuelven datos de ejemplo con `demo: true` y las
 escrituras 409. El HTML de cada correo se sanitiza server-side por allowlist y se
 renderiza en un `<iframe srcDoc>` con CSP propia y sin `allow-scripts`; las imágenes
-remotas se bloquean por defecto (tracking pixels). **La IA no tiene ninguna tool de
-email**: enviar siempre es una acción manual del abogado.
+remotas se bloquean por defecto (tracking pixels). **Desde la Fase 11 LEXIE sí tiene
+tools de correo** (buscar, leer, organizar, papelera, responder, enviar), pero nada
+sale sin que el abogado vea Para/CC/asunto/cuerpo completos y confirme, y nunca hay
+borrado permanente; ver la sección de LEXIE. Responder respeta `Reply-To` (arreglo
+de la Fase 11 que también corrige la Bandeja, que contestaba al `noreply` de los
+portales).
 
 ### Repositorio — `/api/repositorio/*` (jurisprudencia y doctrina)
 
@@ -459,14 +466,19 @@ mensaje precargado: el dock abre la ventana y el chat siembra el texto en el
 campo, **sin autoenviar** (misma regla que el dictado por voz). Cierra el
 diálogo antes, porque es modal (z-50) y LEXIE flota abajo (z-40).
 
-**LEXIE recomienda y, si no hay modelo, redacta y guarda.** Tres tools en
-[escritos-tools.ts](src/lib/agent/escritos-tools.ts): `buscar_modelos_escrito`
-y `leer_modelo_escrito` (lectura, cap 4) y `guardar_modelo_escrito` —**la
-primera tool de escritura de LEXIE**— en su propia familia con cap 1 por turno
-y en serie. El prompt le exige mostrar el texto antes y guardar sólo a pedido
-explícito; el `usuario_id` sale del contexto del servidor y el origen queda
-fijo en `lexie`. LEXIE no genera el escrito de la causa: manda al abogado al
-botón de la ficha, que es el que tiene todos los datos del expediente.
+**LEXIE recomienda, redacta, guarda y —desde la Fase 11— genera.** Cinco tools
+en [escritos-tools.ts](src/lib/agent/escritos-tools.ts): `buscar_modelos_escrito`
+y `leer_modelo_escrito` (lectura, cap 4); `guardar_modelo_escrito` y
+`actualizar_perfil_profesional` (escritura en serie, cap 2; el perfil sólo con
+datos que el abogado dictó en el chat); y `generar_escrito_causa` (familia
+propia, cap 1). La generación es SIEMPRE en dos pasos: el primer llamado es un
+**pre-vuelo gratis** ([generar-escrito.ts](src/lib/escritos/generar-escrito.ts):
+modelo, causa, datos que se usan, lo que saldrá como `[COMPLETAR]`, perfil
+incompleto, instrucciones exactas, costo y duración) que queda como acción
+pendiente, y el escrito se genera **sólo por el botón Confirmar de la tarjeta**,
+sin pasar por el modelo: 40-90 s no entran en un turno de LEXIE. El mismo
+servicio lo usa el botón de la ficha; la fila `generar_escrito` la persiste el
+servicio, así que no hay doble conteo. Marcar presentado sigue siendo manual.
 
 **Sin la migración aplicada, lo que depende sólo del catálogo sigue andando:**
 `listarModelos` y `getPerfilProfesional` detectan "la tabla/columna no
@@ -490,23 +502,96 @@ mañana?", "¿de qué se trata la causa de Ferreyra?", "¿qué jurisprudencia te
 sobre requisa sin orden?").
 
 - `GET /api/lexie` — saludo + hilo abierto. Lo llama la ventana al abrirse.
-- `POST /api/lexie` — un turno. Body `{ mensaje, nivel?, pathname? }`. `maxDuration = 120`.
+- `POST /api/lexie` — un turno del modelo (`{ mensaje, nivel?, pathname? }`) **o**
+  la confirmación/descarte de una acción pendiente por el botón de la tarjeta
+  (`{ confirmar_accion: clave }` / `{ descartar_accion: clave }`), exactamente
+  una de las tres. `maxDuration = 120`. Devuelve `acciones[]` y, en el camino
+  del botón, el par de mensajes que insertó.
 - `DELETE /api/lexie` — archiva la conversación activa. El próximo GET arranca
   una nueva. **Es la salida de emergencia que faltaba:**
   `conversaciones_lexie.archivada` se leía pero no se escribía desde ningún
   lado, así que un hilo en mal estado no se podía resetear y cada turno
   siguiente fallaba igual.
 
-**Es de SOLO LECTURA, con una única excepción.** Ocho tools de lectura:
-`mi_agenda`, `buscar_mis_casos`, `leer_caso`
+**Desde la Fase 11 LEXIE ACTÚA** (ver [PLAN_LEXIE_ACCIONES.md](PLAN_LEXIE_ACCIONES.md)).
+Lectura: `mi_agenda`, `buscar_mis_casos`, `leer_caso`
 ([lexie-tools.ts](src/lib/agent/lexie-tools.ts)), `buscar_jurisprudencia` /
-`leer_jurisprudencia` y `buscar_documentos_legales` reusadas tal cual, y
-`buscar_modelos_escrito` / `leer_modelo_escrito` sobre el catálogo de
-escritos. La novena, `guardar_modelo_escrito`, es la única que escribe (un
-modelo de escrito en la biblioteca del abogado, a pedido explícito; ver la
-sección de Escritos). El system prompt le prohíbe decir que hizo algo que no
-hizo y le pide mandar al abogado a la sección correspondiente (Agenda, Bandeja,
-chat del caso, botón Generar escrito).
+`leer_jurisprudencia`, `buscar_documentos_legales`, `buscar_modelos_escrito` /
+`leer_modelo_escrito`, `agenda_buscar_evento`, `ver_ficha_caso`, `correo_buscar`
+y `correo_leer`. Escritura, por DOMINIO ([lexie-dominio.ts](src/lib/agent/lexie-dominio.ts)
+es el contrato; cada dominio exporta sus familias, su ejecutor de pendientes y su
+tramo de prompt y manual, y los archivos compartidos no cambian al sumar una tool):
+
+| Dominio | Familias (cap por turno) | Tools |
+|---|---|---|
+| [agenda-tools.ts](src/lib/agent/agenda-tools.ts) | `agenda_lectura` 4 · `agenda_escritura` 3 · `agenda_eliminacion` 1 | buscar, crear, editar, eliminar evento |
+| [ficha-tools.ts](src/lib/agent/ficha-tools.ts) | `ficha_lectura` 4 · `ficha_escritura` 4 · `ficha_eliminacion` 1 | ver ficha, editar ficha, agregar/editar/eliminar parte |
+| [escritos-tools.ts](src/lib/agent/escritos-tools.ts) | `escritos` 4 · `escritos_escritura` 2 · `escritos_generacion` 1 | modelos, guardar modelo, perfil profesional, generar escrito |
+| [correo-tools.ts](src/lib/agent/correo-tools.ts) | `correo_lectura` 4 · `correo_organizar` 4 · `correo_envio` 1 | buscar, leer, organizar, papelera, responder, enviar |
+
+Las familias de correo se declaran sólo si `ctx.gmail` existe (resuelto una vez
+por turno en la ruta); sin scope, el modelo recibe cómo reconectar, nunca datos
+demo. `maxIterations` es 18.
+
+**La reversibilidad decide el gate, no el dominio.** Lo REVERSIBLE (crear o
+editar un evento, completar un campo vacío, agregar o editar una persona,
+archivar/destacar/leído, actualizar el perfil, guardar un modelo) se ejecuta
+directo y queda con tarjeta «Hecho». Lo IRREVERSIBLE o EXTERNO (enviar o
+responder correo, papelera, eliminar evento o parte, pisar un dato cargado,
+quitar un delito, cambiar el fuero) y lo COSTOSO (generar un escrito) queda
+**pendiente**, en familias con cap 1 cuando es irreversible.
+
+**El protocolo de confirmación** ([acciones.ts](src/lib/lexie/acciones.ts),
+[confirmacion.ts](src/lib/lexie/confirmacion.ts),
+[ejecutar-accion.ts](src/lib/lexie/ejecutar-accion.ts)):
+
+1. La tool valida todo, arma el **payload final normalizado por el servidor**
+   (para/cc resueltos, ISO con `-03:00`, diff campo a campo) y registra una
+   `AccionLexie` `pendiente` con `clave = tool:sha256(payload canónico)`.
+   Cambiar una coma es otra clave y otra confirmación.
+2. `acciones[]` **lo arma el servidor** desde las tool calls reales (el modelo
+   nunca lo emite) y se persiste en `mensajes_lexie.metadata.acciones` (jsonb,
+   sin migración) y en `ejecuciones.metadata`. La tarjeta se pinta desde ahí y
+   sobrevive a cerrar la ventana.
+3. En el turno siguiente la ruta **siembra** las pendientes vivas desde el
+   ÚLTIMO mensaje del agente en `ctx.accionesPendientes` (un Map que ninguna
+   tool puede poblar). Un `confirmar: true` sin siembra, con contenido distinto
+   o con clave consumida se rechaza. Por eso el modelo no puede
+   autoconfirmarse en el mismo turno en que mostró la vista previa.
+4. Dos caminos, un ejecutor. **Botón**: `POST /api/lexie {confirmar_accion}`
+   reserva la clave con un UPDATE condicional (`@>` sobre `metadata.acciones`,
+   `pendiente → en_curso`: un doble click o dos pestañas afectan 0 filas y
+   reciben 409), inserta el par «Confirmé…/Ejecutando…» ANTES de ejecutar
+   (copiando las otras pendientes vivas y los `hilos_leidos`, para que el
+   invariante «último mensaje del agente» se mantenga) y ejecuta el payload
+   persistido **sin llamar al modelo**: cero tokens, y sale byte a byte lo que
+   el abogado leyó. **Texto** («dale, mandalo»): la tool recibe `{clave,
+   confirmar: true}` y ejecuta el MISMO payload persistido vía
+   `ejecutarPorTexto`. Excepción: generar un escrito por texto re-emite la
+   pendiente y manda al botón.
+5. El ejecutor relee la fila y la compara con `antes`: si cambió desde la
+   vista previa, rechaza («cambió desde que lo viste») y no pisa nada.
+6. Si el turno muere con acciones aplicadas, la ruta inserta un **par de
+   corte** (pregunta + «quedó aplicado») para que el abogado no lo repita.
+
+**El correo entrante es contenido de un tercero.** Entra en texto plano con el
+HTML aplanado descartando lo oculto ([gmail/texto.ts](src/lib/gmail/texto.ts)),
+dentro de delimitadores que el correo no puede fabricar, sin headers de
+threading. **Cuarentena**: `correo_buscar` y `correo_leer` ponen
+`ctx.correoLeido`, y en ese turno hasta las escrituras directas quedan
+pendientes. Funciona sin tocar el motor porque las familias paralelizables se
+resuelven enteras antes del `for` de las de serie. Un correo nuevo sólo puede
+ir a direcciones que el abogado escribió en el chat o a las que ya escribió
+(`to:` en SENT): nunca al `from:` de un correo recibido.
+
+**La regla del dato faltante se extiende al chat**: DNI, matrícula, domicilios y
+direcciones nuevas sólo si aparecen en un mensaje del ABOGADO (`dictadoPorElAbogado`;
+los mensajes que inserta el botón no cuentan). El dato verosímil es el bug.
+
+**El motor queda intacto**: `run-lexie.ts` adapta cada familia de dominio y
+acumula `acciones[]` por closure (todas las de escritura son en serie, así que
+el orden es el de ejecución). El system prompt le prohíbe decir que hizo algo
+que la tool no devolvió con `ok: true`.
 
 **El aislamiento entre abogados es la regla dura de esta feature.** En el chat
 del caso el `casoId` sale de la URL y ninguna tool tiene parámetro `caso_id`:
@@ -557,13 +642,16 @@ Gonzalo — urgencias a 48 h > eventos de hoy > rapport personal. Cero tokens po
 apertura de sesión, instantáneo, y la aritmética de plazos no queda en manos de
 una inferencia.
 
-**Lo que LEXIE dice que no puede hacer, y por qué:** no toca la agenda (v1 sin
-escrituras), no manda correos (decisión de producto vigente), no calcula plazos
+**Lo que LEXIE dice que no puede hacer, y por qué:** no crea causas (nacen de
+un análisis, y es regla de Mateo), no marca escritos como presentados (certifica
+un acto del portal que no puede verificar), no toca el mapa procesal (eso es
+del chat del caso), no borra correo de forma permanente, no calcula plazos
 procesales (esos salen de una tabla por fuero que firma Gonzalo, que todavía no
-existe) y **avisa que la agenda que ve es parcial** — el pull de Google es
-update-only, así que un evento creado desde el celular no está en la app. Sin
-ese aviso, "no tenés nada" sería correcto respecto de la base y falso respecto
-de la realidad.
+existe: carga un vencimiento sólo con la fecha que el abogado le dicte) y
+**avisa que la agenda que ve es parcial** — el pull de Google es update-only,
+así que un evento creado desde el celular no está en la app. Sin ese aviso,
+"no tenés nada" sería correcto respecto de la base y falso respecto de la
+realidad.
 
 **Trampa de PostgREST — el insert por LOTES no respeta los DEFAULT.** En un
 `.insert([a, b])`, PostgREST arma UNA sentencia con la **unión de las claves de
@@ -655,7 +743,10 @@ El tool-use loop, sin dominio. Estaba duplicado casi verbatim entre
 `run-agent.ts` y `run-agent-consulta.ts` y las dos copias ya habían divergido;
 LEXIE habría sido la tercera. Hoy lo usan `run-agent-consulta.ts` (chat del
 caso) y `run-lexie.ts`. **`run-agent.ts` (`/analizar-caso`) todavía tiene su
-propio loop** — migrarlo es deuda pendiente.
+propio loop** — migrarlo es deuda pendiente. Desde la Fase 11 LEXIE tiene
+quince familias entre lectura y escritura, todas declaradas por dominio
+([lexie-dominio.ts](src/lib/agent/lexie-dominio.ts)) y adaptadas en
+`run-lexie.ts`; el motor no cambió.
 
 La unidad de presupuesto es la **familia** de tools, no la tool suelta: "10
 búsquedas" y "6 consultas al repositorio" son topes de grupo. Cada familia
@@ -854,6 +945,17 @@ Medición al 2026-08-26, LEXIE con el manual de la app incorporado: prefijo de
 **~5.930** tokens (system + 6 tools), escritos a caché en el primer turno del
 hilo y leídos a 0,1x en los siguientes. Un turno de apertura sale ~USD 0,027.
 
+Medición al 2026-09-05, LEXIE con manos (Fase 11): system **6.565** tokens
+(manual 1.647 + los cuatro tramos de dominio ~1.350 + el resto) y **15.187**
+con las 26 tools declaradas (con Gmail; sin el scope, las 6 de correo no se
+declaran y baja a ~13.400). Salió de 24.980 después de un recorte de las
+descripciones: cada tool repetía el protocolo de confirmación que el system ya
+explica una vez. Dos reglas medidas para no volver a inflarlo: en una
+`description` de tool cada carácter no ASCII (tildes, «») cuesta ~5 tokens
+porque el JSON lo escapa como secuencia unicode (en el system no pasa), y una
+tool medida sola arrastra ~525 tokens fijos de overhead de la API. Se mide con
+`scripts/medir-prefijo-lexie.ts` (gratis, por dominio y por tool).
+
 ## Convenciones
 
 - **Commits en español** prefijados por sub-paso (`"5.1: drill-down del historial..."`).
@@ -1029,5 +1131,59 @@ Pendientes conocidos:
   los suyos. Es una columna de visibilidad cuando alguien lo pida.
 - Los modelos del estudio se corrigen editando el `.md` y regenerando; no hay
   UI para eso, a propósito.
+
+### Fase 11 — LEXIE con manos
+
+Plan y decisiones en [PLAN_LEXIE_ACCIONES.md](PLAN_LEXIE_ACCIONES.md). Pedido
+de Mateo (5/9/2026): que LEXIE sea «un Jarvis dentro de la app» —correo,
+agenda, escritos y ficha— menos crear causas.
+
+- 11.0 ✅ plan aprobado y sondeos de la base (jsonb en `mensajes_lexie`, sin
+  duplicados en la agenda, perfil profesional vacío en los tres).
+- 11.1 ✅ infraestructura de acciones y confirmación (motor intacto).
+- 11.2 ✅ tarjetas en la ventana, botón Confirmar/Cancelar, `lexie-mutacion`,
+  Toaster global único.
+- 11.3 ✅ servicios extraídos de las rutas sin cambiar su contrato:
+  `agenda/servicio.ts`, `casos/escritura.ts` + `casos/propiedad.ts` (un solo
+  `casoEsDelUsuario`), `gmail/texto.ts` + `gmail/respuesta.ts`,
+  `escritos/generar-escrito.ts`. Cambios visibles declarados: Reply-To al
+  responder, buzón `TODOS`, 404/410 de Google cuentan como borrado,
+  `crearParteInputSchema` strict, partes duplicadas 409, guardados sin cambios
+  no bumpean `actualizado_en`.
+- 11.4 ✅ agenda · 11.5 ✅ ficha y partes · 11.6 ✅ escritos · 11.7/11.8 ✅ correo.
+- 11.9 ✅ prompt consolidado, docs, build.
+
+Verificación (todo gratis; la única generación real va detrás de
+`--con-escrito` en `verificar-lexie-escritos.ts` y `verificar-escritos-servicio.ts`):
+
+```bash
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie.ts --sin-modelo
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie-reserva.ts
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie-agenda.ts
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie-ficha.ts
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie-escritos.ts
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-lexie-correo.ts
+npx tsx scripts/verificar-lexie-tarjetas.tsx
+npx tsx scripts/verificar-gmail-texto.ts
+```
+
+Pendientes conocidos:
+- **QA manual en el navegador** (la app está detrás de Google OAuth): abrir
+  LEXIE, «agendame una reunión mañana a las 10», ver la tarjeta y la Agenda
+  refrescarse detrás de la ventana; «cargale la carátula a la causa X»;
+  «generame la vista del legajo para X» → Confirmar → escrito abierto desde el
+  link; «leé el último mail del fiscal y contestale que vamos» → vista previa
+  → Confirmar → Enviados. Y un «dale, después vemos» que NO envíe.
+- Una generación real por el botón (`--con-escrito`) para cerrar el camino
+  pago de punta a punta.
+- Lautaro no tiene ningún scope de Google: LEXIE le explica cómo reconectar;
+  las familias de correo no se le declaran.
+- Índice único parcial en `eventos_agenda (usuario_id, google_calendar_event_id)`:
+  opcional, no aplicado (hoy no hay duplicados).
+- Un turno mixto de `ficha_editar` (vacíos + sobrescrituras) registra una
+  sola acción (la pendiente); lo aplicado va en el tool_result.
+- El prefijo cacheado es 2,5x el de la Fase 8 (15.187 contra 5.930) por las 26
+  tools. Las tools de escritura están a 70-100 tokens del piso de su schema;
+  lo que queda por recortar, si hace falta, es el manual de la app (1.647).
 
 El plan detallado de las fases vive en la memoria del proyecto, no en el repo.

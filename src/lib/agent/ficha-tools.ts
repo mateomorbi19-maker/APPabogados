@@ -156,19 +156,21 @@ function hrefCausa(casoId: string): string {
 // Tools (lo que ve el modelo)
 // ————————————————————————————————————————————————————————————————
 
-const PROTOCOLO_CONFIRMACION =
-  "La primera llamada devuelve `requiere_confirmacion: true` con una vista previa y una `clave`; mostrásela al abogado y, si confirma, volvé a llamarla en tu PRÓXIMO mensaje con {clave, confirmar: true} y ningún otro campo.";
-
+// Las descripciones son cortas a propósito: el protocolo de confirmación, la
+// cuarentena, el aislamiento y la regla de los datos dictados ya están en el
+// system («CÓMO ACTUÁS»), y cada tool los pagaba de nuevo en el prefijo
+// cacheado (Fase 11.9). Acá va sólo lo que el modelo necesita para llamarla
+// bien y que el system no dice.
+// `clave` y `confirmar` viajan en cuatro tools: cada palabra acá se paga
+// cuatro veces en el prefijo.
 const PROPIEDADES_CONFIRMACION: Record<string, Record<string, unknown>> = {
   clave: {
     type: "string",
-    description:
-      "SOLO para confirmar: la clave que devolvió la llamada anterior con requiere_confirmacion. Con clave no hace falta repetir el resto.",
+    description: "Clave de la vista previa a confirmar.",
   },
   confirmar: {
     type: "boolean",
-    description:
-      "true SOLO en un mensaje POSTERIOR a la vista previa, y sólo si el abogado confirmó. El servidor rechaza un confirmar que no haya pasado antes por la vista previa.",
+    description: "true al confirmar, en un mensaje posterior.",
   },
 };
 
@@ -176,14 +178,13 @@ export const fichaLecturaTools: Anthropic.Tool[] = [
   {
     name: FICHA_TOOL_NAMES.ver,
     description:
-      "Muestra la ficha COMPACTA de una causa del abogado: el nombre, los ocho campos de la ficha (carátula, expediente, organismo, secretaría, juez, fiscalía, delitos, fuero) con la lista `vacios` de los que faltan, si el mapa procesal ya está armado (y por lo tanto el fuero está congelado), las personas de la causa con su `parte_id`, rol, si es el cliente, situación de libertad y si tiene DNI cargado (nunca el número), y los escritos generados con sus marcas pendientes. Usala SIEMPRE antes de editar la ficha o tocar una persona: de acá salen los `parte_id` y sabés qué está vacío. Cuesta ~200 tokens; para el relato, el análisis o la estrategia usá `leer_caso`. Sin `caso_id` usa la causa que el abogado tiene abierta en pantalla, si hay una.",
+      "Ficha compacta de una causa: los ocho campos con la lista `vacios`, si el mapa procesal está armado (fuero congelado), las personas con su `parte_id` (nunca el número de DNI) y los escritos generados. Llamala antes de editar la ficha o tocar una persona. Para el relato o la estrategia usá `leer_caso`.",
     input_schema: {
       type: "object",
       properties: {
         caso_id: {
           type: "string",
-          description:
-            "UUID de la causa (del contexto o de buscar_mis_casos). Omitilo para usar la causa que el abogado tiene en pantalla.",
+          description: "UUID de la causa. Omitilo para usar la que el abogado tiene en pantalla.",
         },
       },
     },
@@ -194,40 +195,31 @@ export const fichaEscrituraTools: Anthropic.Tool[] = [
   {
     name: FICHA_TOOL_NAMES.editar,
     description:
-      "Completa o corrige la ficha de una causa que YA EXISTE (no crea causas). Campos: caratula, expediente_numero, organismo, secretaria, juez, fiscalia (texto; null para vaciar), delitos_agregar y delitos_quitar (listas: los delitos se suman o se sacan, la lista nunca se reemplaza) y fuero (nacion | pba | federal). Mandá SOLO lo que el abogado te dictó; nunca datos sacados del relato de la causa. Completar un campo VACÍO o agregar un delito se aplica directo. SOBRESCRIBIR un valor ya cargado, vaciarlo, quitar un delito o cambiar el fuero pide confirmación: la herramienta aplica lo directo y deja lo otro pendiente con el diff «antes → después» y una `clave` (el resultado dice `aplicados` y `pendiente`). " +
-      PROTOCOLO_CONFIRMACION +
-      " Si el mapa procesal ya está armado, el fuero no se puede cambiar desde acá: relatá el rechazo tal cual.",
+      "Completa o corrige la ficha de una causa existente. Devuelve `aplicados` y, si algo pisa un valor cargado, `pendiente`.",
     input_schema: {
       type: "object",
       properties: {
-        caso_id: {
-          type: "string",
-          description: "UUID de la causa, el que devolvió ver_ficha_caso.",
-        },
+        caso_id: { type: "string" },
         campos: {
           type: "object",
-          description: "Sólo los campos que cambian.",
           properties: {
-            caratula: { type: ["string", "null"], description: "Carátula oficial («Pérez, Juan s/ robo»)." },
-            expediente_numero: { type: ["string", "null"], description: "Número de expediente tal como lo dictó el abogado." },
-            organismo: { type: ["string", "null"], description: "Juzgado o tribunal." },
+            caratula: { type: ["string", "null"] },
+            expediente_numero: { type: ["string", "null"] },
+            organismo: { type: ["string", "null"] },
             secretaria: { type: ["string", "null"] },
             juez: { type: ["string", "null"] },
             fiscalia: { type: ["string", "null"] },
             delitos_agregar: {
               type: "array",
               items: { type: "string" },
-              description: "Delitos a sumar a la lista actual (los que ya están se ignoran).",
             },
             delitos_quitar: {
               type: "array",
               items: { type: "string" },
-              description: "Delitos a sacar de la lista actual (se comparan sin tildes ni mayúsculas). Pide confirmación.",
             },
             fuero: {
               type: "string",
               enum: [...FUEROS],
-              description: "nacion (CPPN), pba (CPP Buenos Aires) o federal (CPPF). Siempre pide confirmación.",
             },
           },
         },
@@ -238,26 +230,23 @@ export const fichaEscrituraTools: Anthropic.Tool[] = [
   {
     name: FICHA_TOOL_NAMES.parteAgregar,
     description:
-      "Carga una persona en una causa: nombre, rol (imputado | victima | querellante | denunciante | testigo | otro), si es el cliente del estudio (es_cliente es independiente del rol: en una querella el cliente es la víctima), situación de libertad (sólo imputados) y DNI (documento). Se aplica directo. El DNI se guarda SOLO si el abogado lo escribió en este hilo; si no, la persona se carga sin DNI y el resultado lo avisa. Si ya hay una persona con ese nombre en la causa devuelve `duplicada` con su `parte_id`: corregila con parte_editar en vez de cargarla dos veces. Llamá ver_ficha_caso antes para no duplicar.",
+      "Carga una persona en una causa y devuelve su `parte_id`. Si el nombre ya está, devuelve `duplicada` con ese `parte_id`.",
     input_schema: {
       type: "object",
       properties: {
-        caso_id: { type: "string", description: "UUID de la causa." },
-        nombre: { type: "string", description: "Apellido y nombre como los dictó el abogado." },
+        caso_id: { type: "string" },
+        nombre: { type: "string" },
         rol: { type: "string", enum: [...ROLES] },
         es_cliente: {
           type: "boolean",
-          description: "true si es el cliente del estudio. Default false.",
+          description: "Cliente del estudio.",
         },
         situacion_libertad: {
           type: ["string", "null"],
           enum: [...SITUACIONES, null],
-          description: "Sólo para imputados; null si no aplica o no se sabe.",
+          description: "Sólo imputados.",
         },
-        documento: {
-          type: "string",
-          description: "DNI u otro documento, sólo si el abogado lo escribió en el hilo.",
-        },
+        documento: { type: "string", description: "DNI." },
         ...PROPIEDADES_CONFIRMACION,
       },
       required: ["caso_id", "nombre", "rol"],
@@ -266,14 +255,12 @@ export const fichaEscrituraTools: Anthropic.Tool[] = [
   {
     name: FICHA_TOOL_NAMES.parteEditar,
     description:
-      "Corrige una persona ya cargada en una causa: nombre, rol, es_cliente, situacion_libertad o documento (DNI; null para vaciarlo). Necesita el `parte_id` de ver_ficha_caso, nunca el nombre. Mandá en `cambios` SOLO lo que cambia. Se aplica directo y devuelve antes/después, salvo que pise un DNI ya cargado: ahí pide confirmación. " +
-      PROTOCOLO_CONFIRMACION +
-      " El DNI nuevo se guarda sólo si el abogado lo escribió en este hilo.",
+      "Corrige una persona ya cargada, por su `parte_id`; devuelve antes/después. Pisar un DNI cargado queda `pendiente`.",
     input_schema: {
       type: "object",
       properties: {
-        caso_id: { type: "string", description: "UUID de la causa." },
-        parte_id: { type: "string", description: "UUID de la persona, de ver_ficha_caso." },
+        caso_id: { type: "string" },
+        parte_id: { type: "string" },
         cambios: {
           type: "object",
           properties: {
@@ -295,12 +282,12 @@ export const fichaEliminacionTools: Anthropic.Tool[] = [
   {
     name: FICHA_TOOL_NAMES.parteEliminar,
     description:
-      "Quita una persona de una causa. SIEMPRE pide confirmación: la primera llamada devuelve `requiere_confirmacion: true` con quién es (nombre, rol, si es el cliente) y una `clave`; mostráselo al abogado y, si confirma, volvé a llamarla en tu PRÓXIMO mensaje con {clave, confirmar: true} y nada más. Necesita el `parte_id` de ver_ficha_caso. No se deshace desde la app: la fila borrada queda en la tarjeta para recargarla a mano.",
+      "Quita una persona de una causa, por su `parte_id`. Siempre queda `pendiente` la primera vez; no se deshace desde la app.",
     input_schema: {
       type: "object",
       properties: {
-        caso_id: { type: "string", description: "UUID de la causa." },
-        parte_id: { type: "string", description: "UUID de la persona, de ver_ficha_caso." },
+        caso_id: { type: "string" },
+        parte_id: { type: "string" },
         ...PROPIEDADES_CONFIRMACION,
       },
       required: ["caso_id", "parte_id"],
@@ -1566,21 +1553,17 @@ async function ejecutarParteEliminar(accion: AccionLexie, ctx: CtxEjecucion): Pr
 // Prompt, manual y dominio
 // ————————————————————————————————————————————————————————————————
 
+// Lo específico del dominio que el system no dice. Las dos velocidades, el
+// protocolo de confirmación, la cuarentena y «nunca inventes un DNI» ya están
+// en «CÓMO ACTUÁS»; acá van el flujo, lo que NO se hace y qué decir al cierre.
 export const PROMPT_FICHA =
-  "FICHA DE CAUSA Y PERSONAS. La ficha es la identidad del expediente: carátula, número de expediente, organismo (juzgado o tribunal), secretaría, juez, fiscalía, delitos y fuero, más las personas de la causa (imputado, víctima, querellante, denunciante, testigo; con rol, si es el cliente, situación de libertad y DNI). " +
-  "Son columnas de una causa que YA EXISTE: toda causa nace con la ficha vacía, así que «crear», «armar» o «cargar» la ficha de una causa es COMPLETARLA. Vos NO creás causas: si el abogado te nombra una que no está entre las suyas, decíselo y mandalo a Nuevo análisis. " +
-  "EL FLUJO: (1) `ver_ficha_caso` PRIMERO, siempre, aunque creas saber cómo está: te dice qué campos están vacíos, el `parte_id` de cada persona y si el fuero se puede tocar (sin caso_id usa la causa que el abogado tiene en pantalla). " +
-  "(2) Completar un campo VACÍO es directo: `ficha_editar` lo escribe y te devuelve `aplicados`. " +
-  "(3) SOBRESCRIBIR un valor cargado, o vaciarlo con null, pide confirmación: la herramienta aplica lo directo y te devuelve `requiere_confirmacion: true` con el diff «antes → después» de lo que quedó pendiente; mostrale ese diff al abogado y, si confirma, llamala en tu próximo mensaje con {clave, confirmar: true}. " +
-  "(4) Los delitos se AGREGAN o se QUITAN (`delitos_agregar` / `delitos_quitar`), nunca se reemplaza la lista: agregar es directo, quitar pide confirmación. " +
-  "(5) El fuero SIEMPRE pide confirmación, porque de él depende la plantilla del mapa procesal; y si el mapa ya está armado no se puede cambiar desde acá (se reinicia el mapa desde el Mapa procesal, que borra el progreso): relatá el rechazo tal cual, sin insistir. " +
-  "(6) Personas: `parte_agregar` es directo; si ya hay alguien con ese nombre te devuelve su `parte_id` y lo corregís con `parte_editar`, que también es directo salvo que pise un DNI ya cargado. `parte_eliminar` siempre pide confirmación. Nunca cargues dos veces a la misma persona ni toques una persona por nombre: usá el `parte_id` de `ver_ficha_caso`. " +
-  "DATOS: el DNI (o cualquier número de documento) se guarda SOLO si el abogado lo escribió en este hilo; si te lo pide con un número que no escribió él, la herramienta carga la persona sin DNI y vos se lo decís en una línea. NUNCA completes la ficha con datos sacados del relato de la causa, del análisis o de un correo, aunque el relato mencione un juzgado o un nombre y aunque el abogado te diga «sacalo del relato»: el dato lo dicta él, escribiéndolo en el hilo. Si no lo tenés, el campo queda vacío y se lo decís. " +
-  "`titulo` y el estado de seguimiento no se editan desde acá. " +
-  "AL TERMINAR: una línea con qué cargaste o corregiste y que lo ve en Mis casos → la causa → bloque «Ficha» (o bloque «Partes» si fue una persona).";
+  "FICHA DE CAUSA Y PERSONAS. La ficha (carátula, expediente, organismo —juzgado o tribunal—, secretaría, juez, fiscalía, delitos, fuero; null vacía un campo) y las personas son columnas de una causa que YA EXISTE: toda causa nace con la ficha vacía, así que «crear» o «armar» la ficha es COMPLETARLA. " +
+  "FLUJO: `ver_ficha_caso` PRIMERO: de ahí salen los vacíos, el `parte_id` de cada persona y si el fuero se puede tocar. Los delitos se agregan o se quitan, nunca se reemplaza la lista. El fuero pide confirmación siempre y con el mapa procesal armado no se cambia desde acá: relatá el rechazo tal cual. " +
+  "NO HACÉS: completar la ficha con datos del relato, del análisis o de un correo, ni aunque te digan «sacalo del relato» —el dato lo escribe el abogado en el hilo—; cargar un DNI que él no escribió (la herramienta lo descarta; decíselo en una línea); editar el título o el estado de seguimiento. " +
+  "AL TERMINAR: una línea con qué cargaste y que lo ve en Mis casos → la causa → bloque «Ficha» (o «Partes»).";
 
 export const MANUAL_FICHA =
-  "LO QUE LEXIE CARGA EN LA FICHA se ve al instante en Mis casos → la causa: los campos en el bloque «Ficha de la causa» (los que siguen vacíos muestran el botón «Cargar»), las personas en el bloque «Partes» con su rol y el badge de situación de libertad, y la carátula nueva pasa a ser el nombre de la causa en toda la app. La tarjeta de la acción en la ventana de LEXIE deja el link a la causa.";
+  "Lo que LEXIE carga en la ficha se ve al instante en Mis casos → la causa (bloques «Ficha de la causa» y «Partes»); una carátula nueva pasa a ser el nombre de la causa en toda la app. La tarjeta de la acción en la ventana de LEXIE deja el link a la causa.";
 
 export const DOMINIO_FICHA: DominioLexie = {
   nombre: "ficha",

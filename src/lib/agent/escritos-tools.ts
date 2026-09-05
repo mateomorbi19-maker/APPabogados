@@ -41,7 +41,6 @@ import {
 } from "@/lib/escritos/generar-escrito";
 import {
   CATEGORIAS_ESCRITO,
-  CATEGORIA_ESCRITO_LABEL,
   esUuid,
   ORIGEN_MODELO_LABEL,
   ROLES_SUGERIDOS,
@@ -105,33 +104,29 @@ export const ESCRITOS_TOOL_NAMES = {
   generar: "generar_escrito_causa",
 } as const;
 
-const CATEGORIAS_DESC = CATEGORIAS_ESCRITO.map(
-  (c) => `${c} (${CATEGORIA_ESCRITO_LABEL[c]})`,
-).join(", ");
-
+// Las descripciones son cortas a propósito: van en el prefijo cacheado de
+// LEXIE y se pagan en cada apertura de hilo. Lo que el system ya dice (cómo
+// se confirma, qué no se inventa) no se repite acá.
 export const escritosLecturaTools: Anthropic.Tool[] = [
   {
     name: ESCRITOS_TOOL_NAMES.buscar,
     description:
-      "Busca en el catálogo de modelos de escritos judiciales: los 50 del estudio (aceptación de cargo, excarcelación, eximición, prisión domiciliaria, nulidades, prescripción, sobreseimiento, probation, apelación, casación, REF, libertad condicional, etc.) más los modelos propios del abogado. Usala cuando pregunte qué escrito presentar, cómo se pide algo, o qué modelo usar, y para conseguir el `modelo_id` que después le pasás a generar_escrito_causa. Devuelve título, suma, cuándo se presenta y para qué rol está pensado. Sin `consulta` devuelve el catálogo entero resumido (50+ filas): preferí buscar por tema.",
+      "Busca en el catálogo de modelos de escritos judiciales (los 50 del estudio más los propios del abogado). Devuelve modelo_id, número, título, suma, cuándo se presenta y rol. Sin `consulta` devuelve el catálogo entero: preferí buscar por tema.",
     input_schema: {
       type: "object",
       properties: {
         consulta: {
           type: "string",
-          description:
-            "Tema o nombre del escrito, en pocas palabras ('excarcelación', 'nulidad allanamiento', 'apelación procesamiento'). Sin tildes ni mayúsculas hace falta.",
+          description: "Tema o nombre del escrito ('excarcelación', 'nulidad allanamiento').",
         },
         categoria: {
           type: "string",
           enum: [...CATEGORIAS_ESCRITO],
-          description: `Acotar a una categoría: ${CATEGORIAS_DESC}.`,
         },
         rol: {
           type: "string",
           enum: ["defensor", "querellante"],
-          description:
-            "Rol del estudio en la causa. Filtra los modelos pensados para el otro lado (una denuncia no es un escrito de la defensa).",
+          description: "Rol del estudio en la causa; filtra los del otro lado.",
         },
       },
     },
@@ -139,14 +134,13 @@ export const escritosLecturaTools: Anthropic.Tool[] = [
   {
     name: ESCRITOS_TOOL_NAMES.leer,
     description:
-      "Abre UN modelo de escrito completo: cuerpo tipo con sus placeholders, base normativa orientativa y las claves del estudio. Usala cuando el abogado quiera ver cómo es el modelo o pregunte qué tiene que acompañar. El `modelo_id` sale de buscar_modelos_escrito: no lo inventes.",
+      "Abre un modelo completo: cuerpo tipo con placeholders, base normativa orientativa y claves del estudio. Usala para mostrárselo al abogado o decirle qué acompañar.",
     input_schema: {
       type: "object",
       properties: {
         modelo_id: {
           type: "string",
-          description:
-            "Id del modelo tal como lo devolvió buscar_modelos_escrito (un slug como 'excarcelacion' o un UUID si es propio del abogado).",
+          description: "Tal como lo devolvió buscar_modelos_escrito.",
         },
       },
       required: ["modelo_id"],
@@ -158,44 +152,32 @@ export const escritosEscrituraTools: Anthropic.Tool[] = [
   {
     name: ESCRITOS_TOOL_NAMES.guardar,
     description:
-      "Guarda un modelo de escrito NUEVO en la biblioteca del abogado, redactado por vos, para cuando el catálogo no tiene lo que hace falta. Sólo cuando el abogado te lo pidió EXPLÍCITAMENTE después de ver el texto: nunca lo guardes por iniciativa propia ni antes de mostrárselo. El cuerpo es un escrito TIPO: donde va un dato de la causa escribí un placeholder entre dobles llaves ({{IMPUTADO}}, {{NRO_CAUSA}}, {{FECHA_HECHO}}), no un dato inventado. Queda marcado como redactado por LEXIE, el abogado lo puede editar o archivar desde Generar escrito, y el `modelo_id` que devuelve sirve para generar_escrito_causa.",
+      "Guarda en la biblioteca del abogado un modelo NUEVO redactado por vos; sólo a pedido explícito tras mostrarle el texto.",
     input_schema: {
       type: "object",
       properties: {
-        titulo: {
-          type: "string",
-          description: "Nombre corto del modelo ('Solicitud de arresto domiciliario por enfermedad').",
-        },
+        titulo: { type: "string" },
         suma: {
           type: "string",
-          description: "La suma en mayúsculas con la que arranca el escrito ('SOLICITA PRISIÓN DOMICILIARIA.').",
+          description: "En mayúsculas.",
         },
         cuerpo: {
           type: "string",
-          description:
-            "El cuerpo tipo, en párrafos separados por línea en blanco, con placeholders {{ASI}} donde va cada dato de la causa. Mínimo 20 caracteres.",
+          description: "Placeholders {{ASI}} donde va cada dato de la causa; nada inventado.",
         },
         categoria: {
           type: "string",
           enum: [...CATEGORIAS_ESCRITO],
-          description: `Una de: ${CATEGORIAS_DESC}. Default 'otro'.`,
         },
-        cuando: {
-          type: "string",
-          description: "En qué momento procesal se presenta.",
-        },
-        base_normativa: {
-          type: "string",
-          description: "Normas que lo sostienen. Orientativas.",
-        },
+        cuando: { type: "string" },
+        base_normativa: { type: "string" },
         claves: {
           type: "string",
-          description: "Qué no puede faltar al presentarlo (documentación a acompañar, pedidos en subsidio).",
+          description: "Qué acompañar.",
         },
         rol_sugerido: {
           type: "string",
           enum: [...ROLES_SUGERIDOS],
-          description: "Para quién está pensado. Default 'ambos'.",
         },
       },
       required: ["titulo", "suma", "cuerpo"],
@@ -204,33 +186,24 @@ export const escritosEscrituraTools: Anthropic.Tool[] = [
   {
     name: ESCRITOS_TOOL_NAMES.perfil,
     description:
-      "Carga o corrige los datos profesionales del abogado que van en el encabezado y la firma de TODO escrito: nombre completo (cómo firma), matrícula (tomo y folio), domicilio constituido y domicilio electrónico. Se guardan una vez y sirven para todas las causas. Usala cuando el pre-vuelo de generar_escrito_causa diga que el perfil está incompleto, o cuando el abogado te pida cargarlos o corregirlos. SÓLO con datos que el abogado ESCRIBIÓ en este hilo: un valor que no dictó se descarta y el resultado te lo avisa; nunca lo inventes ni lo completes de memoria. Completar un campo vacío se ejecuta directo. Pisar un dato ya cargado devuelve requiere_confirmacion con el antes y el después; si el abogado confirma, volvé a llamarla en tu PRÓXIMO mensaje con {clave, confirmar: true}. Mandá sólo los campos que cambian.",
+      "Carga o corrige los datos del encabezado y la firma de todo escrito. Usala si el pre-vuelo de generar_escrito_causa avisa que el perfil está incompleto o si el abogado te los dicta; sólo con valores escritos por él en este hilo. Confirmable al pisar un dato cargado: queda pendiente con el antes y el después; luego {clave, confirmar:true}.",
     input_schema: {
       type: "object",
       properties: {
-        nombre_completo: {
-          type: "string",
-          description: "Cómo firma, tal como lo dictó ('Dr. Mateo Morbiducci').",
-        },
+        nombre_completo: { type: "string" },
         matricula: {
           type: "string",
-          description: "Tomo y folio como se escriben ('T° 123 F° 456 C.P.A.C.F.').",
+          description: "Tomo y folio ('T° 123 F° 456').",
         },
-        domicilio_constituido: {
-          type: "string",
-          description: "Domicilio constituido, completo.",
-        },
-        domicilio_electronico: {
-          type: "string",
-          description: "Domicilio electrónico (CUIT/CUIL o el que use el portal del fuero).",
-        },
+        domicilio_constituido: { type: "string" },
+        domicilio_electronico: { type: "string" },
         clave: {
           type: "string",
-          description: "Sólo para confirmar una pendiente: la clave que te devolvió esta misma herramienta.",
+          description: "Clave de la pendiente.",
         },
         confirmar: {
           type: "boolean",
-          description: "Sólo junto con `clave`, en el mensaje SIGUIENTE al de la vista previa, cuando el abogado dijo que sí.",
+          description: "Sólo con clave, en el mensaje siguiente.",
         },
       },
     },
@@ -241,28 +214,25 @@ export const escritosGeneracionTools: Anthropic.Tool[] = [
   {
     name: ESCRITOS_TOOL_NAMES.generar,
     description:
-      "Genera el escrito de UNA causa a partir de un modelo, adaptado al expediente (tribunal, carátula, número, imputado y DNI, fiscalía, delitos, firma del abogado) y al contexto de la causa, y lo deja como borrador en el bloque Escritos de la ficha. SIEMPRE son dos pasos. El primer llamado es un PRE-VUELO GRATIS: devuelve requiere_confirmacion con qué datos del expediente se van a usar, qué va a salir como [COMPLETAR: …], si al abogado le falta el perfil profesional, las instrucciones exactas, el costo (~USD 0,09) y la duración (40-90 segundos). Mostráselo tal cual y decile que confirme con el BOTÓN de la tarjeta: la generación corre sólo desde ese botón, y si la confirmás por texto con {clave, confirmar: true} el servidor te la rechaza y te lo recuerda. Cuesta plata: no la llames para probar ni sin que el abogado haya pedido el escrito. El `modelo_id` sale de buscar_modelos_escrito (slug del estudio o UUID propio); el `caso_id`, del contexto o de buscar_mis_casos, y si el abogado está parado en una causa podés omitirlo.",
+      "Prepara el escrito de una causa desde un modelo, adaptado al expediente, como borrador en la ficha. Cuesta plata: sólo si el abogado lo pidió. El primer llamado es un pre-vuelo gratis que queda pendiente (datos usados, huecos [COMPLETAR: …], perfil, costo, duración). La genera SÓLO el botón de la tarjeta: por texto el servidor la rechaza.",
     input_schema: {
       type: "object",
       properties: {
         caso_id: {
           type: "string",
-          description:
-            "UUID de la causa. Si el abogado está parado en una causa (PANTALLA ACTUAL) y no dice otra, omitilo: se usa ésa.",
+          description: "Omitilo si está parado en la causa.",
         },
         modelo_id: {
           type: "string",
-          description:
-            "Id del modelo tal como lo devolvió buscar_modelos_escrito o guardar_modelo_escrito.",
+          description: "De buscar_modelos_escrito o guardar_modelo_escrito.",
         },
         instrucciones: {
           type: "string",
-          description:
-            "Lo que el abogado pidió para este escrito en particular (qué enfatizar, qué acompañar, un pedido en subsidio). Opcional, hasta 4000 caracteres. Van al redactor tal cual: no agregues nada que él no haya dicho.",
+          description: "Lo que pidió el abogado, tal cual. Hasta 4000 caracteres.",
         },
         clave: {
           type: "string",
-          description: "Sólo para confirmar una pendiente por texto (el servidor la va a rechazar y mandar al botón).",
+          description: "Clave de la pendiente.",
         },
         confirmar: { type: "boolean" },
       },
@@ -1113,18 +1083,20 @@ const CAP_ESCRITOS = 4;
 const CAP_ESCRITOS_ESCRITURA = 2;
 const CAP_ESCRITOS_GENERACION = 1;
 
+// Lo que el system no dice de este dominio: el orden hechos → catálogo →
+// recomendación, que la generación es un pre-vuelo pendiente que sólo dispara
+// el botón, y cómo se redacta un modelo cuando el catálogo no alcanza.
 export const PROMPT_ESCRITOS =
-  "ESCRITOS JUDICIALES: RECOMENDAR, GENERAR Y REDACTAR. Cuando el abogado pregunte qué escrito presentar, qué modelo usar, cómo se pide algo, o te pida el escrito de una causa, seguí este orden: " +
-  "(1) entendé la causa —si no la tenés a la vista, abrila con `leer_caso`—: el rol del estudio (defensa o querella), la situación de libertad del imputado, la etapa procesal y lo último que pasó; " +
-  "(2) buscá en el catálogo con `buscar_modelos_escrito` (filtrá por el rol de la causa) y recomendá UNO o dos modelos, con el número y el nombre exactos y una línea de por qué ése ahora; si conviene, abrilo con `leer_modelo_escrito` para decirle qué tiene que acompañar; " +
-  "(3) para generar el escrito adaptado a la causa usá `generar_escrito_causa` con el modelo_id y el caso_id (si está parado en la causa, podés omitir el caso_id). El primer llamado es un pre-vuelo GRATIS que te devuelve qué datos del expediente se van a usar, qué va a salir como [COMPLETAR: …] y si al abogado le falta el perfil profesional: mostráselo TAL CUAL y decile que confirme con el botón de la tarjeta (tarda hasta 90 segundos y cuesta unos centavos). La generación corre sólo desde ese botón: aunque te diga que sí por texto, no la confirmes vos, mandalo al botón. Si le faltan la matrícula, los domicilios o cómo firma, ofrecé cargarlos antes con `actualizar_perfil_profesional` SOLO con los datos que él te dicte. Nunca inventás un dato del expediente ni del perfil: el hueco [COMPLETAR: …] es la salida correcta, y él lo completa a mano en la ficha antes de presentar. " +
-  "PERFIL PROFESIONAL: `actualizar_perfil_profesional` carga nombre completo (la firma), matrícula, domicilio constituido y domicilio electrónico, una vez y para todas las causas. Completar un campo vacío se ejecuta directo; pisar uno ya cargado pide confirmación con el antes y el después. Un valor que el abogado no escribió en este hilo se descarta: si el resultado te lo avisa, pedile el dato, no lo completes de memoria. " +
-  "SI EL CATÁLOGO NO TIENE LO QUE HACE FALTA: decilo, y ofrecé redactarle vos el escrito tipo acá mismo. Si acepta, redactalo con las mismas reglas del estudio: suma en mayúsculas, objeto, hechos, fundamentos, petitorio numerado, reservas; sin inventar un solo dato de la causa —donde va un dato escribí un placeholder entre dobles llaves ({{IMPUTADO}}, {{FECHA_HECHO}}) o la marca [COMPLETAR: qué]—; artículos verificados con `buscar_documentos_legales` y jurisprudencia sólo del repositorio. " +
-  "Después de mostrárselo, ofrecé guardarlo como modelo en su biblioteca con `guardar_modelo_escrito`. Guardalo SOLO si te lo pide explícitamente, y decí que lo guardaste únicamente si la herramienta te devolvió ok:true. Queda en Generar escrito → pestaña «Míos», desde ahí lo puede editar o archivar, y con el modelo_id que te devuelve podés generar el escrito de la causa en el mismo hilo.";
+  "ESCRITOS JUDICIALES. Si el abogado pregunta qué escrito presentar o pide el de una causa: " +
+  "(1) la causa (`leer_caso` si no la ves): rol del estudio, libertad del imputado, etapa, último acto; " +
+  "(2) `buscar_modelos_escrito` por rol, y recomendá uno o dos modelos con número y nombre exactos y por qué ése ahora; " +
+  "(3) `generar_escrito_causa`: el pre-vuelo es gratis y queda pendiente; mostráselo y que confirme con el botón de la tarjeta (40-90 s, unos centavos); nunca lo confirmes vos por texto. " +
+  "Si le falta matrícula, domicilios o firma, ofrecé cargarlos con `actualizar_perfil_profesional`, sólo con lo que él dicte. Los [COMPLETAR: …] los llena él en la ficha. " +
+  "Si el catálogo no cubre el caso, decilo y ofrecé redactar el escrito tipo acá (suma en mayúsculas, objeto, hechos, fundamentos, petitorio numerado, reservas; placeholders {{ASI}} en cada dato de la causa; artículos verificados con `buscar_documentos_legales`, jurisprudencia sólo del repositorio); " +
+  "guardalo con `guardar_modelo_escrito` sólo si lo pide tras verlo.";
 
 export const MANUAL_ESCRITOS =
-  "ESCRITOS Y PERFIL DESDE LEXIE. El escrito que generás con `generar_escrito_causa` queda como borrador en Mis casos → la causa → bloque «Escritos»; la tarjeta de la acción trae el link que lo abre directo en su detalle. Ahí el abogado lo corrige a mano —las marcas [COMPLETAR: …] quedan literales en el texto y el detalle las cuenta—, baja el PDF con «Descargar PDF» y, cuando ya lo presentó en el portal judicial, lo marca «Presentado» (guarda el PDF definitivo en el timeline). Marcarlo presentado sigue siendo manual y de él: vos no lo hacés. " +
-  "Los datos que cargás con `actualizar_perfil_profesional` son los mismos que pide el paso 2 de Generar escrito; quedan en el perfil y se pueden corregir desde ese mismo paso en cualquier causa.";
+  "El escrito generado queda como borrador en Mis casos → la causa → bloque «Escritos» (la tarjeta trae el link). Ahí el abogado lo corrige, baja el PDF y lo marca «Presentado» cuando lo subió al portal: eso es de él, no tuyo. El perfil profesional también se corrige desde el paso 2 de Generar escrito.";
 
 export const DOMINIO_ESCRITOS: DominioLexie = {
   nombre: "escritos",

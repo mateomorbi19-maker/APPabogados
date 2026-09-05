@@ -105,40 +105,41 @@ const HREF_AGENDA = "/dashboard/agenda";
 const DURACION_DEFAULT_MIN = 60;
 const MAX_CANDIDATOS = 25;
 
-const TIPOS_DESC = TIPOS_EVENTO_VALUES.map(
-  (t) => `${t} (${TIPOS_EVENTO[t].label})`,
-).join(", ");
-
 // ============================================================================
 // Declaración de las tools
 // ============================================================================
+//
+// Las descripciones son deliberadamente cortas (sub-paso 11.9): entran en el
+// prefijo cacheado de LEXIE y se pagan en cada apertura de hilo de los tres
+// abogados. El protocolo de confirmación, la cuarentena de correo, la
+// desambiguación y "no inventes datos" ya están en «CÓMO ACTUÁS» del system
+// prompt; acá va sólo lo que el modelo necesita para llamar bien a CADA tool.
 
-const PROTOCOLO_CONFIRMACION =
-  "Cuando devuelva requiere_confirmacion: true, mostrale al abogado la vista previa completa y esperá; si confirma, volvé a llamarla en tu PRÓXIMO mensaje con {clave, confirmar: true} y ningún otro campo.";
+const DESC_CLAVE = "Clave de la pendiente a confirmar.";
+const DESC_CONFIRMAR = "true sólo al confirmar una pendiente.";
+const DESC_EVENTO_ID = "UUID del evento.";
+const DESC_CASO_ID = "UUID de la causa (contexto o buscar_mis_casos).";
 
 export const agendaLecturaTools: Anthropic.Tool[] = [
   {
     name: AGENDA_TOOL_NAMES.buscar,
     description:
-      "Busca eventos y tareas en la agenda del abogado para identificar UNO por su evento_id antes de editarlo o eliminarlo, o para contestar «¿cuándo es la audiencia de Pérez?». Buscá por texto (palabras del título o la descripción), por rango o por causa; sin rango mira 60 días para atrás y 60 para adelante. Devuelve candidatos con evento_id, cuándo (hora argentina, con día de semana), tipo, clase, causa y si está en Google Calendar. Si hay más de un candidato, preguntale al abogado cuál: nunca elijas vos. Sólo ve lo cargado desde la app.",
+      "Busca eventos y tareas por texto, rango o causa (sin rango, ±60 días). Devuelve candidatos con evento_id, cuándo (hora argentina, día de semana), tipo, clase, causa y si está en Google.",
     input_schema: {
       type: "object",
       properties: {
         texto: {
           type: "string",
-          description:
-            "Palabras del título o la descripción ('audiencia perez', 'reunión'). Sin tildes ni mayúsculas hace falta. Máximo 120 caracteres.",
+          description: "Palabras del título o la descripción. Máximo 120 caracteres.",
         },
         rango: {
           type: "string",
           enum: [...RANGOS],
-          description:
-            "Acotar a un período. Sin rango se buscan ±60 días alrededor de hoy.",
+          description: "Acotar a un período.",
         },
         caso_id: {
           type: "string",
-          description:
-            "UUID de la causa para ver sólo sus eventos. Sale de la lista de causas del contexto o de buscar_mis_casos.",
+          description: DESC_CASO_ID,
         },
       },
     },
@@ -149,44 +150,37 @@ export const agendaEscrituraTools: Anthropic.Tool[] = [
   {
     name: AGENDA_TOOL_NAMES.crear,
     description:
-      "Crea un EVENTO (cita con hora: audiencia, reunión, presentación, visita) o una TAREA (pendiente por día, sin hora) en la agenda del abogado; un evento se sincroniza además con su Google Calendar. Mandá la fecha como 'YYYY-MM-DD' y la hora como 'HH:MM' en hora argentina de pared: el timestamp lo arma el servidor. Se ejecuta directo (es reversible: después se edita o se elimina) y devuelve evento_id, cuándo quedó y si llegó a Google. Dos excepciones devuelven requiere_confirmacion: que ya exista un evento igual ese día (mismo título, causa y hora) o que en este mensaje hayas leído correo. " +
-      PROTOCOLO_CONFIRMACION +
-      " El tipo vencimiento_procesal sólo con una fecha que el abogado haya DICTADO: vos no calculás plazos, y si no dijo la fecha se la pedís. Antes de agendar, mirá mi_agenda para avisarle si le pisa otra cosa a esa hora.",
+      "Crea un evento (cita con hora, va a Google Calendar) o una tarea (pendiente del día, sin hora ni Google). Fecha 'YYYY-MM-DD' y hora 'HH:MM' de pared argentina; el ISO lo arma el servidor. Devuelve evento_id, cuándo y google_synced. Directo; si ya hay uno igual ese día queda pendiente. Un vencimiento_procesal sólo con la fecha que el abogado dictó.",
     input_schema: {
       type: "object",
       properties: {
         titulo: {
           type: "string",
-          description:
-            "Título corto y reconocible ('Audiencia Pérez', 'Presentar excarcelación López'). Máximo 300 caracteres.",
+          description: "Corto y reconocible.",
         },
         clase: {
           type: "string",
           enum: [...CLASES_EVENTO_VALUES],
-          description:
-            "'evento' es una cita con hora (va a Google); 'tarea' es un pendiente por día, sin hora ni Google.",
         },
         tipo: {
           type: "string",
           enum: [...TIPOS_EVENTO_VALUES],
-          description: `Uno de: ${TIPOS_DESC}.`,
         },
         fecha: {
           type: "string",
-          description: "Día en hora argentina, formato 'YYYY-MM-DD'.",
+          description: "'YYYY-MM-DD'.",
         },
         hora: {
           type: "string",
-          description:
-            "Hora de inicio 'HH:MM' (24 h, hora argentina). Obligatoria para un evento salvo todo_el_dia: true. Se ignora en una tarea.",
+          description: "'HH:MM'. Obligatoria en un evento salvo todo_el_dia.",
         },
         duracion_min: {
           type: "integer",
-          description: "Duración en minutos. Default 60. Sólo eventos con hora.",
+          description: "Minutos. Default 60.",
         },
         todo_el_dia: {
           type: "boolean",
-          description: "Evento de todo el día (sin hora). Una tarea siempre lo es.",
+          description: "Evento sin hora.",
         },
         prioridad: {
           type: "string",
@@ -195,25 +189,22 @@ export const agendaEscrituraTools: Anthropic.Tool[] = [
         },
         caso_id: {
           type: "string",
-          description:
-            "UUID de la causa a la que se asocia, si corresponde. Sale del contexto o de buscar_mis_casos; no lo inventes.",
+          description: DESC_CASO_ID,
         },
         descripcion: {
           type: "string",
-          description: "Detalle visible en la tarjeta del evento. Máximo 5000 caracteres.",
         },
         notas: {
           type: "string",
-          description: "Notas internas (sólo eventos). Máximo 5000 caracteres.",
+          description: "Notas internas (sólo eventos).",
         },
         clave: {
           type: "string",
-          description: "Sólo para confirmar una pendiente de este mismo hilo.",
+          description: DESC_CLAVE,
         },
         confirmar: {
           type: "boolean",
-          description:
-            "true SOLO en un mensaje posterior a un requiere_confirmacion, y sólo si el abogado confirmó.",
+          description: DESC_CONFIRMAR,
         },
       },
       required: ["titulo", "clase", "tipo", "fecha"],
@@ -222,46 +213,41 @@ export const agendaEscrituraTools: Anthropic.Tool[] = [
   {
     name: AGENDA_TOOL_NAMES.editar,
     description:
-      "Modifica un evento o tarea existente: título, fecha, hora, duración, tipo, prioridad, causa asociada, descripción, notas, o marcarlo completado. Siempre por evento_id (de mi_agenda o agenda_buscar_evento), nunca por título. Mandá en `cambios` SOLO lo que cambia; el resto se conserva (si sólo cambia la fecha, se mantienen la hora y la duración). La clase (evento/tarea) no se puede cambiar. Se ejecuta directo y devuelve antes y después; si el evento estaba en Google, el cambio se refleja allá y pisa lo que se haya editado desde el celular. Para sacar de la vista algo que ya pasó o ya se hizo, preferí completado: true antes que eliminarlo. Si en este mensaje leíste correo, devuelve requiere_confirmacion en vez de ejecutar. " +
-      PROTOCOLO_CONFIRMACION,
+      "Modifica un evento o tarea por evento_id (de mi_agenda o agenda_buscar_evento). En `cambios` va sólo lo que cambia; lo demás se conserva; la clase no se cambia. Directo; devuelve antes y después. Si estaba en Google, pisa lo editado desde el celular. completado: true es la alternativa suave a eliminar.",
     input_schema: {
       type: "object",
       properties: {
         evento_id: {
           type: "string",
-          description: "UUID del evento, tal como lo devolvió mi_agenda o agenda_buscar_evento.",
+          description: DESC_EVENTO_ID,
         },
         cambios: {
           type: "object",
-          description: "Sólo los campos que cambian.",
+          description: "Sólo lo que cambia.",
           properties: {
             titulo: { type: "string" },
-            fecha: { type: "string", description: "'YYYY-MM-DD' (hora argentina)." },
-            hora: { type: "string", description: "'HH:MM' de inicio. Convierte un evento de todo el día en uno con hora." },
-            duracion_min: { type: "integer", description: "Nueva duración en minutos." },
+            fecha: { type: "string", description: "'YYYY-MM-DD', hora argentina." },
+            hora: { type: "string", description: "'HH:MM'." },
+            duracion_min: { type: "integer", description: "Minutos." },
             todo_el_dia: { type: "boolean" },
             tipo: { type: "string", enum: [...TIPOS_EVENTO_VALUES] },
             prioridad: { type: "string", enum: [...PRIORIDADES_VALUES] },
             caso_id: {
               type: ["string", "null"],
-              description: "UUID de la causa, o null para desasociarla.",
+              description: "UUID, o null para desasociar.",
             },
             descripcion: { type: ["string", "null"] },
             notas: { type: ["string", "null"] },
-            completado: {
-              type: "boolean",
-              description: "true para marcarlo hecho; la alternativa suave a eliminar.",
-            },
+            completado: { type: "boolean" },
           },
         },
         clave: {
           type: "string",
-          description: "Sólo para confirmar una pendiente de este mismo hilo.",
+          description: DESC_CLAVE,
         },
         confirmar: {
           type: "boolean",
-          description:
-            "true SOLO en un mensaje posterior a un requiere_confirmacion, y sólo si el abogado confirmó.",
+          description: DESC_CONFIRMAR,
         },
       },
       required: ["evento_id"],
@@ -273,24 +259,21 @@ export const agendaEliminacionTools: Anthropic.Tool[] = [
   {
     name: AGENDA_TOOL_NAMES.eliminar,
     description:
-      "Elimina un evento o tarea de la agenda, y de Google Calendar si estaba sincronizado. Es IRREVERSIBLE: la primera vez devuelve requiere_confirmacion con una vista previa (título, cuándo con día de semana, causa, si está en Google). " +
-      PROTOCOLO_CONFIRMACION +
-      " Siempre por evento_id, nunca por título. Antes de proponer eliminar, ofrecé marcarlo completado con agenda_editar_evento: es la alternativa suave. Si Google no puede borrarlo, tampoco se borra de la app (para no dejar un evento fantasma en el celular): en ese caso proponé marcarlo completado.",
+      "Elimina un evento o tarea por evento_id (de mi_agenda o agenda_buscar_evento), también de Google Calendar si estaba sincronizado. Confirmable: queda pendiente con vista previa; {clave, confirmar: true} en tu próximo mensaje la ejecuta. Si Google no puede borrarlo, tampoco se borra de la app: la alternativa es agenda_editar_evento con completado: true.",
     input_schema: {
       type: "object",
       properties: {
         evento_id: {
           type: "string",
-          description: "UUID del evento, tal como lo devolvió mi_agenda o agenda_buscar_evento.",
+          description: DESC_EVENTO_ID,
         },
         clave: {
           type: "string",
-          description: "Sólo para confirmar la pendiente que el abogado ya vio.",
+          description: DESC_CLAVE,
         },
         confirmar: {
           type: "boolean",
-          description:
-            "true SOLO en un mensaje posterior al requiere_confirmacion, y sólo si el abogado confirmó.",
+          description: DESC_CONFIRMAR,
         },
       },
       required: ["evento_id"],
@@ -1537,22 +1520,21 @@ const CAP_AGENDA_LECTURA = 4;
 const CAP_AGENDA_ESCRITURA = 3;
 const CAP_AGENDA_ELIMINACION = 1;
 
+// Lo específico del dominio que el system no dice. Reversibilidad,
+// cuarentena, desambiguación y «nunca digas que hiciste» ya están en
+// «CÓMO ACTUÁS»; los plazos, en «PLAZOS PROCESALES».
 export const PROMPT_AGENDA =
-  "AGENDA: BUSCAR, DESAMBIGUAR, MUTAR, RELATAR. Podés crear, mover, completar y eliminar eventos y tareas de la agenda del abogado. El orden es siempre el mismo: " +
-  "(1) identificá el evento por su `evento_id`: lo devuelven `mi_agenda` y `agenda_buscar_evento` (la agenda del contexto NO trae ids, así que para editar o eliminar siempre pasás por una de las dos); nunca editás ni borrás por título, y si «la audiencia de Pérez» devuelve más de un candidato, preguntá cuál (con fecha y hora) antes de tocar nada; " +
-  "(2) mutá con la herramienta que corresponde: `agenda_crear_evento` (directo), `agenda_editar_evento` (directo, devuelve antes y después) o `agenda_eliminar_evento` (siempre pide confirmación); " +
-  "(3) relatá el resultado con la fecha COMPLETA y el día de semana tal como te la devolvió la herramienta («queda para el martes 10/09 a las 10:00»), no la recalcules ni la abrevies. " +
-  "FECHAS: mandás fecha 'YYYY-MM-DD' y hora 'HH:MM' en hora argentina; el servidor arma el resto. Si el abogado dice «el martes» o «la semana que viene», resolvé el día con la fecha de hoy que tenés en el contexto y decíselo con el número («el martes 10/09»). Si no dijo la hora de un evento, preguntala. " +
-  "VENCIMIENTOS: un `vencimiento_procesal` se carga SOLO con la fecha que el abogado dictó (día y mes en su mensaje). Vos no calculás plazos —ni «5 días desde la notificación» ni «vence el lunes»—: si no la dijo, pedísela. La herramienta lo rechaza igual. " +
-  "DUPLICADOS: si ya hay un evento igual ese día, la creación vuelve como pendiente con el existente; decíselo y no lo crees de nuevo por tu cuenta. " +
-  "ELIMINAR: es irreversible y pide confirmación con la vista previa. Antes de proponerlo, ofrecé marcarlo completado (`agenda_editar_evento` con completado: true): si el evento ya pasó o ya se hizo, eso es lo que el abogado suele querer. Si el evento está en Google y Google no lo puede borrar, no se borra tampoco de la app; en ese caso ofrecé completarlo. " +
-  "GOOGLE: decí «queda en Agenda, sincronizado con tu Google Calendar» SOLO si la herramienta devolvió google_synced: true. Si devolvió false, decí que quedó en la app y repetí el motivo que te dio (sin Google vinculado, falta el permiso de calendario, las tareas no van a Google, o Google falló). Nunca digas que lo agendaste en su Google si no fue así. " +
-  "Al editar un evento que está en Google, avisale que el cambio pisa lo que haya tocado desde el celular.";
+  "AGENDA: BUSCAR, DESAMBIGUAR, MUTAR, RELATAR. El `evento_id` lo devuelven `mi_agenda` y `agenda_buscar_evento`; la agenda del contexto NO trae ids. " +
+  "Relatá el resultado con la fecha completa y el día de semana tal como te la devolvió la herramienta («queda para el martes 10/09 a las 10:00»), sin recalcularla. " +
+  "FECHAS: «el martes» o «la semana que viene» se resuelven con la fecha de hoy del contexto, y se lo decís con el número. Si no dijo la hora de un evento, preguntala. Si le pisa otra cosa a esa hora, avisale. " +
+  "VENCIMIENTOS: sólo con la fecha que el abogado dictó; si no la dijo, pedísela. " +
+  "ELIMINAR: antes de proponerlo, ofrecé marcarlo completado; si ya pasó o ya se hizo, eso es lo que suele querer. " +
+  "GOOGLE: decí «sincronizado con tu Google Calendar» SOLO si la herramienta devolvió google_synced: true; si no, quedó en la app y repetí el motivo que te dio. " +
+  "Si editás algo que está en Google, avisale que pisa lo que haya tocado desde el celular.";
 
 export const MANUAL_AGENDA =
-  "AGENDA (dónde se ve lo que hiciste). Todo lo que creás o editás aparece en el menú «Agenda», agrupado por día, con filtros por rango (Hoy, Semana, Mes, Todo), por clase (eventos o tareas) y por causa. " +
-  "Lo que creás desde acá se sincroniza con Google Calendar exactamente igual que lo que el abogado carga desde la sección: los eventos con hora van a su calendario; las tareas quedan sólo en la app. " +
-  "Marcar completado no borra: el evento queda tachado en la lista, y con la casilla de la tarjeta vuelve a pendiente. Para ver lo que él cargó directamente en Google desde el celular, tiene que abrir Google Calendar: eso no te llega.";
+  "AGENDA (dónde se ve lo que hiciste): menú «Agenda», agrupado por día, con filtros por rango, clase y causa. " +
+  "Marcar completado no borra: queda tachado, y la casilla de la tarjeta lo vuelve a pendiente.";
 
 export const DOMINIO_AGENDA: DominioLexie = {
   nombre: "agenda",

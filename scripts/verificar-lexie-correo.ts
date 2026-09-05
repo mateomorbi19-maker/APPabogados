@@ -400,11 +400,20 @@ async function main() {
       json(directo).ok === false && String(json(directo).motivo).includes("Google"),
       "una llamada directa sin Gmail devuelve cómo reconectar, no datos demo",
     );
+    // Desde el recorte del prefijo (11.9) el prompt del dominio ya no repite la
+    // cuarentena ni el protocolo de confirmación (viven en el system): afirma
+    // lo que SOLO él dice — buzón TODOS, Reply-To, una acción de envío por
+    // mensaje — y que las tools confirmables declaren el {clave, confirmar:true}.
+    const confirmables = con
+      .flatMap((f) => f.tools)
+      .filter((t) => t.name !== buscar && t.name !== leer);
     esperar(
-      DOMINIO_CORREO.prompt.includes(DELIMITADOR_INICIO) &&
-        DOMINIO_CORREO.prompt.includes("confirmar: true") &&
-        DOMINIO_CORREO.manual.includes("Enviados"),
-      "prompt y manual del dominio están escritos (delimitadores, protocolo, Enviados)",
+      DOMINIO_CORREO.prompt.includes("TODOS") &&
+        DOMINIO_CORREO.prompt.includes("Reply-To") &&
+        DOMINIO_CORREO.prompt.includes("Una sola acción") &&
+        DOMINIO_CORREO.manual.includes("Enviados") &&
+        confirmables.every((t) => (t.description ?? "").includes("confirmar:true")),
+      "prompt y manual del dominio están escritos (TODOS, Reply-To, una acción por mensaje, Enviados; confirmar:true en las 4 tools confirmables)",
     );
   }
 
