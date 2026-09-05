@@ -4,17 +4,10 @@ import { editarEventoAgendaSchema } from "@/lib/agenda/types";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { jsonResponse, isDev } from "@/lib/http";
 import {
-  casoEsDelUsuario,
-  deleteEvento,
-  setGoogleUpdated,
-  updateEvento,
-  type ActualizarEventoData,
-} from "@/lib/agenda/queries";
-import {
-  deleteEventFromGoogle,
-  getGoogleAccessToken,
-  updateEventInGoogle,
-} from "@/lib/agenda/google-calendar";
+  editarEventoConSync,
+  eliminarEventoConSync,
+  ErrorServicioAgenda,
+} from "@/lib/agenda/servicio";
 
 const uuidSchema = z.string().uuid();
 
@@ -22,6 +15,9 @@ const uuidSchema = z.string().uuid();
 // Edición parcial. Valida ownership (doble filtro id + usuario_id en el UPDATE).
 // Si el evento ya estaba sincronizado, intenta reflejar el cambio en Google
 // (best-effort). Devuelve el evento actualizado.
+//
+// La orquestación vive en el servicio de agenda (compartido con LEXIE); acá
+// sólo se traduce el resultado al contrato HTTP de siempre.
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -48,45 +44,19 @@ export async function PUT(
   const wl = await requireUsuarioOr403();
   if (!wl.ok) return jsonResponse({ ok: false, error: wl.message }, wl.status);
 
-  const d = parsed.data;
-
-  // Solo las keys efectivamente presentes en el body entran al patch (evita
-  // pisar columnas con undefined/null no enviados).
-  const patch: ActualizarEventoData = {};
-  if (d.titulo !== undefined) patch.titulo = d.titulo;
-  if (d.descripcion !== undefined) patch.descripcion = d.descripcion ?? null;
-  if (d.tipo !== undefined) patch.tipo = d.tipo;
-  if (d.prioridad !== undefined) patch.prioridad = d.prioridad;
-  // `clase` es inmutable tras la creación: no se copia al patch a propósito.
-  if (d.fecha_inicio !== undefined) patch.fecha_inicio = d.fecha_inicio;
-  if (d.fecha_fin !== undefined) patch.fecha_fin = d.fecha_fin ?? null;
-  if (d.todo_el_dia !== undefined) patch.todo_el_dia = d.todo_el_dia;
-  if (d.caso_id !== undefined) patch.caso_id = d.caso_id ?? null;
-  if (d.notas !== undefined) patch.notas = d.notas ?? null;
-  if (d.completado !== undefined) patch.completado = d.completado;
-
-  if (Object.keys(patch).length === 0) {
-    return jsonResponse({ ok: false, error: "Nada para actualizar" }, 400);
-  }
-
-  // Si se asocia/reasocia a un caso (no-null), validar ownership.
-  if (patch.caso_id) {
-    let pertenece = false;
-    try {
-      pertenece = await casoEsDelUsuario(patch.caso_id, wl.usuario_id);
-    } catch (e) {
+  let resultado;
+  try {
+    resultado = await editarEventoConSync(
+      id,
+      wl.usuario_id,
+      wl.clerk_user_id,
+      parsed.data,
+    );
+  } catch (e) {
+    if (e instanceof ErrorServicioAgenda && e.codigo === "validar_caso") {
       console.error("[PUT /api/agenda/eventos/[id]] casoEsDelUsuario:", e);
       return jsonResponse({ ok: false, error: "Error validando caso" }, 500);
     }
-    if (!pertenece) {
-      return jsonResponse({ ok: false, error: "Caso no encontrado" }, 400);
-    }
-  }
-
-  let evento;
-  try {
-    evento = await updateEvento(id, wl.usuario_id, patch);
-  } catch (e) {
     console.error("[PUT /api/agenda/eventos/[id]] updateEvento:", e);
     return jsonResponse(
       {
@@ -97,35 +67,21 @@ export async function PUT(
       500,
     );
   }
-  if (!evento) {
-    return jsonResponse({ ok: false, error: "Evento no encontrado" }, 404);
-  }
 
-  // Reflejar en Google si ya estaba sincronizado. Best-effort.
-  if (evento.google_calendar_event_id) {
-    try {
-      const token = await getGoogleAccessToken(wl.clerk_user_id);
-      if (token) {
-        const r = await updateEventInGoogle(
-          token,
-          evento.google_calendar_event_id,
-          evento,
-        );
-        // Guardamos el nuevo `updated` para que el pull no re-aplique este
-        // cambio (que originó la propia app) cuando vuelva desde Google.
-        if (r.ok && r.updated) {
-          await setGoogleUpdated(evento.id, wl.usuario_id, r.updated);
-          evento = { ...evento, google_updated: r.updated };
-        }
-      }
-    } catch (e) {
-      console.error(
-        "[PUT /api/agenda/eventos/[id]] update google (no bloqueante):",
-        e,
-      );
+  if (!resultado.ok) {
+    switch (resultado.motivo) {
+      case "sin_cambios":
+        return jsonResponse({ ok: false, error: "Nada para actualizar" }, 400);
+      case "caso_ajeno":
+        return jsonResponse({ ok: false, error: "Caso no encontrado" }, 400);
+      case "no_existe":
+        return jsonResponse({ ok: false, error: "Evento no encontrado" }, 404);
     }
   }
 
+  // google_synced acá significa "está vinculado a Google", no "el update de
+  // recién anduvo": es lo que la UI siempre leyó de esta respuesta.
+  const evento = resultado.despues;
   return jsonResponse(
     { ok: true, evento, google_synced: !!evento.google_calendar_event_id },
     200,
@@ -134,7 +90,8 @@ export async function PUT(
 
 // === DELETE /api/agenda/eventos/[id] ===
 // Borra validando ownership. Si estaba sincronizado, intenta borrarlo de Google
-// (best-effort). Responde 204 sin body.
+// (best-effort: con `borrar_local` el evento se va de la app aunque Google
+// falle). Responde 204 sin body.
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -147,9 +104,11 @@ export async function DELETE(
   const wl = await requireUsuarioOr403();
   if (!wl.ok) return jsonResponse({ ok: false, error: wl.message }, wl.status);
 
-  let eliminado;
+  let resultado;
   try {
-    eliminado = await deleteEvento(id, wl.usuario_id);
+    resultado = await eliminarEventoConSync(id, wl.usuario_id, wl.clerk_user_id, {
+      siGoogleFalla: "borrar_local",
+    });
   } catch (e) {
     console.error("[DELETE /api/agenda/eventos/[id]] deleteEvento:", e);
     return jsonResponse(
@@ -161,22 +120,17 @@ export async function DELETE(
       500,
     );
   }
-  if (!eliminado) {
-    return jsonResponse({ ok: false, error: "Evento no encontrado" }, 404);
-  }
 
-  if (eliminado.google_calendar_event_id) {
-    try {
-      const token = await getGoogleAccessToken(wl.clerk_user_id);
-      if (token) {
-        await deleteEventFromGoogle(token, eliminado.google_calendar_event_id);
-      }
-    } catch (e) {
-      console.error(
-        "[DELETE /api/agenda/eventos/[id]] delete google (no bloqueante):",
-        e,
+  if (!resultado.ok) {
+    // Con `borrar_local` el único rechazo posible es que no exista; el otro
+    // brazo queda por si alguien cambia la política a `abortar`.
+    if (resultado.motivo === "google_fallo") {
+      return jsonResponse(
+        { ok: false, error: "Error borrando evento", detail: resultado.detalle },
+        500,
       );
     }
+    return jsonResponse({ ok: false, error: "Evento no encontrado" }, 404);
   }
 
   return new Response(null, { status: 204 });

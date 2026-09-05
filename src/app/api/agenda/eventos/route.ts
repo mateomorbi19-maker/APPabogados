@@ -8,16 +8,11 @@ import {
 } from "@/lib/agenda/types";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { jsonResponse, isDev } from "@/lib/http";
+import { getEventosByUser } from "@/lib/agenda/queries";
 import {
-  casoEsDelUsuario,
-  createEvento,
-  getEventosByUser,
-  updateGoogleEventId,
-} from "@/lib/agenda/queries";
-import {
-  getGoogleAccessToken,
-  pushEventToGoogle,
-} from "@/lib/agenda/google-calendar";
+  crearEventoConSync,
+  ErrorServicioAgenda,
+} from "@/lib/agenda/servicio";
 
 const uuidSchema = z.string().uuid();
 const isoSchema = z.string().datetime({ offset: true });
@@ -79,6 +74,10 @@ export async function GET(req: NextRequest): Promise<Response> {
 // === POST /api/agenda/eventos ===
 // Crea un evento. El CRUD local manda: el push a Google es best-effort y nunca
 // rompe la creación. Devuelve el evento + flag google_synced.
+//
+// La orquestación (validar la causa, normalizar la tarea, crear, pushear a
+// Google) vive en el servicio de agenda, que comparte con las tools de LEXIE.
+// Esta ruta sólo traduce su resultado al contrato HTTP de siempre.
 export async function POST(req: NextRequest): Promise<Response> {
   let body: unknown;
   try {
@@ -97,42 +96,21 @@ export async function POST(req: NextRequest): Promise<Response> {
   const wl = await requireUsuarioOr403();
   if (!wl.ok) return jsonResponse({ ok: false, error: wl.message }, wl.status);
 
-  const d = parsed.data;
-
-  // Si asocia un caso, debe ser del propio usuario.
-  if (d.caso_id) {
-    let pertenece = false;
-    try {
-      pertenece = await casoEsDelUsuario(d.caso_id, wl.usuario_id);
-    } catch (e) {
+  let resultado;
+  try {
+    resultado = await crearEventoConSync(
+      wl.usuario_id,
+      wl.clerk_user_id,
+      parsed.data,
+    );
+  } catch (e) {
+    if (e instanceof ErrorServicioAgenda && e.codigo === "caso_ajeno") {
+      return jsonResponse({ ok: false, error: "Caso no encontrado" }, 400);
+    }
+    if (e instanceof ErrorServicioAgenda && e.codigo === "validar_caso") {
       console.error("[POST /api/agenda/eventos] casoEsDelUsuario:", e);
       return jsonResponse({ ok: false, error: "Error validando caso" }, 500);
     }
-    if (!pertenece) {
-      return jsonResponse({ ok: false, error: "Caso no encontrado" }, 400);
-    }
-  }
-
-  // Una tarea es un to-do por fecha: sin hora (todo_el_dia) y sin fin. Lo
-  // normalizamos server-side para no depender solo de que el form mande bien.
-  const esTarea = d.clase === "tarea";
-
-  let evento;
-  try {
-    evento = await createEvento({
-      usuario_id: wl.usuario_id,
-      titulo: d.titulo,
-      descripcion: d.descripcion ?? null,
-      tipo: d.tipo,
-      clase: d.clase,
-      prioridad: d.prioridad,
-      fecha_inicio: d.fecha_inicio,
-      fecha_fin: esTarea ? null : (d.fecha_fin ?? null),
-      todo_el_dia: esTarea ? true : d.todo_el_dia,
-      caso_id: d.caso_id ?? null,
-      notas: esTarea ? null : (d.notas ?? null),
-    });
-  } catch (e) {
     console.error("[POST /api/agenda/eventos] createEvento:", e);
     return jsonResponse(
       {
@@ -144,42 +122,19 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
 
-  // Push best-effort a Google Calendar. Cualquier fallo se loguea y se sigue:
-  // el evento ya está creado en Supabase.
-  //
-  // google_error se setea SOLO cuando hay token pero el insert falla (para que
-  // la UI muestre el motivo real). Cuando no hay token (desconectado) se deja
-  // null: de eso ya avisa el banner "Conectá tu Google Calendar".
-  let google_synced = false;
-  let google_error: string | null = null;
-  // Solo los EVENTOS se pushean a Google Calendar; las tareas son locales.
-  if (!esTarea) {
-    try {
-      const token = await getGoogleAccessToken(wl.clerk_user_id);
-      if (token) {
-        const r = await pushEventToGoogle(token, evento);
-        if (r.id) {
-          // Guardamos también r.updated: el control de conflicto del pull lo usa
-          // para no re-aplicar este cambio cuando vuelva desde Google.
-          await updateGoogleEventId(evento.id, wl.usuario_id, r.id, r.updated);
-          evento = {
-            ...evento,
-            google_calendar_event_id: r.id,
-            google_updated: r.updated,
-          };
-          google_synced = true;
-        } else {
-          google_error = r.error;
-        }
-      }
-    } catch (e) {
-      google_error = e instanceof Error ? e.message : String(e);
-      console.error("[POST /api/agenda/eventos] push google (no bloqueante):", e);
-    }
-  }
+  // google_error se manda SOLO cuando hubo token pero el push falló (para que
+  // la UI muestre el motivo real). Sin token (desconectado o sin scope) se
+  // omite: de eso ya avisa el banner "Conectá tu Google Calendar".
+  const { evento, google } = resultado;
+  const google_error = google.motivo === "error" ? (google.detalle ?? null) : null;
 
   return jsonResponse(
-    { ok: true, evento, google_synced, ...(google_error ? { google_error } : {}) },
+    {
+      ok: true,
+      evento,
+      google_synced: google.synced,
+      ...(google_error ? { google_error } : {}),
+    },
     201,
   );
 }

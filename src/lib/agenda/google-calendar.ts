@@ -164,20 +164,54 @@ export async function updateEventInGoogle(
   }
 }
 
+// ¿El error de Google dice que el evento YA NO EXISTE? Google contesta 404
+// (`notFound`) para un id que no conoce y 410 (`deleted`) para uno que se
+// borró — que es exactamente lo que pasa cuando el abogado lo eliminó desde
+// el celular y el pull todavía no lo trajo. El status viaja en distintos
+// campos según la versión de gaxios (`status`, `code`, `response.status`),
+// y el motivo en `response.data.error.errors[].reason`, el mismo objeto del
+// que `googleErrorMessage` saca el mensaje.
+function googleDiceQueNoExiste(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const err = e as {
+    code?: unknown;
+    status?: unknown;
+    response?: {
+      status?: unknown;
+      data?: { error?: { errors?: Array<{ reason?: unknown }> } };
+    };
+  };
+  const statuses = [err.code, err.status, err.response?.status].map((s) =>
+    typeof s === "string" ? Number(s) : s,
+  );
+  if (statuses.some((s) => s === 404 || s === 410)) return true;
+  const reasons = err.response?.data?.error?.errors ?? [];
+  return reasons.some(
+    (r) => r?.reason === "notFound" || r?.reason === "deleted" || r?.reason === "gone",
+  );
+}
+
+export type DeleteResult = "ok" | "no_existia" | "error";
+
+// "no_existia" es un ÉXITO para el caller: el objetivo era que el evento no
+// esté en Google, y no está. Antes esto devolvía `false` igual que un 500, y
+// un evento borrado desde el celular quedaba imborrable en la app cuando el
+// caller trataba el fallo de Google como bloqueante.
 export async function deleteEventFromGoogle(
   accessToken: string,
   googleEventId: string,
-): Promise<boolean> {
+): Promise<DeleteResult> {
   try {
     const calendar = getCalendarClient(accessToken);
     await calendar.events.delete({
       calendarId: "primary",
       eventId: googleEventId,
     });
-    return true;
+    return "ok";
   } catch (e) {
-    console.error("[google-calendar] delete falló:", e);
-    return false;
+    if (googleDiceQueNoExiste(e)) return "no_existia";
+    console.error("[google-calendar] delete falló:", googleErrorMessage(e));
+    return "error";
   }
 }
 
