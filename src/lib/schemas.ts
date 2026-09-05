@@ -420,15 +420,20 @@ export const editarCasoInputSchema = z
   .strict();
 export type EditarCasoInput = z.infer<typeof editarCasoInputSchema>;
 
-export const crearParteInputSchema = z.object({
-  nombre: z.string().min(1).max(300),
-  rol: rolParteSchema,
-  es_cliente: z.boolean().default(false),
-  situacion_libertad: situacionLibertadSchema.nullable().optional(),
-  // DNI u otro documento, texto libre (Fase 10, escritos). Misma
-  // normalización que la ficha: "" se guarda como NULL.
-  documento: fichaTextoOpcional(80),
-});
+// `.strict()` como los otros dos: un `caso_id` o un `usuario_id` de más en el
+// body es un 400 explícito y no algo que se ignora en silencio. El formulario
+// manda exactamente estas cinco claves (parte-form.tsx).
+export const crearParteInputSchema = z
+  .object({
+    nombre: z.string().min(1).max(300),
+    rol: rolParteSchema,
+    es_cliente: z.boolean().default(false),
+    situacion_libertad: situacionLibertadSchema.nullable().optional(),
+    // DNI u otro documento, texto libre (Fase 10, escritos). Misma
+    // normalización que la ficha: "" se guarda como NULL.
+    documento: fichaTextoOpcional(80),
+  })
+  .strict();
 export type CrearParteInput = z.infer<typeof crearParteInputSchema>;
 
 export const editarParteInputSchema = z

@@ -201,17 +201,6 @@ export async function setGoogleUpdated(
 }
 
 // Valida que un caso exista y pertenezca al usuario (para asociar un evento).
-export async function casoEsDelUsuario(
-  casoId: string,
-  usuarioId: string,
-): Promise<boolean> {
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("casos")
-    .select("id")
-    .eq("id", casoId)
-    .eq("usuario_id", usuarioId)
-    .maybeSingle();
-  if (error) throw new Error(`casoEsDelUsuario: ${error.message}`);
-  return data !== null;
-}
+// La implementación vive en `casos/propiedad.ts` desde la Fase 11 —era una de
+// cuatro copias—; se re-exporta acá para no romper a los importadores.
+export { casoEsDelUsuario } from "@/lib/casos/propiedad";

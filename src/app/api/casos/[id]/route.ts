@@ -4,6 +4,11 @@ import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonResponse, isDev } from "@/lib/http";
 import { COLS_CASO } from "@/lib/casos/columnas";
+import {
+  editarFicha,
+  leerFicha,
+  MENSAJE_FUERO_CONGELADO,
+} from "@/lib/casos/escritura";
 import { editarCasoInputSchema } from "@/lib/schemas";
 
 const uuidSchema = z.string().uuid();
@@ -82,20 +87,16 @@ export async function GET(
 // forma de corregirlo, que es parte de por qué 4 de 8 causas se llaman con un
 // pedazo del relato.
 //
-// Tres cosas que no se pueden aflojar acá:
+// La lógica —lista blanca de columnas, `.eq("usuario_id")` dentro del UPDATE,
+// body vacío sin UPDATE, fuero congelado con el mapa armado— vive en
+// `src/lib/casos/escritura.ts` desde la Fase 11, porque las tools de LEXIE
+// escriben la misma ficha y no puede haber dos versiones de esas reglas. Este
+// handler parsea, delega y traduce el resultado a HTTP.
 //
-//   1. El `.eq("usuario_id", ...)` va DENTRO del UPDATE, no en un SELECT
-//      previo. El server entra con la service_role key, que bypassa RLS: este
-//      filtro es el único control real de propiedad, y hacerlo en dos pasos
-//      abre una ventana entre el chequeo y la escritura.
-//   2. Las columnas escribibles se enumeran A MANO abajo. Nunca se derrama
-//      `parsed.data` en el `.update()`: un campo de más en el schema pasaría
-//      a poder mover `usuario_id`, `ejecucion_origen_id` o
-//      `estrategia_snapshot`.
-//   3. Un body vacío es 400 y no un UPDATE sin columnas. Un UPDATE vacío
-//      igual dispararía el trigger `casos_set_actualizado_en`, y esa columna
-//      ordena la lista del Inicio, el buscador y el contexto de LEXIE: un
-//      guardado sin cambios saltearía la causa al tope de las tres listas.
+// Lo único que cambió de cara al cliente: un patch que repite lo que ya está
+// (`sin_cambios`) responde 200 con la fila SIN escribir. Antes corría el
+// UPDATE igual y el trigger `casos_set_actualizado_en` movía la causa al tope
+// del Inicio, del buscador y del contexto de LEXIE por un guardado en vano.
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -125,103 +126,51 @@ export async function PATCH(
     );
   }
 
-  // Lista blanca explícita. `undefined` = el formulario no mandó ese campo, se
-  // deja como está. `null` = el abogado lo vació a propósito, se borra. La
-  // distinción importa: sin ella, guardar la ficha desde un formulario parcial
-  // borraría todo lo que ese formulario no muestra.
-  const d = parsed.data;
-  const patchCols: Record<string, unknown> = {};
-  if (d.caratula !== undefined) patchCols.caratula = d.caratula;
-  if (d.expediente_numero !== undefined)
-    patchCols.expediente_numero = d.expediente_numero;
-  if (d.organismo !== undefined) patchCols.organismo = d.organismo;
-  if (d.secretaria !== undefined) patchCols.secretaria = d.secretaria;
-  if (d.juez !== undefined) patchCols.juez = d.juez;
-  if (d.fiscalia !== undefined) patchCols.fiscalia = d.fiscalia;
-  if (d.delitos !== undefined) patchCols.delitos = d.delitos;
-  if (d.estado_seguimiento !== undefined)
-    patchCols.estado_seguimiento = d.estado_seguimiento;
-  if (d.fuero !== undefined) patchCols.fuero = d.fuero;
-  // Sin `.trim()`: el schema ya lo normalizó, igual que el resto de los campos.
-  if (d.titulo !== undefined) patchCols.titulo = d.titulo;
+  try {
+    const r = await editarFicha(id, wl.usuario_id, parsed.data);
 
-  if (Object.keys(patchCols).length === 0) {
-    return jsonResponse(
-      { ok: false, error: "No hay nada para actualizar" },
-      400,
-    );
-  }
+    if (r.ok) {
+      return jsonResponse({ ok: true, caso: r.despues }, 200);
+    }
 
-  const supabase = createServerClient();
-
-  // El fuero NO se puede cambiar con el mapa procesal ya instanciado.
-  //
-  // `casos.fuero` no es un dato descriptivo: los nodos de `mapa_procesal_nodos`
-  // se generan UNA vez con `generarPlantillaBase(casoId, fuero)` y no se
-  // regeneran solos. Cambiarlo acá dejaría el fuero de un código y el árbol de
-  // otro, y todo lo que deriva del fuero pasaría a validar contra un código
-  // procesal que no es el del mapa: los títulos canónicos de coherencia.ts
-  // degradarían cada nodo troncal a "rama hipotética", los nodos terminales
-  // cambiarían, y el simulador de audiencias (que sólo soporta PBA) se
-  // habilitaría sobre un mapa de Nación.
-  //
-  // El único camino legítimo para cambiar de fuero es reiniciar el mapa, que es
-  // destructivo a propósito y se confirma en su propio diálogo. Acá se rechaza
-  // con 409 y se explica dónde hacerlo — igual que un rechazo de coherencia, no
-  // es un error técnico sino el sistema frenando un cambio incoherente.
-  if (d.fuero !== undefined) {
-    const { data: actual } = await supabase
-      .from("casos")
-      .select("fuero")
-      .eq("id", id)
-      .eq("usuario_id", wl.usuario_id)
-      .maybeSingle();
-
-    if (actual && (actual as { fuero: string | null }).fuero !== d.fuero) {
-      const { count } = await supabase
-        .from("mapa_procesal_nodos")
-        .select("id", { count: "exact", head: true })
-        .eq("caso_id", id);
-
-      if ((count ?? 0) > 0) {
+    switch (r.motivo) {
+      case "body_vacio":
         return jsonResponse(
-          {
-            ok: false,
-            error:
-              "El mapa procesal de esta causa ya está armado con el fuero anterior. Para cambiar de fuero hay que reiniciar el mapa, que borra el progreso: se hace desde el Mapa procesal.",
-          },
+          { ok: false, error: "No hay nada para actualizar" },
+          400,
+        );
+      // Sin fila: o no existe o es de otro abogado. 404 en los dos casos,
+      // igual que el GET — un 403 confirmaría que la causa existe.
+      case "no_existe":
+        return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
+      // Igual que un rechazo de coherencia, no es un error técnico sino el
+      // sistema frenando un cambio incoherente; se explica dónde hacerlo.
+      case "fuero_congelado":
+        return jsonResponse(
+          { ok: false, error: r.detalle ?? MENSAJE_FUERO_CONGELADO },
           409,
         );
+      case "sin_cambios": {
+        // El formulario espera la fila para refrescar el detalle. Se la lee
+        // (sin escribir): si desapareció en el medio, 404 como arriba.
+        const actual = await leerFicha(id, wl.usuario_id);
+        if (!actual) {
+          return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
+        }
+        return jsonResponse({ ok: true, caso: actual }, 200);
       }
     }
-  }
-
-  const { data, error } = await supabase
-    .from("casos")
-    .update(patchCols)
-    .eq("id", id)
-    .eq("usuario_id", wl.usuario_id)
-    .select(COLS_CASO)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[PATCH /api/casos/[id]] error:", error);
+  } catch (e) {
+    console.error("[PATCH /api/casos/[id]] error:", e);
     return jsonResponse(
       {
         ok: false,
         error: "Error actualizando la causa",
-        ...(isDev() ? { detail: error.message } : {}),
+        ...(isDev() ? { detail: e instanceof Error ? e.message : String(e) } : {}),
       },
       500,
     );
   }
-  // Sin fila: o no existe o es de otro abogado. 404 en los dos casos, igual
-  // que el GET — un 403 confirmaría que la causa existe.
-  if (!data) {
-    return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
-  }
-
-  return jsonResponse({ ok: true, caso: data }, 200);
 }
 
 // === DELETE /api/casos/[id] ===

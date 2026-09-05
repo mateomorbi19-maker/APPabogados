@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
-import { createServerClient } from "@/lib/supabase/server";
 import { jsonResponse, isDev } from "@/lib/http";
-import { COLS_PARTE } from "@/lib/casos/columnas";
+import {
+  editarParte,
+  eliminarParte,
+  leerParte,
+} from "@/lib/casos/escritura";
 import { editarParteInputSchema } from "@/lib/schemas";
 
 const uuidSchema = z.string().uuid();
@@ -13,19 +16,11 @@ const uuidSchema = z.string().uuid();
 // caso sea del usuario. `partes_caso` no tiene `usuario_id` propio y el server
 // bypassa RLS con service_role, así que sin esto alcanza con adivinar dos
 // UUIDs para tocar la causa de otro abogado.
-async function casoPropio(
-  casoId: string,
-  usuarioId: string,
-): Promise<boolean> {
-  const supabase = createServerClient();
-  const { data } = await supabase
-    .from("casos")
-    .select("id")
-    .eq("id", casoId)
-    .eq("usuario_id", usuarioId)
-    .maybeSingle();
-  return Boolean(data);
-}
+//
+// Desde la Fase 11 las dos cosas las hace `src/lib/casos/escritura.ts` —el
+// mismo código que usan las tools de LEXIE— y este handler sólo traduce el
+// resultado a HTTP. `caso_ajeno` es 404 "Caso no encontrado", igual que
+// antes: un 403 confirmaría que la causa existe.
 
 type Ctx = { params: Promise<{ id: string; parte_id: string }> };
 
@@ -41,10 +36,24 @@ async function validar(ctx: Ctx) {
   if (!wl.ok) {
     return { ok: false as const, status: wl.status, error: wl.message };
   }
-  if (!(await casoPropio(id, wl.usuario_id))) {
-    return { ok: false as const, status: 404, error: "Caso no encontrado" };
-  }
-  return { ok: true as const, casoId: id, parteId: parte_id };
+  return {
+    ok: true as const,
+    casoId: id,
+    parteId: parte_id,
+    usuarioId: wl.usuario_id,
+  };
+}
+
+function error500(donde: string, e: unknown, mensaje: string): Response {
+  console.error(`[${donde}] error:`, e);
+  return jsonResponse(
+    {
+      ok: false,
+      error: mensaje,
+      ...(isDev() ? { detail: e instanceof Error ? e.message : String(e) } : {}),
+    },
+    500,
+  );
 }
 
 // === PATCH /api/casos/[id]/partes/[parte_id] ===
@@ -66,47 +75,40 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     );
   }
 
-  // Lista blanca, igual que en el PATCH del caso: nunca se derrama
-  // `parsed.data`, o un campo de más en el schema pasaría a poder mover
-  // `caso_id`.
-  const d = parsed.data;
-  const cols: Record<string, unknown> = {};
-  if (d.nombre !== undefined) cols.nombre = d.nombre.trim();
-  if (d.rol !== undefined) cols.rol = d.rol;
-  if (d.es_cliente !== undefined) cols.es_cliente = d.es_cliente;
-  if (d.situacion_libertad !== undefined)
-    cols.situacion_libertad = d.situacion_libertad;
-  if (d.documento !== undefined) cols.documento = d.documento;
-
-  if (Object.keys(cols).length === 0) {
+  // Un body sin ningún campo es 400, como siempre. Se decide acá y no en el
+  // servicio porque para el servicio "no vino nada" y "vino lo mismo que ya
+  // está" son el mismo resultado (`sin_cambios`: no se escribe), y para el
+  // cliente no: lo primero es un pedido mal armado, lo segundo es un guardado
+  // que no tenía nada que guardar.
+  if (Object.values(parsed.data).every((valor) => valor === undefined)) {
     return jsonResponse({ ok: false, error: "No hay nada para actualizar" }, 400);
   }
 
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("partes_caso")
-    .update(cols)
-    .eq("id", v.parteId)
-    .eq("caso_id", v.casoId)
-    .select(COLS_PARTE)
-    .maybeSingle();
+  try {
+    const r = await editarParte(v.casoId, v.usuarioId, v.parteId, parsed.data);
 
-  if (error) {
-    console.error("[PATCH parte] error:", error);
-    return jsonResponse(
-      {
-        ok: false,
-        error: "Error actualizando la parte",
-        ...(isDev() ? { detail: error.message } : {}),
-      },
-      500,
-    );
-  }
-  if (!data) {
-    return jsonResponse({ ok: false, error: "Parte no encontrada" }, 404);
-  }
+    if (r.ok) {
+      return jsonResponse({ ok: true, parte: r.despues }, 200);
+    }
 
-  return jsonResponse({ ok: true, parte: data }, 200);
+    switch (r.motivo) {
+      case "caso_ajeno":
+        return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
+      case "no_existe":
+        return jsonResponse({ ok: false, error: "Parte no encontrada" }, 404);
+      case "sin_cambios": {
+        // Nada que escribir: se devuelve la fila tal como está, que es lo que
+        // el formulario espera para refrescar la lista.
+        const actual = await leerParte(v.casoId, v.parteId);
+        if (!actual) {
+          return jsonResponse({ ok: false, error: "Parte no encontrada" }, 404);
+        }
+        return jsonResponse({ ok: true, parte: actual }, 200);
+      }
+    }
+  } catch (e) {
+    return error500("PATCH parte", e, "Error actualizando la parte");
+  }
 }
 
 // === DELETE /api/casos/[id]/partes/[parte_id] ===
@@ -114,27 +116,20 @@ export async function DELETE(_req: NextRequest, ctx: Ctx): Promise<Response> {
   const v = await validar(ctx);
   if (!v.ok) return jsonResponse({ ok: false, error: v.error }, v.status);
 
-  const supabase = createServerClient();
-  const { error, count } = await supabase
-    .from("partes_caso")
-    .delete({ count: "exact" })
-    .eq("id", v.parteId)
-    .eq("caso_id", v.casoId);
+  try {
+    const r = await eliminarParte(v.casoId, v.usuarioId, v.parteId);
 
-  if (error) {
-    console.error("[DELETE parte] error:", error);
-    return jsonResponse(
-      {
-        ok: false,
-        error: "Error borrando la parte",
-        ...(isDev() ? { detail: error.message } : {}),
-      },
-      500,
-    );
-  }
-  if (count === 0) {
-    return jsonResponse({ ok: false, error: "Parte no encontrada" }, 404);
-  }
+    if (r.ok) {
+      return jsonResponse({ ok: true }, 200);
+    }
 
-  return jsonResponse({ ok: true }, 200);
+    switch (r.motivo) {
+      case "caso_ajeno":
+        return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
+      case "no_existe":
+        return jsonResponse({ ok: false, error: "Parte no encontrada" }, 404);
+    }
+  } catch (e) {
+    return error500("DELETE parte", e, "Error borrando la parte");
+  }
 }

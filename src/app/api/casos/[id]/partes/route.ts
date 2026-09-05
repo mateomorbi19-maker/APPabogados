@@ -1,39 +1,30 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
-import { createServerClient } from "@/lib/supabase/server";
 import { jsonResponse, isDev } from "@/lib/http";
-import { COLS_PARTE } from "@/lib/casos/columnas";
+import { casoEsDelUsuario } from "@/lib/casos/propiedad";
+import {
+  agregarParte,
+  listarPartes,
+  MAX_PARTES,
+} from "@/lib/casos/escritura";
+import { rolParteLabel } from "@/lib/casos/ficha";
 import { crearParteInputSchema } from "@/lib/schemas";
 
 const uuidSchema = z.string().uuid();
 
-// Cuántas personas puede tener una causa. No hay caso penal con 80 partes
-// cargadas a mano; el tope existe para que un bucle del cliente no llene la
-// tabla, no porque 40 sea un número procesalmente significativo.
-const MAX_PARTES = 40;
-
-// El guard de propiedad de TODAS las rutas de partes.
+// El guard de propiedad de TODAS las rutas de partes es `casoEsDelUsuario`.
 //
 // `partes_caso` no tiene `usuario_id` (la propiedad se hereda del caso vía la
-// FK), y el server entra con service_role, que bypassa RLS. O sea: si esta
-// función no corre, cualquier abogado lee y escribe las partes de la causa de
+// FK), y el server entra con service_role, que bypassa RLS. O sea: si ese
+// chequeo no corre, cualquier abogado lee y escribe las partes de la causa de
 // otro con solo cambiar el UUID de la URL. Y acá los datos son nombres reales
 // de clientes e imputados: una fuga cruzada no es un bug de UX, es secreto
 // profesional roto.
-async function casoPropio(
-  casoId: string,
-  usuarioId: string,
-): Promise<boolean> {
-  const supabase = createServerClient();
-  const { data } = await supabase
-    .from("casos")
-    .select("id")
-    .eq("id", casoId)
-    .eq("usuario_id", usuarioId)
-    .maybeSingle();
-  return Boolean(data);
-}
+//
+// Desde la Fase 11 el GET lo llama acá (la lectura no valida propiedad por
+// contrato) y las escrituras lo llevan adentro de `src/lib/casos/escritura.ts`,
+// que es el mismo código que usan las tools de LEXIE.
 
 // === GET /api/casos/[id]/partes ===
 export async function GET(
@@ -49,31 +40,25 @@ export async function GET(
   if (!wl.ok) {
     return jsonResponse({ ok: false, error: wl.message }, wl.status);
   }
-  if (!(await casoPropio(id, wl.usuario_id))) {
-    return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
-  }
 
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("partes_caso")
-    .select(COLS_PARTE)
-    .eq("caso_id", id)
-    .order("creado_en", { ascending: true });
-
-  if (error) {
-    console.error("[GET partes] error:", error);
+  try {
+    if (!(await casoEsDelUsuario(id, wl.usuario_id))) {
+      return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
+    }
+    const partes = await listarPartes(id);
+    // Las lecturas del repo no llevan `ok` (ver GET /api/casos y /eventos).
+    return jsonResponse({ partes }, 200);
+  } catch (e) {
+    console.error("[GET partes] error:", e);
     return jsonResponse(
       {
         ok: false,
         error: "Error consultando partes",
-        ...(isDev() ? { detail: error.message } : {}),
+        ...(isDev() ? { detail: e instanceof Error ? e.message : String(e) } : {}),
       },
       500,
     );
   }
-
-  // Las lecturas del repo no llevan `ok` (ver GET /api/casos y /eventos).
-  return jsonResponse({ partes: data ?? [] }, 200);
 }
 
 // === POST /api/casos/[id]/partes ===
@@ -90,9 +75,6 @@ export async function POST(
   if (!wl.ok) {
     return jsonResponse({ ok: false, error: wl.message }, wl.status);
   }
-  if (!(await casoPropio(id, wl.usuario_id))) {
-    return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
-  }
 
   let bodyJson: unknown;
   try {
@@ -108,45 +90,50 @@ export async function POST(
     );
   }
 
-  const supabase = createServerClient();
+  try {
+    // `caso_id` sale del path, nunca del body; el servicio verifica que sea
+    // del usuario ANTES de tocar nada.
+    const r = await agregarParte(id, wl.usuario_id, parsed.data);
 
-  const { count } = await supabase
-    .from("partes_caso")
-    .select("id", { count: "exact", head: true })
-    .eq("caso_id", id);
-  if ((count ?? 0) >= MAX_PARTES) {
-    return jsonResponse(
-      { ok: false, error: `Una causa admite hasta ${MAX_PARTES} partes` },
-      400,
-    );
-  }
+    if (r.ok) {
+      return jsonResponse({ ok: true, parte: r.parte }, 201);
+    }
 
-  // Lista blanca explícita: `caso_id` sale del path, nunca del body. Si viniera
-  // del body, un abogado podría cargar una parte en la causa de otro.
-  const { data, error } = await supabase
-    .from("partes_caso")
-    .insert({
-      caso_id: id,
-      nombre: parsed.data.nombre.trim(),
-      rol: parsed.data.rol,
-      es_cliente: parsed.data.es_cliente,
-      situacion_libertad: parsed.data.situacion_libertad ?? null,
-      documento: parsed.data.documento ?? null,
-    })
-    .select(COLS_PARTE)
-    .single();
-
-  if (error || !data) {
-    console.error("[POST partes] error:", error);
+    switch (r.motivo) {
+      case "caso_ajeno":
+        return jsonResponse({ ok: false, error: "Caso no encontrado" }, 404);
+      case "tope":
+        return jsonResponse(
+          { ok: false, error: `Una causa admite hasta ${MAX_PARTES} partes` },
+          400,
+        );
+      // Nuevo en la Fase 11: la misma persona cargada dos veces ya no crea
+      // una segunda fila. Se devuelve la existente para que el formulario
+      // pueda decir cuál es y el abogado la edite en vez de repetirla.
+      case "duplicada": {
+        const p = r.parte_existente;
+        const quien = p
+          ? `«${p.nombre}» ya está cargada en esta causa como ${rolParteLabel(p.rol).toLowerCase()}`
+          : "Esa persona ya está cargada en esta causa";
+        return jsonResponse(
+          {
+            ok: false,
+            error: `${quien}. Editala desde la lista en vez de agregarla de nuevo.`,
+            ...(p ? { parte_existente: p } : {}),
+          },
+          409,
+        );
+      }
+    }
+  } catch (e) {
+    console.error("[POST partes] error:", e);
     return jsonResponse(
       {
         ok: false,
         error: "Error creando la parte",
-        ...(isDev() && error ? { detail: error.message } : {}),
+        ...(isDev() ? { detail: e instanceof Error ? e.message : String(e) } : {}),
       },
       500,
     );
   }
-
-  return jsonResponse({ ok: true, parte: data }, 201);
 }

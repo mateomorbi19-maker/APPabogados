@@ -1,5 +1,6 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
+import { casoEsDelUsuario } from "@/lib/casos/propiedad";
 import { MAX_NODOS_POR_CASO } from "./coherencia";
 import { NODE_SEP, RANK_SEP } from "./layout";
 import { generarPlantillaBase } from "./plantilla-base";
@@ -26,20 +27,11 @@ async function contarNodos(casoId: string): Promise<number> {
 // Ownership: los nodos pertenecen a un caso; el caso pertenece a un usuario.
 // Cada función verifica que el caso sea del usuario antes de operar, y todas
 // las queries de nodos quedan scopeadas por caso_id.
-export async function casoEsDelUsuario(
-  casoId: string,
-  usuarioId: string,
-): Promise<boolean> {
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("casos")
-    .select("id")
-    .eq("id", casoId)
-    .eq("usuario_id", usuarioId)
-    .maybeSingle();
-  if (error) throw new Error(`casoEsDelUsuario: ${error.message}`);
-  return data !== null;
-}
+//
+// La implementación vive en `casos/propiedad.ts` desde la Fase 11 (era una de
+// cuatro copias). Se importa arriba para usarla acá y se re-exporta para no
+// romper a los importadores: un `export { x } from` solo no la trae al scope.
+export { casoEsDelUsuario };
 
 // Trae id + fuero del caso si es del usuario; null si no existe / no es suyo.
 export async function getCasoConFuero(
