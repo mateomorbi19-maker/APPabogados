@@ -9,6 +9,10 @@ import {
 } from "../src/lib/agent/prompts";
 import { buscarDocumentosTool } from "../src/lib/agent/tools";
 import { repositorioTools } from "../src/lib/agent/repositorio-tools";
+import type { gmail_v1 } from "@googleapis/gmail";
+import { LEXIE_SYSTEM_PROMPT } from "../src/lib/agent/lexie-prompt";
+import { lexieTools, type ContextoLexie } from "../src/lib/agent/lexie-tools";
+import { DOMINIOS_LEXIE } from "../src/lib/lexie/ejecutar-accion";
 
 async function main() {
   const client = getAnthropic();
@@ -43,8 +47,52 @@ async function main() {
     messages: [{ role: "user", content: "x" }],
   });
 
+  // LEXIE con manos (Fase 11): el prefijo cacheado incluye el system (con los
+  // tramos de los cuatro dominios) y TODAS las tools declarables. Se mide con
+  // Gmail presente, que es el caso mayor; sin scope, las 6 tools de correo no
+  // se declaran y el prefijo baja.
+  const ctxLexie: ContextoLexie = {
+    usuarioId: "x",
+    nombre: "x",
+    clerkUserId: "x",
+    gmail: {} as gmail_v1.Gmail,
+    mensajesAbogado: [],
+    casoIdEnPantalla: null,
+    accionesPendientes: new Map(),
+    clavesConsumidas: new Set(),
+    correoLeido: false,
+    hilosLeidos: new Set(),
+  };
+  const toolsLexie = [
+    ...lexieTools,
+    ...repositorioTools,
+    buscarDocumentosTool,
+    ...DOMINIOS_LEXIE.flatMap((d) =>
+      d
+        .familias(ctxLexie)
+        .filter((f) => f.habilitada !== false)
+        .flatMap((f) => f.tools),
+    ),
+  ];
+  const lexie = await client.messages.countTokens({
+    model: MODEL_ID,
+    system: LEXIE_SYSTEM_PROMPT,
+    tools: toolsLexie,
+    messages: [{ role: "user", content: "x" }],
+  });
+  const lexieSoloSystem = await client.messages.countTokens({
+    model: MODEL_ID,
+    system: LEXIE_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: "x" }],
+  });
+
   console.log(JSON.stringify({
     modelo: MODEL_ID,
+    lexie_fase11: {
+      system: lexieSoloSystem,
+      system_y_tools: lexie,
+      cantidad_tools: toolsLexie.length,
+    },
     minimo_cache_sonnet_45: 1024,
     solo_system: soloSystem,
     con_tools: conTools,
