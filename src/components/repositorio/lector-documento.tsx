@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/lib/hooks/use-cliente";
-import { Toaster } from "@/components/ui/sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fmtFecha } from "@/lib/format";
@@ -314,8 +313,6 @@ export function LectorDocumento({ doc }: { doc: DocumentoRepositorio }) {
           </div>
         </div>
       )}
-
-      <Toaster position="top-center" richColors />
     </div>
   );
 }

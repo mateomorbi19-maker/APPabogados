@@ -5,6 +5,10 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ListaCasos, type CasoListItem } from "./lista-casos";
 import { MisCasosEmptyState } from "./empty-state";
+import {
+  mutacionToca,
+  useAlMutarLexie,
+} from "@/components/lexie/acciones-lexie";
 
 type Props = {
   children: React.ReactNode;
@@ -89,6 +93,19 @@ export function MisCasosShell({ children }: Props) {
     window.addEventListener("caso-actualizado", onActualizado);
     return () => window.removeEventListener("caso-actualizado", onActualizado);
   }, [cargar]);
+
+  // Mismo motivo cuando la que edita la ficha es LEXIE, desde su ventana
+  // flotante: la carátula o el expediente de la lista tienen que cambiar
+  // con el detalle. El `router.refresh()` del dock no llega acá — esta lista
+  // se carga por fetch propio, no por el server component.
+  useAlMutarLexie(
+    useCallback(
+      (d) => {
+        if (mutacionToca(d, "causa")) void cargar();
+      },
+      [cargar],
+    ),
+  );
 
   if (estado.kind === "loading") {
     return (

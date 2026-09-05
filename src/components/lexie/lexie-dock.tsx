@@ -23,12 +23,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useCapacidadDelBrowser } from "@/lib/hooks/use-cliente";
 import { EsferaLexie } from "./esfera-lexie";
 import { VentanaLexie } from "./ventana-lexie";
 import { LexieChat } from "./lexie-chat";
+import { useAlMutarLexie } from "./acciones-lexie";
 
 /** Tiene que ser estable entre renders: si no, useSyncExternalStore re-suscribe en loop. */
 const HAY_DOM = () => typeof document !== "undefined";
@@ -91,6 +92,21 @@ export function LexieDock() {
     window.addEventListener("lexie-abrir", onAbrir);
     return () => window.removeEventListener("lexie-abrir", onAbrir);
   }, []);
+
+  // `lexie-mutacion`: LEXIE acaba de crear, editar o borrar algo. La ventana
+  // es NO modal y flota sobre la sección que sea, así que lo que está detrás
+  // tiene que reflejarlo sin recargar. Este `router.refresh()` cubre a los
+  // SERVER components (el detalle de una causa, los `casos` que recibe la
+  // Agenda): vuelve a pedir el payload RSC de la ruta actual y React lo mezcla
+  // sin perder el estado de los client components. Las vistas que cargan por
+  // fetch propio (Agenda, Bandeja, la lista de Mis casos) escuchan el mismo
+  // evento y refrescan con su mecanismo — un refresh de RSC no las toca.
+  const router = useRouter();
+  useAlMutarLexie(
+    useCallback(() => {
+      router.refresh();
+    }, [router]),
+  );
 
   const nuevaConversacion = useCallback(async () => {
     try {

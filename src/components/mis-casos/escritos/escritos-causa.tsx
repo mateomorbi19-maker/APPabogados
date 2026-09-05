@@ -12,6 +12,7 @@
 // lugar donde tiene sentido elegir uno.
 
 import { useState, type Dispatch, type SetStateAction } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { FileText, FilePlus2, Trash2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -56,8 +57,32 @@ export function EscritosCausa({
   onEventoNuevo,
 }: Props) {
   const [generarOpen, setGenerarOpen] = useState(false);
-  const [detalleId, setDetalleId] = useState<string | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
+
+  // `?escrito=<id>` abre el detalle directo. Es el link que dejan las tarjetas
+  // de LEXIE cuando generó un escrito para esta causa: la ventana flota sobre
+  // la app, así que "Ver" tiene que aterrizar EN el escrito, no en la ficha
+  // con el escrito en algún lugar de la lista. Se lee reactivamente —la
+  // ventana no se desmonta al navegar y el abogado puede pedir dos escritos
+  // seguidos— y se ajusta DURANTE EL RENDER (ver ficha-form.tsx), comparando
+  // contra el último valor visto para que cerrar el diálogo no lo reabra.
+  const pathname = usePathname();
+  const escritoEnUrl = idPlausible(useSearchParams().get("escrito"));
+  const [detalleId, setDetalleId] = useState<string | null>(escritoEnUrl);
+  const [escritoUrlVisto, setEscritoUrlVisto] = useState(escritoEnUrl);
+  if (escritoEnUrl !== escritoUrlVisto) {
+    setEscritoUrlVisto(escritoEnUrl);
+    if (escritoEnUrl) setDetalleId(escritoEnUrl);
+  }
+
+  const cerrarDetalle = () => {
+    setDetalleId(null);
+    // El parámetro se limpia para que la URL no siga apuntando a un diálogo
+    // cerrado (una recarga lo reabriría) y para que el mismo link vuelva a
+    // funcionar la próxima vez. `replaceState` nativo: Next lo integra con el
+    // router y actualiza useSearchParams sin pedirle nada al servidor.
+    if (escritoEnUrl) window.history.replaceState(null, "", pathname);
+  };
 
   const handleGenerado = (e: EscritoGenerado) => {
     onEscritosChange((prev) => [aFila(e), ...prev]);
@@ -206,7 +231,7 @@ export function EscritosCausa({
       <EscritoDetalleDialog
         casoId={caso.id}
         escritoId={detalleId}
-        onClose={() => setDetalleId(null)}
+        onClose={cerrarDetalle}
         onActualizado={handleActualizado}
         onPresentado={(e, evento) => {
           handleActualizado(e);
@@ -215,6 +240,14 @@ export function EscritosCausa({
       />
     </section>
   );
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Un id que al menos tiene forma de id; lo demás no abre nada. */
+function idPlausible(v: string | null): string | null {
+  return v && UUID_RE.test(v) ? v : null;
 }
 
 function Chip({

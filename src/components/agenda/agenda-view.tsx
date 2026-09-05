@@ -10,7 +10,6 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { claveDia, etiquetaDiaPartes } from "@/lib/agenda/fechas";
@@ -23,6 +22,10 @@ import { AgendaFilters, type FiltrosUI, type Rango } from "./agenda-filters";
 import { EventoCard } from "./evento-card";
 import { EventoForm } from "./evento-form";
 import { GoogleCalendarStatus } from "./google-calendar-status";
+import {
+  mutacionToca,
+  useAlMutarLexie,
+} from "@/components/lexie/acciones-lexie";
 
 type Props = { casos: CasoOption[] };
 
@@ -236,6 +239,19 @@ export function AgendaView({ casos }: Props) {
   const refetch = useCallback(() => {
     void cargar(filtros);
   }, [cargar, filtros]);
+
+  // LEXIE puede crear, mover o borrar eventos con su ventana flotando SOBRE
+  // esta agenda: se refresca con el mismo refetch que usan el form y las
+  // acciones de cada tarjeta. Sólo ante mutaciones de la agenda (o sin sección
+  // declarada); un correo enviado no tiene por qué hacer parpadear la lista.
+  useAlMutarLexie(
+    useCallback(
+      (d) => {
+        if (mutacionToca(d, "agenda")) refetch();
+      },
+      [refetch],
+    ),
+  );
 
   const abrirNuevo = (clase: ClaseEvento) => {
     setEditando(null);
@@ -527,8 +543,6 @@ export function AgendaView({ casos }: Props) {
         onClose={() => setFormOpen(false)}
         onSaved={refetch}
       />
-
-      <Toaster position="top-center" richColors />
     </div>
   );
 }

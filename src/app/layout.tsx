@@ -5,6 +5,7 @@ import { shadcn } from "@clerk/themes";
 import { esES } from "@clerk/localizations";
 import { TemaProvider } from "@/components/tema/tema-provider";
 import { LexieDock } from "@/components/lexie/lexie-dock";
+import { Toaster } from "@/components/ui/sonner";
 import { RegistrarSW } from "@/components/pwa/registrar-sw";
 import { SCRIPT_ANTI_FLASH } from "@/components/tema/tema";
 import "./globals.css";
@@ -139,6 +140,14 @@ export default function RootLayout({
                 sesión (login) y también si el abogado está logueado pero fuera
                 de la whitelist. */}
             <LexieDock />
+            {/* UN solo Toaster, para toda la app. Antes lo montaba cada vista
+                por su cuenta (Agenda, Bandeja, Mapa, Repositorio) y las que
+                no lo hacían —la ficha de una causa, las partes, los escritos—
+                llamaban a `toast()` contra nadie: sus avisos se perdían en
+                silencio. Sonner pinta cada toast en TODOS los Toasters
+                montados, así que el de acá reemplaza a los locales en vez de
+                sumarse (dos montados = cada aviso dos veces). */}
+            <Toaster position="top-center" richColors />
           </TemaProvider>
         </body>
       </html>

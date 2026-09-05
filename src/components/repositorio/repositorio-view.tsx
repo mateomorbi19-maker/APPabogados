@@ -12,7 +12,6 @@ import {
   TriangleAlert, X, type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fmtNumber } from "@/lib/format";
@@ -617,8 +616,6 @@ export function RepositorioView({
           </div>
         </div>
       )}
-
-      <Toaster position="top-center" richColors />
     </div>
   );
 }

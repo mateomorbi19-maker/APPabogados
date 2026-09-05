@@ -51,6 +51,36 @@ export function DetalleCaso({
   const [escritos, setEscritos] =
     useState<EscritoGeneradoLista[]>(escritosIniciales);
 
+  // Re-sembrar cuando el SERVER vuelve a mandar los datos. Pasa con el
+  // `router.refresh()` que dispara el dock de LEXIE ante una mutación (ver
+  // lexie-dock.tsx): la asistente puede editar la ficha, agregar un imputado o
+  // generar un escrito con su ventana flotando sobre esta misma pantalla, y el
+  // refresh re-ejecuta la page server-side pero React conserva el estado local
+  // de este componente — sin esto, la ficha seguiría mostrando lo de antes.
+  //
+  // Se compara por identidad: un payload RSC nuevo trae objetos nuevos, y un
+  // re-render por estado propio conserva las mismas referencias. Se ajusta
+  // DURANTE EL RENDER, no en un efecto (patrón de "ajustar estado cuando
+  // cambia una prop", ver ficha-form.tsx).
+  const [origen, setOrigen] = useState({
+    casoInicial,
+    eventosIniciales,
+    partesIniciales,
+    escritosIniciales,
+  });
+  if (
+    casoInicial !== origen.casoInicial ||
+    eventosIniciales !== origen.eventosIniciales ||
+    partesIniciales !== origen.partesIniciales ||
+    escritosIniciales !== origen.escritosIniciales
+  ) {
+    setOrigen({ casoInicial, eventosIniciales, partesIniciales, escritosIniciales });
+    setCaso(casoInicial);
+    setEventos(eventosIniciales);
+    setPartes(partesIniciales);
+    setEscritos(escritosIniciales);
+  }
+
   // El movimiento más reciente del expediente. Es lo que muestra la ficha como
   // "última actuación", en vez de `casos.actualizado_en`: esa columna la pisa
   // un trigger en CADA update, así que editar la ficha diría "actualizado hoy"

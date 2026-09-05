@@ -18,7 +18,6 @@ import {
 } from "@xyflow/react";
 import { Loader2, Network } from "lucide-react";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -996,8 +995,6 @@ function MapaInner({ casoId, casoTitulo }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Toaster position="top-center" richColors />
     </div>
   );
 }

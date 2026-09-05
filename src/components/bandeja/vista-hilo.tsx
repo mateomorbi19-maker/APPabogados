@@ -18,6 +18,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Buzon, HiloCompleto, HiloResumen, MensajeCompleto } from "@/lib/gmail/types";
 import { errorDe, esRespuestaHilo, pedirJson } from "./api";
+import {
+  mutacionToca,
+  useAlMutarLexie,
+} from "@/components/lexie/acciones-lexie";
 import { MensajeBloque } from "./mensaje-bloque";
 
 type Props = {
@@ -85,6 +89,14 @@ export function VistaHilo({
 }: Props) {
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [intento, setIntento] = useState(0);
+
+  // Si LEXIE contestó en ESTE hilo (o lo archivó), la respuesta tiene que
+  // aparecer acá: es el mismo reintento que el botón de "volver a cargar".
+  useAlMutarLexie(
+    useCallback((d) => {
+      if (mutacionToca(d, "bandeja")) setIntento((i) => i + 1);
+    }, []),
+  );
 
   const clave = `${hiloId} ${intento}`;
   const vigente = resultado !== null && resultado.clave === clave;
