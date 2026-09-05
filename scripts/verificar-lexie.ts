@@ -14,7 +14,29 @@
 import { createServerClient } from "../src/lib/supabase/server";
 import { cargarDatosLexie, construirContextoModelo } from "../src/lib/lexie/contexto";
 import { construirSaludo, franjaHoraria } from "../src/lib/lexie/saludo";
-import { ejecutarToolLexie, rangoAFechas } from "../src/lib/agent/lexie-tools";
+import {
+  dictadoPorElAbogado,
+  ejecutarToolLexie,
+  rangoAFechas,
+  type ContextoLexie,
+} from "../src/lib/agent/lexie-tools";
+import {
+  claveAccion,
+  emitirPendiente,
+  resolverConfirmacion,
+} from "../src/lib/lexie/confirmacion";
+import {
+  jsonCanonico,
+  notaAccionesParaModelo,
+  pendientesVivas,
+  type AccionLexie,
+} from "../src/lib/lexie/acciones";
+import {
+  reconstruirHistorial,
+  sembrarPendientes,
+  mensajesDelAbogado,
+  type MensajeLexie,
+} from "../src/lib/lexie/queries";
 import { describirUbicacion, lineaDeUbicacion } from "../src/lib/lexie/ubicacion";
 import { resolverNombreEntidad } from "../src/lib/lexie/resolver-ubicacion";
 import { runLexie } from "../src/lib/agent/run-lexie";
@@ -28,6 +50,23 @@ const mal = (t: string) => {
   console.log(`  MAL  ${t}`);
   fallas.push(t);
 };
+
+/** Contexto de tools mínimo para las pruebas: sin Gmail, sin pendientes. */
+function ctxDe(usuarioId: string, nombre: string, over: Partial<ContextoLexie> = {}): ContextoLexie {
+  return {
+    usuarioId,
+    nombre,
+    clerkUserId: "user_test",
+    gmail: null,
+    mensajesAbogado: [],
+    casoIdEnPantalla: null,
+    accionesPendientes: new Map(),
+    clavesConsumidas: new Set(),
+    correoLeido: false,
+    hilosLeidos: new Set(),
+    ...over,
+  };
+}
 
 function resumenFalso(over: Partial<ResumenInicio> = {}): ResumenInicio {
   return {
@@ -132,7 +171,7 @@ async function main() {
     const r = await ejecutarToolLexie(
       "leer_caso",
       { caso_id: ajeno.id },
-      { usuarioId, nombre },
+      ctxDe(usuarioId, nombre),
     );
     // El caso existe, pero es de OTRO abogado: la tool tiene que negarlo.
     if (r.contentJSON.includes('"ok":false')) {
@@ -147,7 +186,7 @@ async function main() {
   const inventado = await ejecutarToolLexie(
     "leer_caso",
     { caso_id: "11111111-2222-3333-4444-555555555555" },
-    { usuarioId, nombre },
+    ctxDe(usuarioId, nombre),
   );
   if (inventado.contentJSON.includes('"ok":false')) ok("leer_caso rechaza un id inventado");
   else mal("leer_caso aceptó un id inventado");
@@ -157,7 +196,7 @@ async function main() {
     const propio = await ejecutarToolLexie(
       "leer_caso",
       { caso_id: datos.casos[0].id },
-      { usuarioId, nombre },
+      ctxDe(usuarioId, nombre),
     );
     if (propio.contentJSON.length > 200 && !propio.contentJSON.includes('"ok":false')) {
       ok(`leer_caso abre una causa propia (${propio.contentJSON.length} chars)`);
@@ -167,7 +206,7 @@ async function main() {
   }
 
   // ============ 6. mi_agenda (base, gratis) ============
-  const agenda = await ejecutarToolLexie("mi_agenda", { rango: "proximos_7_dias" }, { usuarioId, nombre });
+  const agenda = await ejecutarToolLexie("mi_agenda", { rango: "proximos_7_dias" }, ctxDe(usuarioId, nombre));
   const parsed = JSON.parse(agenda.contentJSON);
   if (typeof parsed.cantidad === "number" && parsed.aviso) {
     ok(`mi_agenda devolvió ${parsed.cantidad} eventos y el aviso de agenda parcial`);
@@ -223,6 +262,97 @@ async function main() {
     }
   }
 
+  // ============ 7b. Protocolo de confirmación (puro, gratis) ============
+  console.log("\n=== 5b. Protocolo de confirmación de acciones ===");
+  {
+    const payload = { para: ["b@x.com", "a@x.com"], asunto: "Hola", cuerpo: "Texto" };
+    const k1 = claveAccion("correo_enviar", payload);
+    const k2 = claveAccion("correo_enviar", { cuerpo: "Texto", asunto: "Hola", para: ["b@x.com", "a@x.com"] });
+    const k3 = claveAccion("correo_enviar", { ...payload, cuerpo: "Texto." });
+    if (k1 === k2) ok(`la clave es canónica (orden de claves irrelevante): ${k1}`);
+    else mal("la clave cambia con el orden de las claves del payload");
+    if (k1 !== k3) ok("cambiar una coma cambia la clave");
+    else mal("una coma no cambia la clave");
+    if (jsonCanonico({ b: 1, a: undefined }) === '{"b":1}') ok("jsonCanonico descarta undefined");
+    else mal("jsonCanonico no descarta undefined");
+
+    const { accion: pend } = emitirPendiente({
+      tool: "correo_enviar",
+      clave: k1,
+      resumen: "Enviar correo a a@x.com",
+      seccion: "bandeja",
+      vista_previa: { para: "a@x.com" },
+      payload,
+    });
+    const sinSiembra = ctxDe(usuarioId, nombre);
+    const r0 = resolverConfirmacion(sinSiembra, "correo_enviar", payload, {});
+    if (r0.modo === "emitir" && r0.clave === k1) ok("primer llamado → emitir con la clave del contenido");
+    else mal("primer llamado no emitió");
+    const r1 = resolverConfirmacion(sinSiembra, "correo_enviar", payload, { confirmar: true });
+    if (r1.modo === "rechazar") ok("confirmar:true sin siembra → rechazo");
+    else mal("confirmar:true sin siembra NO se rechazó");
+    const r1b = resolverConfirmacion(sinSiembra, "correo_enviar", payload, { clave: k1 });
+    if (r1b.modo === "rechazar") ok("clave sin siembra → rechazo");
+    else mal("clave sin siembra NO se rechazó");
+
+    const conSiembra = ctxDe(usuarioId, nombre, { accionesPendientes: new Map([[k1, pend]]) });
+    const r2 = resolverConfirmacion(conSiembra, "correo_enviar", payload, { confirmar: true });
+    if (r2.modo === "ejecutar" && r2.pendiente.clave === k1) ok("con siembra y mismo contenido → ejecutar el payload persistido");
+    else mal("con siembra no ejecutó");
+    const r3 = resolverConfirmacion(conSiembra, "correo_enviar", { ...payload, cuerpo: "Otro" }, { confirmar: true });
+    if (r3.modo === "rechazar") ok("contenido distinto al sembrado → rechazo");
+    else mal("contenido distinto NO se rechazó");
+    const r4 = resolverConfirmacion(conSiembra, "correo_enviar", { ...payload, cuerpo: "Otro" }, { clave: k1 });
+    if (r4.modo === "ejecutar" && r4.pendiente.payload?.cuerpo === "Texto") ok("con clave, se ejecuta lo PERSISTIDO aunque el input nuevo difiera");
+    else mal("con clave no se ejecutó lo persistido");
+    const r5 = resolverConfirmacion(conSiembra, "agenda_eliminar_evento", payload, { clave: k1 });
+    if (r5.modo === "rechazar") ok("una clave de otra tool no sirve");
+    else mal("una clave de otra tool fue aceptada");
+    conSiembra.clavesConsumidas.add(k1);
+    const r6 = resolverConfirmacion(conSiembra, "correo_enviar", payload, { clave: k1 });
+    if (r6.modo === "rechazar") ok("clave ya consumida → rechazo");
+    else mal("clave consumida fue aceptada");
+
+    // Siembra desde el historial: sólo el ÚLTIMO mensaje del agente, y sólo
+    // las pendientes.
+    const msg = (tipo: "usuario" | "agente", contenido: string, metadata: Record<string, unknown> = {}): MensajeLexie => ({
+      id: contenido, conversacion_id: "c", tipo, contenido, metadata, creado_en: new Date().toISOString(),
+    });
+    const hechaVieja: AccionLexie = { tool: "agenda_crear_evento", estado: "ok", resumen: "Evento creado" };
+    const historial = [
+      msg("usuario", "agendá"),
+      msg("agente", "listo", { acciones: [hechaVieja, { ...pend, clave: "vieja" }] }),
+      msg("usuario", "mandá el mail"),
+      msg("agente", "¿confirmás?", { acciones: [pend, hechaVieja], hilos_leidos: ["t1"] }),
+      msg("usuario", "Confirmé: x", { origen: "boton" }),
+      msg("agente", "Hecho", { origen: "boton", acciones: [{ ...pend, estado: "ok" }, { ...pend, clave: "k9" }] }),
+    ];
+    const sembradas = sembrarPendientes(historial);
+    if (sembradas.length === 1 && sembradas[0].clave === "k9") ok("se siembran sólo las pendientes vivas del último mensaje del agente");
+    else mal(`siembra incorrecta: ${JSON.stringify(sembradas.map((a) => a.clave))}`);
+    const abogado = mensajesDelAbogado(historial);
+    if (abogado.length === 2 && !abogado.includes("Confirmé: x")) ok("los mensajes del botón no cuentan como texto del abogado");
+    else mal(`mensajesDelAbogado devolvió ${JSON.stringify(abogado)}`);
+    const rec = reconstruirHistorial(historial);
+    const conNota = rec.mensajes.filter((m) => m.role === "assistant" && String(m.content).includes("NOTA DEL SISTEMA"));
+    if (conNota.length === 3) ok("reconstruirHistorial pega la nota de acciones a los mensajes del agente");
+    else mal(`la nota de acciones apareció en ${conNota.length} mensajes, esperaba 3`);
+    const nota = notaAccionesParaModelo([pend]) ?? "";
+    if (nota.includes(k1) && nota.includes("confirmar: true")) ok("la nota le dice al modelo la clave para confirmar");
+    else mal("la nota no trae la clave");
+    if (pendientesVivas([pend, hechaVieja]).length === 1) ok("pendientesVivas filtra las hechas");
+    else mal("pendientesVivas no filtra");
+
+    // Guard de "dato dictado".
+    const c = ctxDe(usuarioId, nombre, { mensajesAbogado: ["Cargale el DNI 30.123.456 a Pérez y la matrícula T° 12 F° 345 CPACF"] });
+    if (dictadoPorElAbogado(c, "30123456")) ok("un DNI dictado con puntos se reconoce por sus dígitos");
+    else mal("no reconoció el DNI dictado");
+    if (dictadoPorElAbogado(c, "Tº 12 Fº 345 CPACF")) ok("la matrícula se reconoce normalizada");
+    else mal("no reconoció la matrícula dictada");
+    if (!dictadoPorElAbogado(c, "27999888")) ok("un DNI que el abogado no dijo se rechaza");
+    else mal("aceptó un DNI no dictado");
+  }
+
   // ============ 8. Un turno real (PAGO) ============
   if (SIN_MODELO) {
     console.log("\n=== 6. Turno del agente: SALTEADO (--sin-modelo) ===");
@@ -239,6 +369,12 @@ async function main() {
     modelId: "claude-sonnet-4-5-20250929",
     usuarioId,
     nombre,
+    clerkUserId: "user_test",
+    gmail: null,
+    mensajesAbogado: ["¿Qué tengo en la agenda esta semana?"],
+    casoIdEnPantalla: null,
+    accionesPendientes: [],
+    hilosLeidosPrevios: [],
   });
   const ms = Date.now() - t0;
 

@@ -1,5 +1,8 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
+import type { AccionLexie } from "@/lib/lexie/acciones";
+import type { DominioLexie, FamiliaLexie } from "@/lib/agent/lexie-dominio";
 import { filtrarModelos } from "@/lib/escritos/filtrar";
 import { crearModelo, listarModelos, obtenerModelo } from "@/lib/escritos/queries";
 import {
@@ -139,7 +142,21 @@ export function esToolDeEscritos(nombre: string): boolean {
   return (Object.values(ESCRITOS_TOOL_NAMES) as string[]).includes(nombre);
 }
 
-type Resultado = { contentJSON: string; isError?: boolean };
+type Resultado = { contentJSON: string; isError?: boolean; accion?: AccionLexie };
+
+// El output del modelo es input no confiable: se valida en el borde como el
+// body de una API route. Antes esta tool validaba a mano tres campos y
+// recortaba el resto en silencio.
+const guardarInputSchema = z.object({
+  titulo: z.string().trim().min(3).max(200),
+  suma: z.string().trim().min(3).max(300),
+  cuerpo: z.string().trim().min(20).max(20000),
+  categoria: z.enum(CATEGORIAS_ESCRITO).optional(),
+  cuando: z.string().trim().max(500).optional(),
+  base_normativa: z.string().trim().max(1000).optional(),
+  claves: z.string().trim().max(1000).optional(),
+  rol_sugerido: z.enum(ROLES_SUGERIDOS).optional(),
+});
 
 const MAX_RESULTADOS = 12;
 
@@ -229,39 +246,34 @@ export async function ejecutarToolEscritos(
   }
 
   if (nombre === ESCRITOS_TOOL_NAMES.guardar) {
-    const titulo = str(args.titulo);
-    const suma = str(args.suma);
-    const cuerpo = str(args.cuerpo);
-    if (!titulo || !suma || !cuerpo || cuerpo.length < 20) {
+    const parseado = guardarInputSchema.safeParse(args);
+    if (!parseado.success) {
+      const detalle = parseado.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; ");
       return {
         contentJSON: JSON.stringify({
           ok: false,
-          motivo: "Faltan titulo, suma o cuerpo (el cuerpo necesita al menos 20 caracteres).",
+          motivo: `Input inválido: ${detalle}`,
+          sugerencia:
+            "titulo (3-200), suma (3-300) y cuerpo (20-20000) son obligatorios; categoria y rol_sugerido tienen que ser de la lista.",
         }),
         isError: true,
       };
     }
-    const categoria = (CATEGORIAS_ESCRITO as readonly string[]).includes(
-      String(args.categoria),
-    )
-      ? (args.categoria as CategoriaEscrito)
-      : "otro";
-    const rol = (ROLES_SUGERIDOS as readonly string[]).includes(String(args.rol_sugerido))
-      ? (args.rol_sugerido as RolSugerido)
-      : "ambos";
-
+    const d = parseado.data;
     try {
       const m = await crearModelo(
         ctx.usuarioId,
         {
-          categoria,
-          titulo: titulo.slice(0, 200),
-          suma: suma.slice(0, 300),
-          cuando: str(args.cuando)?.slice(0, 500) ?? null,
-          base_normativa: str(args.base_normativa)?.slice(0, 1000) ?? null,
-          cuerpo: cuerpo.slice(0, 20000),
-          claves: str(args.claves)?.slice(0, 1000) ?? null,
-          rol_sugerido: rol,
+          categoria: d.categoria ?? "otro",
+          titulo: d.titulo,
+          suma: d.suma,
+          cuando: d.cuando ?? null,
+          base_normativa: d.base_normativa ?? null,
+          cuerpo: d.cuerpo,
+          claves: d.claves ?? null,
+          rol_sugerido: d.rol_sugerido ?? "ambos",
         },
         "lexie",
       );
@@ -272,6 +284,16 @@ export async function ejecutarToolEscritos(
           titulo: m.titulo,
           nota: "Guardado en la biblioteca del abogado, marcado como redactado por LEXIE. Decile que lo va a encontrar en Generar escrito → pestaña «Míos», y que lo puede editar o archivar desde ahí.",
         }),
+        accion: {
+          tool: ESCRITOS_TOOL_NAMES.guardar,
+          estado: "ok",
+          resumen: `Modelo guardado: ${m.titulo}`,
+          seccion: "modelos",
+          vista_previa: { titulo: m.titulo, suma: m.suma, categoria: m.categoria },
+          // Sin href: no existe una vista de biblioteca. Los modelos propios
+          // viven en el diálogo Generar escrito de cada causa, pestaña «Míos».
+          datos: { modelo_id: m.id },
+        },
       };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -281,6 +303,13 @@ export async function ejecutarToolEscritos(
           motivo: `No se pudo guardar: ${msg}`,
         }),
         isError: true,
+        accion: {
+          tool: ESCRITOS_TOOL_NAMES.guardar,
+          estado: "error",
+          resumen: `No se guardó el modelo «${d.titulo}»`,
+          seccion: "modelos",
+          error: msg,
+        },
       };
     }
   }
@@ -290,3 +319,55 @@ export async function ejecutarToolEscritos(
     isError: true,
   };
 }
+
+// === El dominio, para run-lexie.ts ===
+//
+// Dos familias a propósito: lectura paralela y una escritura en serie con cap
+// 1. La generación del escrito de una causa (11.6) se suma acá con su propia
+// familia. Los tramos de prompt y manual viven en este archivo para que
+// cambien en el mismo commit que las tools.
+const CAP_ESCRITOS = 4;
+const CAP_ESCRITOS_ESCRITURA = 1;
+
+export const PROMPT_ESCRITOS =
+  "ESCRITOS JUDICIALES: RECOMENDAR Y REDACTAR. Cuando el abogado pregunte qué escrito presentar, qué modelo usar o cómo se pide algo, seguí este orden: " +
+  "(1) entendé la causa —si no la tenés a la vista, abrila con `leer_caso`—: el rol del estudio (defensa o querella), la situación de libertad del imputado, la etapa procesal y lo último que pasó; " +
+  "(2) buscá en el catálogo con `buscar_modelos_escrito` (filtrá por el rol de la causa) y recomendá UNO o dos modelos, con el número y el nombre exactos y una línea de por qué ése ahora; si conviene, abrilo con `leer_modelo_escrito` para decirle qué tiene que acompañar; " +
+  "(3) decile cómo lo genera: Mis casos → la causa → bloque «Escritos» → «Generar escrito», elige el modelo por nombre o número, revisa los datos del expediente y lo genera. Vos NO generás el escrito de la causa: eso lo hace ese botón, que sí tiene todos los datos del expediente. " +
+  "SI EL CATÁLOGO NO TIENE LO QUE HACE FALTA: decilo, y ofrecé redactarle vos el escrito tipo acá mismo. Si acepta, redactalo con las mismas reglas del estudio: suma en mayúsculas, objeto, hechos, fundamentos, petitorio numerado, reservas; sin inventar un solo dato de la causa —donde va un dato escribí un placeholder entre dobles llaves ({{IMPUTADO}}, {{FECHA_HECHO}}) o la marca [COMPLETAR: qué]—; artículos verificados con `buscar_documentos_legales` y jurisprudencia sólo del repositorio. " +
+  "Después de mostrárselo, ofrecé guardarlo como modelo en su biblioteca con `guardar_modelo_escrito`. Guardalo SOLO si te lo pide explícitamente, y decí que lo guardaste únicamente si la herramienta te devolvió ok:true. Queda en Generar escrito → pestaña «Míos», y desde ahí lo puede editar o archivar.";
+
+export const MANUAL_ESCRITOS = "";
+
+export const DOMINIO_ESCRITOS: DominioLexie = {
+  nombre: "escritos",
+  familias: (): FamiliaLexie[] => [
+    {
+      nombre: "escritos",
+      tools: escritosLecturaTools,
+      cap: CAP_ESCRITOS,
+      paralelizable: true,
+      mensajeCapAgotado: `Alcanzaste el límite de ${CAP_ESCRITOS} consultas al catálogo de escritos en este mensaje. Recomendá con lo que ya viste.`,
+      avisoCapAgotado: `Alcanzaste el límite de consultas al catálogo de escritos (${CAP_ESCRITOS}) en este mensaje.`,
+      ejecutar: (tu, c) =>
+        ejecutarToolEscritos(tu.name, tu.input, { usuarioId: c.usuarioId }),
+    },
+    {
+      nombre: "escritos_escritura",
+      tools: escritosEscrituraTools,
+      cap: CAP_ESCRITOS_ESCRITURA,
+      // Mutación: en serie, y una sola por turno.
+      paralelizable: false,
+      mensajeCapAgotado:
+        "Ya guardaste un modelo en este mensaje. Si el abogado quiere otro, que te lo pida en el próximo.",
+      avisoCapAgotado: "Ya guardaste un modelo en este mensaje.",
+      ejecutar: (tu, c) =>
+        ejecutarToolEscritos(tu.name, tu.input, { usuarioId: c.usuarioId }),
+    },
+  ],
+  // guardar_modelo_escrito no es confirmable (es archivable): no hay pendientes
+  // de este dominio hasta que 11.6 sume la generación del escrito.
+  ejecutarPendiente: async () => null,
+  prompt: PROMPT_ESCRITOS,
+  manual: MANUAL_ESCRITOS,
+};

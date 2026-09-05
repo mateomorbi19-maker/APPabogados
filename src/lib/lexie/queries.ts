@@ -2,6 +2,12 @@ import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase/server";
 import type { RunAgentUsage } from "@/lib/agent/run-agent";
+import { accionLexieSchema } from "@/lib/schemas";
+import {
+  notaAccionesParaModelo,
+  pendientesVivas,
+  type AccionLexie,
+} from "@/lib/lexie/acciones";
 
 export type ConversacionLexie = {
   id: string;
@@ -115,8 +121,17 @@ export function reconstruirHistorial(
   const out: Anthropic.MessageParam[] = [];
   for (const m of mensajes) {
     const role = m.tipo === "usuario" ? "user" : "assistant";
-    const contenido = m.contenido.trim();
+    let contenido = m.contenido.trim();
     if (contenido.length === 0) continue;
+    // Memoria entre turnos: al mensaje del agente se le pega una nota con las
+    // acciones de ese turno (hechas y pendientes, con su clave). Sin esto, en
+    // el turno siguiente el modelo no sabe qué ya creó (y lo duplica) ni qué
+    // clave mandar para confirmar. No se persiste ni se muestra al abogado:
+    // se arma al reconstruir, y la tarjeta ya le dice lo mismo a él.
+    if (m.tipo === "agente") {
+      const nota = notaAccionesParaModelo(accionesDeMensaje(m));
+      if (nota) contenido = `${contenido}\n\n${nota}`;
+    }
     const ultimo = out[out.length - 1];
     if (ultimo && ultimo.role === role) {
       // Dos del mismo rol seguidos: se fusionan en vez de descartarse, así no
@@ -229,6 +244,242 @@ export async function guardarTurno({
     .eq("id", conversacionId);
 
   return { idUsuario, idAgente };
+}
+
+// === Acciones (Fase 11) ===
+//
+// Las acciones de un turno viven en `mensajes_lexie.metadata.acciones` del
+// mensaje del agente. No hay columna propia ni migración: la columna ya era
+// jsonb NOT NULL DEFAULT '{}' (verificado contra la base el 2026-09-05).
+
+/** Acciones persistidas en un mensaje, validadas best-effort. */
+export function accionesDeMensaje(m: MensajeLexie): AccionLexie[] {
+  const crudas = (m.metadata as { acciones?: unknown })?.acciones;
+  if (!Array.isArray(crudas)) return [];
+  const out: AccionLexie[] = [];
+  for (const c of crudas) {
+    const p = accionLexieSchema.safeParse(c);
+    if (p.success) out.push(p.data as AccionLexie);
+  }
+  return out;
+}
+
+/** ¿El mensaje lo insertó el botón Confirmar/Cancelar, y no el abogado ni el modelo? */
+export function esMensajeDeBoton(m: MensajeLexie): boolean {
+  return (m.metadata as { origen?: unknown })?.origen === "boton";
+}
+
+export function ultimoMensajeAgente(historial: MensajeLexie[]): MensajeLexie | null {
+  for (let i = historial.length - 1; i >= 0; i--) {
+    if (historial[i].tipo === "agente") return historial[i];
+  }
+  return null;
+}
+
+/**
+ * Las pendientes que siguen esperando al abogado. Se leen SIEMPRE del último
+ * mensaje del agente: cuando el botón inserta su par «Confirmé…/Hecho», copia
+ * ahí las pendientes que siguen vivas (ver insertarParBoton), así este
+ * invariante se mantiene y confirmar la primera tarjeta no mata la segunda.
+ */
+export function sembrarPendientes(historial: MensajeLexie[]): AccionLexie[] {
+  const ultimo = ultimoMensajeAgente(historial);
+  if (!ultimo) return [];
+  return pendientesVivas(accionesDeMensaje(ultimo));
+}
+
+/** Hilos de correo leídos en el turno anterior (mismo mensaje que las pendientes). */
+export function sembrarHilosLeidos(historial: MensajeLexie[]): string[] {
+  const ultimo = ultimoMensajeAgente(historial);
+  const h = (ultimo?.metadata as { hilos_leidos?: unknown })?.hilos_leidos;
+  return Array.isArray(h) ? h.filter((x): x is string => typeof x === "string") : [];
+}
+
+/**
+ * Lo que el ABOGADO escribió en el hilo, sin los mensajes que insertó el
+ * botón. Es el insumo de los guards de "dato dictado" (DNI, matrícula,
+ * direcciones nuevas): un «Confirmé: enviar correo a x@y» no cuenta como que
+ * el abogado dictó esa dirección.
+ */
+export function mensajesDelAbogado(historial: MensajeLexie[]): string[] {
+  return historial
+    .filter((m) => m.tipo === "usuario" && !esMensajeDeBoton(m))
+    .map((m) => m.contenido);
+}
+
+/**
+ * ¿El último turno del agente dejó alguna acción aplicada? La ruta lo usa
+ * para volver a inyectar el contexto (causas + agenda): `hayCambiosDesde`
+ * sólo mira `casos.actualizado_en`, y un evento creado o una parte agregada
+ * no lo mueven.
+ */
+export function ultimoTurnoTuvoAccionesOk(historial: MensajeLexie[]): boolean {
+  const ultimo = ultimoMensajeAgente(historial);
+  return !!ultimo && accionesDeMensaje(ultimo).some((a) => a.estado === "ok");
+}
+
+/**
+ * RESERVA atómica de una pendiente antes de ejecutarla. Es lo que impide la
+ * doble ejecución: un doble click, dos pestañas, o reabrir la ventana durante
+ * los 40 s de un escrito. El UPDATE lleva en el WHERE la condición jsonb de
+ * que la acción con esa clave siga `pendiente` (`@>` de PostgREST); la
+ * segunda request encuentra `en_curso` y afecta 0 filas.
+ *
+ * Devuelve la acción reservada (ya como `en_curso`) o null si no estaba
+ * pendiente en ese mensaje.
+ */
+export async function reservarPendiente(
+  mensajeId: string,
+  clave: string,
+  aEstado: "en_curso" | "descartada",
+): Promise<AccionLexie | null> {
+  const supabase = createServerClient();
+  const { data: fila, error: errSel } = await supabase
+    .from("mensajes_lexie")
+    .select("id, metadata")
+    .eq("id", mensajeId)
+    .maybeSingle();
+  if (errSel || !fila) return null;
+  const meta = (fila.metadata ?? {}) as Record<string, unknown>;
+  const acciones = Array.isArray(meta.acciones) ? (meta.acciones as unknown[]) : [];
+  let reservada: AccionLexie | null = null;
+  const nuevas = acciones.map((c) => {
+    const p = accionLexieSchema.safeParse(c);
+    if (!p.success) return c;
+    const a = p.data as AccionLexie;
+    if (a.clave === clave && a.estado === "pendiente") {
+      reservada = { ...a, estado: aEstado };
+      return reservada;
+    }
+    return c;
+  });
+  if (!reservada) return null;
+
+  const { data: upd, error: errUpd } = await supabase
+    .from("mensajes_lexie")
+    .update({ metadata: { ...meta, acciones: nuevas } })
+    .eq("id", mensajeId)
+    .contains("metadata", { acciones: [{ clave, estado: "pendiente" }] })
+    .select("id");
+  if (errUpd) throw new Error(`reservarPendiente: ${errUpd.message}`);
+  if (!upd || upd.length === 0) return null;
+  return reservada;
+}
+
+/**
+ * El par de mensajes que deja el botón Confirmar/Cancelar. Va con
+ * `metadata.origen = 'boton'` en los DOS (las filas de un lote tienen que
+ * traer las mismas claves, ver guardarTurno) y el mensaje del agente copia
+ * las pendientes que siguen vivas más los hilos leídos, para que el próximo
+ * turno las siga viendo en el último mensaje del agente.
+ */
+export async function insertarParBoton({
+  conversacionId,
+  textoUsuario,
+  textoAgente,
+  acciones,
+  hilosLeidos,
+}: {
+  conversacionId: string;
+  textoUsuario: string;
+  textoAgente: string;
+  acciones: AccionLexie[];
+  hilosLeidos: string[];
+}): Promise<{ idUsuario: string; idAgente: string }> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("mensajes_lexie")
+    .insert([
+      {
+        conversacion_id: conversacionId,
+        tipo: "usuario",
+        contenido: textoUsuario,
+        metadata: { origen: "boton" },
+      },
+      {
+        conversacion_id: conversacionId,
+        tipo: "agente",
+        contenido: textoAgente,
+        metadata: { origen: "boton", acciones, hilos_leidos: hilosLeidos },
+      },
+    ])
+    .select("id, tipo, creado_en")
+    .order("creado_en", { ascending: true });
+  if (error || !data || data.length < 2) {
+    throw new Error(`insertarParBoton: ${error?.message ?? "insert incompleto"}`);
+  }
+  await supabase
+    .from("conversaciones_lexie")
+    .update({ actualizado_en: new Date().toISOString() })
+    .eq("id", conversacionId);
+  return {
+    idUsuario: data.find((d) => d.tipo === "usuario")?.id as string,
+    idAgente: data.find((d) => d.tipo === "agente")?.id as string,
+  };
+}
+
+/** Actualiza el texto y una acción (por clave) del mensaje del agente del par. */
+export async function actualizarMensajeAgente(
+  mensajeId: string,
+  contenido: string,
+  accionResuelta: AccionLexie,
+): Promise<void> {
+  const supabase = createServerClient();
+  const { data: fila, error: errSel } = await supabase
+    .from("mensajes_lexie")
+    .select("metadata")
+    .eq("id", mensajeId)
+    .maybeSingle();
+  if (errSel || !fila) throw new Error(`actualizarMensajeAgente: ${errSel?.message ?? "sin fila"}`);
+  const meta = (fila.metadata ?? {}) as Record<string, unknown>;
+  const acciones = Array.isArray(meta.acciones) ? (meta.acciones as unknown[]) : [];
+  const nuevas = acciones.map((c) => {
+    const p = accionLexieSchema.safeParse(c);
+    return p.success && p.data.clave === accionResuelta.clave ? accionResuelta : c;
+  });
+  const { error } = await supabase
+    .from("mensajes_lexie")
+    .update({ contenido, metadata: { ...meta, acciones: nuevas } })
+    .eq("id", mensajeId);
+  if (error) throw new Error(`actualizarMensajeAgente: ${error.message}`);
+}
+
+/**
+ * Mensaje de CORTE cuando el turno murió a mitad de camino con acciones ya
+ * aplicadas. Va en PAR (la pregunta original del abogado + el corte del
+ * agente): `guardarTurno` inserta los dos juntos al final, así que si acá se
+ * insertara sólo el del agente, `reconstruirHistorial` lo fusionaría con el
+ * agente anterior y el pedido que disparó la acción desaparecería del hilo.
+ */
+export async function insertarParDeCorte({
+  conversacionId,
+  pregunta,
+  textoCorte,
+  acciones,
+  hilosLeidos,
+}: {
+  conversacionId: string;
+  pregunta: string;
+  textoCorte: string;
+  acciones: AccionLexie[];
+  hilosLeidos: string[];
+}): Promise<void> {
+  const supabase = createServerClient();
+  const { error } = await supabase.from("mensajes_lexie").insert([
+    {
+      conversacion_id: conversacionId,
+      tipo: "usuario",
+      contenido: pregunta,
+      metadata: {},
+    },
+    {
+      conversacion_id: conversacionId,
+      tipo: "agente",
+      contenido: textoCorte,
+      metadata: { corte: true, acciones, hilos_leidos: hilosLeidos },
+    },
+  ]);
+  if (error) throw new Error(`insertarParDeCorte: ${error.message}`);
 }
 
 /** Título de la conversación a partir de la primera pregunta. */

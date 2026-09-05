@@ -541,6 +541,40 @@ export const accionMapaSchema = z.object({
 });
 export type AccionMapa = z.infer<typeof accionMapaSchema>;
 
+// === Acciones de LEXIE (Fase 11) ===
+//
+// Misma idea que `accionMapaSchema` pero agnóstica del dominio: sirve para un
+// evento creado, un correo enviado, una ficha editada o un escrito generado.
+// Se persiste en `mensajes_lexie.metadata.acciones` y en `ejecuciones.metadata`;
+// el cliente la valida al pintar la tarjeta. La forma canónica y las reglas
+// viven en src/lib/lexie/acciones.ts (módulo puro); acá va sólo la validación
+// del borde. `.passthrough()` en `datos`/`vista_previa`/`payload` a propósito:
+// cada tool decide qué guarda ahí, y Zod haría strip de lo que no declare.
+const registroLaxoSchema = z.record(z.string(), z.unknown());
+export const accionLexieSchema = z.object({
+  tool: z.string().min(1).max(80),
+  estado: z.enum([
+    "ok",
+    "rechazada",
+    "pendiente",
+    "en_curso",
+    "descartada",
+    "error",
+  ]),
+  clave: z.string().min(1).max(120).optional(),
+  resumen: z.string().max(600),
+  seccion: z.enum(["agenda", "bandeja", "causa", "escritos", "modelos"]).optional(),
+  motivo: z.string().optional(),
+  sugerencia: z.string().optional(),
+  vista_previa: registroLaxoSchema.optional(),
+  payload: registroLaxoSchema.optional(),
+  datos: registroLaxoSchema.optional(),
+  antes: registroLaxoSchema.optional(),
+  confirmado_por: z.enum(["click", "texto"]).optional(),
+  error: z.string().optional(),
+});
+export type AccionLexieValidada = z.infer<typeof accionLexieSchema>;
+
 // Discriminated union por `modo`: 'conversacional' (prosa libre) vs
 // 'analisis' (estructura completa con tesis/fundamento/recomendaciones).
 // El modelo decide qué modo usar según la pregunta del abogado — el
