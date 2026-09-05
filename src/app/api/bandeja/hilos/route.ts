@@ -4,14 +4,37 @@ import { gmailErrorMessage, gmailErrorStatus } from "@/lib/gmail/client";
 import { filtrarHilosDemo } from "@/lib/gmail/demo";
 import { listarHilos } from "@/lib/gmail/mensajes";
 import { abrirSesionBandeja } from "@/lib/gmail/sesion";
-import { listarHilosQuerySchema } from "@/lib/gmail/types";
+import {
+  BUZON_TODOS,
+  listarHilosQuerySchema,
+  type BuzonListado,
+  type HiloResumen,
+} from "@/lib/gmail/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+/**
+ * Hilos demo del buzón. El virtual TODOS no es una label, así que se arma
+ * como la unión de Recibidos y Enviados (un hilo con respuesta está en los
+ * dos: se deduplica), del más nuevo al más viejo.
+ */
+function hilosDemo(buzon: BuzonListado, q?: string): HiloResumen[] {
+  if (buzon !== BUZON_TODOS) return filtrarHilosDemo(buzon, q);
+  const vistos = new Set<string>();
+  return [...filtrarHilosDemo("INBOX", q), ...filtrarHilosDemo("SENT", q)]
+    .filter((h) => {
+      if (vistos.has(h.id)) return false;
+      vistos.add(h.id);
+      return true;
+    })
+    .sort((a, b) => Date.parse(b.fecha) - Date.parse(a.fecha));
+}
+
 // === GET /api/bandeja/hilos ===
 //
-// Listado de hilos del buzón pedido. Sin conexión con Gmail devuelve 200 con
+// Listado de hilos del buzón pedido (los cuatro de la Bandeja o el virtual
+// TODOS, que busca en todo el correo). Sin conexión con Gmail devuelve 200 con
 // los hilos demo y `demo: true` — la bandeja siempre tiene algo que mostrar.
 export async function GET(req: NextRequest): Promise<Response> {
   const sp = new URL(req.url).searchParams;
@@ -37,7 +60,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const respuestaDemo = (): Response =>
     jsonResponse(
       {
-        hilos: filtrarHilosDemo(buzon, q).slice(0, limite),
+        hilos: hilosDemo(buzon, q).slice(0, limite),
         nextPageToken: null,
         conectado: false,
         demo: true,

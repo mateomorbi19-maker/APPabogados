@@ -1,6 +1,7 @@
 // Armado del borrador que abre el compositor cuando se responde o reenvía.
 // Es lógica pura: la usa bandeja-view antes de montar <ComposerModal/>.
 
+import { destinatariosRespuesta } from "@/lib/gmail/respuesta";
 import type { MensajeCompleto } from "@/lib/gmail/types";
 import { fechaCompleta } from "./fechas";
 import { nombreDe } from "./presentacion";
@@ -62,34 +63,15 @@ export function citar(m: MensajeCompleto): string {
   return `\n\n${cabecera}\n${cuerpo}\n`;
 }
 
-function normalizar(emails: string[], excluir: string[]): string[] {
-  const fuera = new Set(excluir.map((e) => e.toLowerCase()));
-  const vistos = new Set<string>();
-  const out: string[] = [];
-  for (const e of emails) {
-    const k = e.trim().toLowerCase();
-    if (k.length === 0 || fuera.has(k) || vistos.has(k)) continue;
-    vistos.add(k);
-    out.push(k);
-  }
-  return out;
-}
-
 export function borradorRespuesta(
   m: MensajeCompleto,
   aTodos: boolean,
   miEmail: string | null,
 ): Borrador {
-  // Nunca nos auto-incluimos en el "responder a todos"; tampoco repetimos al
-  // remitente en el CC.
-  const propio = miEmail ? [miEmail] : [];
-  const para = normalizar([m.de.email], propio);
-  const cc = aTodos
-    ? normalizar(
-        [...m.para.map((d) => d.email), ...m.cc.map((d) => d.email)],
-        [...propio, ...para],
-      )
-    : [];
+  // La regla de a quién se responde (Reply-To sobre From, nunca uno mismo,
+  // sin repetidos) vive en src/lib/gmail/respuesta.ts, compartida con la tool
+  // de correo de LEXIE: el compositor y la IA tienen que elegir lo mismo.
+  const { para, cc } = destinatariosRespuesta(m, { aTodos, miEmail });
   return {
     para,
     cc,

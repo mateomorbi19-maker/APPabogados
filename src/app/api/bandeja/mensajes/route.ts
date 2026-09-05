@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import type { gmail_v1 } from "@googleapis/gmail";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { jsonResponse, isDev } from "@/lib/http";
 import {
@@ -7,8 +6,10 @@ import {
   gmailErrorMessage,
   SCOPES_ENVIO,
 } from "@/lib/gmail/client";
-import { getHeader } from "@/lib/gmail/parse";
-import { enviarMensaje } from "@/lib/gmail/mensajes";
+import {
+  enviarMensaje,
+  resolverPadreParaRespuesta,
+} from "@/lib/gmail/mensajes";
 import { ERROR_DEMO } from "@/lib/gmail/sesion";
 import {
   ADJUNTOS_BASE64_MAX_TOTAL,
@@ -18,26 +19,6 @@ import { getTokenGoogle, SCOPES_GMAIL, tieneScope } from "@/lib/google/token";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
-
-/** Compara Message-ID ignorando los angulares y el espacio alrededor. */
-function mismoMessageId(a: string | null, b: string): boolean {
-  if (!a) return false;
-  const pelar = (s: string) => s.trim().replace(/^<|>$/g, "").trim();
-  return pelar(a) === pelar(b);
-}
-
-function buscarPorMessageId(
-  mensajes: gmail_v1.Schema$Message[],
-  messageId: string | undefined,
-): gmail_v1.Schema$Message | null {
-  if (!messageId) return null;
-  for (const m of mensajes) {
-    if (mismoMessageId(getHeader(m.payload?.headers, "Message-ID"), messageId)) {
-      return m;
-    }
-  }
-  return null;
-}
 
 // === POST /api/bandeja/mensajes ===
 //
@@ -98,31 +79,23 @@ export async function POST(req: NextRequest): Promise<Response> {
   const gmail = gmailDesdeToken(t.token);
 
   // Para que el cliente del otro lado agrupe la respuesta en su propio hilo
-  // hacen falta In-Reply-To y References reales. RFC 5322 §3.6.4: References
-  // se arma con las del mensaje QUE SE RESPONDE más su Message-ID — no con las
-  // del último del hilo. El abogado puede responder a un mensaje del medio
-  // (`responde_a_message_id` sale del botón Responder de ESE bloque), y
-  // mezclar las dos fuentes deja ids duplicados y descendientes listados como
-  // ancestros, con lo que el árbol del destinatario cuelga la respuesta del
-  // mensaje equivocado. Si falla, se envía igual (el threadId ya agrupa del
-  // lado de Gmail).
+  // hacen falta In-Reply-To y References reales, y salen del mensaje QUE SE
+  // RESPONDE (`responde_a_message_id` viene del botón Responder de ESE
+  // bloque): ver resolverPadreParaRespuesta, compartida con la tool de correo
+  // de LEXIE. Si falla, se envía igual (el threadId ya agrupa del lado de
+  // Gmail).
   let referencesPrevias: string | null = null;
   let messageIdPrevio: string | null = null;
   if (input.responde_a_thread_id && puedeLeer) {
     try {
-      const hilo = await gmail.users.threads.get({
-        userId: "me",
-        id: input.responde_a_thread_id,
-        format: "metadata",
-        metadataHeaders: ["Message-ID", "References"],
-      });
-      const mensajes = hilo.data.messages ?? [];
-      const padre =
-        buscarPorMessageId(mensajes, input.responde_a_message_id) ??
-        mensajes[mensajes.length - 1];
-      if (padre) {
-        referencesPrevias = getHeader(padre.payload?.headers, "References");
-        messageIdPrevio = getHeader(padre.payload?.headers, "Message-ID");
+      const r = await resolverPadreParaRespuesta(
+        gmail,
+        input.responde_a_thread_id,
+        input.responde_a_message_id,
+      );
+      if (r) {
+        referencesPrevias = r.references.length > 0 ? r.references.join(" ") : null;
+        messageIdPrevio = r.padre.message_id_header;
       }
     } catch (e) {
       console.error(

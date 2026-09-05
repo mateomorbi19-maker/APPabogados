@@ -17,8 +17,11 @@ import {
   tieneAdjuntos,
 } from "./parse";
 import type { CuerpoPendiente } from "./parse";
+import { BUZON_TODOS } from "./types";
 import type {
   Buzon,
+  BuzonListado,
+  DireccionEmail,
   EnviarMensajeInput,
   HiloCompleto,
   HiloResumen,
@@ -32,8 +35,9 @@ import type {
 const USER = "me";
 const SIN_ASUNTO = "(sin asunto)";
 
-// Los buzones lógicos de la app mapean 1:1 a system labels de Gmail.
-// (DRAFT no está: ver el TODO de BUZONES en types.ts — un borrador sólo es
+// Los buzones lógicos de la app mapean 1:1 a system labels de Gmail. El
+// virtual BUZON_TODOS no está: se lista SIN labelIds (ver listarHilos).
+// (DRAFT tampoco: ver el TODO de BUZONES en types.ts — un borrador sólo es
 // operable con users.drafts, que esta capa todavía no usa.)
 const LABEL_POR_BUZON: Record<Buzon, string> = {
   INBOX: "INBOX",
@@ -107,6 +111,19 @@ function asuntoDe(m: gmail_v1.Schema$Message | undefined): string {
   return limpio.length > 0 ? limpio : SIN_ASUNTO;
 }
 
+/**
+ * Reply-To, o null si no viene o si trae basura. Se toma la PRIMERA dirección
+ * válida: el header admite una lista (RFC 5322 §3.6.2), pero un "responder"
+ * con dos destinatarios que el abogado no eligió es peor que responder a uno.
+ */
+function replyToDe(
+  headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
+): DireccionEmail | null {
+  const crudo = getHeader(headers, "Reply-To");
+  if (!crudo) return null;
+  return parseListaDirecciones(crudo)[0] ?? null;
+}
+
 function hiloAResumen(hilo: gmail_v1.Schema$Thread): HiloResumen | null {
   const threadId = hilo.id;
   const mensajes = hilo.messages ?? [];
@@ -153,7 +170,7 @@ function hiloAResumen(hilo: gmail_v1.Schema$Thread): HiloResumen | null {
 }
 
 export type ListarHilosOpts = {
-  buzon: Buzon;
+  buzon: BuzonListado;
   q?: string;
   pageToken?: string;
   limite: number;
@@ -165,7 +182,10 @@ export async function listarHilos(
 ): Promise<{ hilos: HiloResumen[]; nextPageToken: string | null }> {
   const lista = await gmail.users.threads.list({
     userId: USER,
-    labelIds: [LABEL_POR_BUZON[opts.buzon]],
+    // Sin labelIds Gmail busca en TODO el correo (lo archivado incluido);
+    // spam y papelera siguen afuera porque includeSpamTrash queda en false.
+    labelIds:
+      opts.buzon === BUZON_TODOS ? undefined : [LABEL_POR_BUZON[opts.buzon]],
     maxResults: opts.limite,
     pageToken: opts.pageToken,
     q: opts.q && opts.q.length > 0 ? opts.q : undefined,
@@ -257,6 +277,7 @@ async function mensajeACompleto(
     de: parseDireccion(getHeader(headers, "From") ?? ""),
     para: parseListaDirecciones(getHeader(headers, "To") ?? ""),
     cc: parseListaDirecciones(getHeader(headers, "Cc") ?? ""),
+    reply_to: replyToDe(headers),
     asunto: asuntoDe(m),
     fecha: fechaDeMensaje(m),
     // El HTML se sanitiza acá, en el borde de salida: lo que sale del módulo
@@ -303,6 +324,69 @@ export async function obtenerHilo(
       mensajeACompleto(gmail, m, id),
     ),
   };
+}
+
+/**
+ * Casilla del abogado (users.getProfile), en minúsculas, o null si Google no
+ * contesta. Sirve para no auto-incluirse al "responder a todos"; con null la
+ * regla de destinatarios simplemente no excluye a nadie.
+ */
+export async function miEmail(gmail: gmail_v1.Gmail): Promise<string | null> {
+  try {
+    const perfil = await gmail.users.getProfile({ userId: USER });
+    const email = perfil.data.emailAddress?.trim().toLowerCase();
+    return email && email.length > 0 ? email : null;
+  } catch (e) {
+    console.error("[gmail] getProfile falló:", e);
+    return null;
+  }
+}
+
+/** Compara Message-ID ignorando los angulares y el espacio alrededor. */
+function mismoMessageId(a: string | null, b: string): boolean {
+  if (!a) return false;
+  const pelar = (s: string) => s.trim().replace(/^<|>$/g, "").trim();
+  return pelar(a) === pelar(b);
+}
+
+/**
+ * El mensaje que se va a responder y su cadena de References.
+ *
+ * RFC 5322 §3.6.4: References se arma con las del mensaje QUE SE RESPONDE más
+ * su Message-ID — no con las del último del hilo. El abogado puede responder
+ * a un mensaje del medio, y mezclar las dos fuentes deja ids duplicados y
+ * descendientes listados como ancestros, con lo que el árbol del destinatario
+ * cuelga la respuesta del mensaje equivocado.
+ *
+ * `messageId` acepta las DOS identidades de un mensaje: el `id` de Gmail
+ * (que es lo único que ve LEXIE, porque `hiloParaModelo` nunca expone el
+ * Message-ID) y el header Message-ID (que es lo que manda el botón Responder
+ * de la Bandeja). Sin `messageId`, o si no está en el hilo, se responde al
+ * último. Null si el hilo no existe o está vacío; si Gmail falla, tira: el
+ * caller decide si envía igual sin threading.
+ */
+export async function resolverPadreParaRespuesta(
+  gmail: gmail_v1.Gmail,
+  threadId: string,
+  messageId?: string | null,
+): Promise<{ padre: MensajeCompleto; references: string[] } | null> {
+  const hilo = await obtenerHilo(gmail, threadId);
+  if (!hilo) return null;
+
+  const buscado = messageId?.trim() ?? "";
+  const padre =
+    (buscado.length > 0
+      ? hilo.mensajes.find(
+          (m) => m.id === buscado || mismoMessageId(m.message_id_header, buscado),
+        )
+      : undefined) ?? hilo.mensajes[hilo.mensajes.length - 1];
+
+  const references = (padre.references_header ?? "")
+    .split(/\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  return { padre, references };
 }
 
 export async function enviarMensaje(

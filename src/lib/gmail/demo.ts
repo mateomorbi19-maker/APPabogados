@@ -58,6 +58,7 @@ function armarMensaje(threadId: string, s: SemillaMensaje): MensajeCompleto {
     de: s.de,
     para: s.para,
     cc: s.cc ?? [],
+    reply_to: null,
     asunto: s.asunto,
     fecha: s.fecha,
     cuerpo_html: cuerpoHtml(s.parrafos),

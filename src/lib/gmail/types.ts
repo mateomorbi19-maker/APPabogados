@@ -54,6 +54,13 @@ export type MensajeCompleto = {
   de: DireccionEmail;
   para: DireccionEmail[];
   cc: DireccionEmail[];
+  /**
+   * Header Reply-To, si el remitente pidió que se le conteste a otra casilla.
+   * Los portales judiciales y las notificaciones mandan desde un `noreply@` y
+   * ponen acá la dirección real: responder al From es escribirle a nadie.
+   * `destinatariosRespuesta` (respuesta.ts) lo prefiere sobre `de`.
+   */
+  reply_to: DireccionEmail | null;
   asunto: string;
   /** ISO 8601. */
   fecha: string;
@@ -136,9 +143,24 @@ export function buzonLabel(buzon: string): string {
   return (BUZONES_LABEL as Record<string, string>)[buzon] ?? buzon;
 }
 
+/**
+ * Buzón virtual "todo el correo": el listado NO filtra por label, así que
+ * entra también lo archivado (lo que salió de Recibidos sin ir a la papelera).
+ * Spam y papelera quedan afuera igual.
+ *
+ * No está en `BUZONES` a propósito: ese array es lo que la Bandeja pinta en
+ * el rail (`Record<Buzon, …>` de íconos y etiquetas), y este buzón no tiene
+ * pestaña. Lo usa la búsqueda de correo de LEXIE, que necesita encontrar la
+ * cédula que el abogado archivó la semana pasada.
+ */
+export const BUZON_TODOS = "TODOS" as const;
+export const BUZONES_LISTADO = [...BUZONES, BUZON_TODOS] as const;
+export type BuzonListado = (typeof BUZONES_LISTADO)[number];
+
 // === Validación de input (zod en el borde de las API routes) ===
 
 export const buzonSchema = z.enum(BUZONES);
+export const buzonListadoSchema = z.enum(BUZONES_LISTADO);
 
 /**
  * Id de hilo o de mensaje de Gmail: hex corto. Acepta también los ids demo
@@ -154,7 +176,7 @@ export const adjuntoIdSchema = z
   .regex(/^[A-Za-z0-9_=-]{1,2048}$/, "Id de adjunto inválido");
 
 export const listarHilosQuerySchema = z.object({
-  buzon: buzonSchema.default("INBOX"),
+  buzon: buzonListadoSchema.default("INBOX"),
   /** Sintaxis de búsqueda de Gmail (`from:`, `has:attachment`, texto libre). */
   q: z.string().trim().max(200).optional(),
   pageToken: z.string().max(500).optional(),
