@@ -35,17 +35,17 @@
 
 ## 2. Estado actual (punto de partida)
 
-- Tabla [`mapa_procesal_nodos`](supabase/migrations/20260610130000_mapa_procesal_nodos.sql):
+- Tabla [`mapa_procesal_nodos`](../supabase/migrations/20260610130000_mapa_procesal_nodos.sql):
   árbol por caso, self-FK `padre_id`, `tipo` (raiz|real|prediccion), `estado`
   (ocurrido|desbloqueado|bloqueado), `riesgo_alto`, cascade, índice único de raíz por caso.
   **El schema ya soporta todo lo del MVP — no requiere cambios.**
-- **Una** plantilla hardcodeada en [`plantilla-base.ts`](src/lib/mapa-procesal/plantilla-base.ts)
+- **Una** plantilla hardcodeada en [`plantilla-base.ts`](../src/lib/mapa-procesal/plantilla-base.ts)
   (`FLUJO`, 11 nodos, vocabulario CPPF). Fuero-agnóstica. Bug latente: un caso de
   Nación recibe hoy vocabulario federal equivocado.
 - Render ReactFlow + dagre; sistema de color por **estado** (ejecutada verde > riesgo
-  rojo > decisión amarillo > posible azul) en [`layout.ts`](src/lib/mapa-procesal/layout.ts).
-- **Cero IA en el mapa.** El agente ([`run-agent.ts`](src/lib/agent/run-agent.ts) /
-  [`run-agent-consulta.ts`](src/lib/agent/run-agent-consulta.ts)) no toca `mapa_procesal_nodos`.
+  rojo > decisión amarillo > posible azul) en [`layout.ts`](../src/lib/mapa-procesal/layout.ts).
+- **Cero IA en el mapa.** El agente ([`run-agent.ts`](../src/lib/agent/run-agent.ts) /
+  [`run-agent-consulta.ts`](../src/lib/agent/run-agent-consulta.ts)) no toca `mapa_procesal_nodos`.
 - El pre-análisis ya infiere `jurisdiccion_inferida` (texto libre) pero nunca llega al mapa.
 - El fuero **no existe como dato tipado** en ninguna tabla (vive como texto en `casos.contexto.jurisdiccion`).
 
@@ -76,7 +76,7 @@ ALTER TABLE casos ADD COLUMN fuero TEXT
 
 ### 3.2. `FLUJO_POR_FUERO` (el corazón del cambio)
 
-En [`plantilla-base.ts`](src/lib/mapa-procesal/plantilla-base.ts): reemplazar el `FLUJO`
+En [`plantilla-base.ts`](../src/lib/mapa-procesal/plantilla-base.ts): reemplazar el `FLUJO`
 único por `FLUJO_POR_FUERO: Record<Fuero, NodoTemplate[]>` y cambiar la firma a
 `generarPlantillaBase(casoId: string, fuero: Fuero)`. Extender `NodoTemplate` con
 `descripcion?: string` (para poblar el panel lateral desde la plantilla) y mantener
@@ -167,7 +167,7 @@ persistir, y al reabrir el mapa debe quedar **exactamente como lo dejó el aboga
 
 Estado actual: el contenido (título, descripción, estado, riesgo, nodos) **ya** persiste en
 DB en cada mutación. Lo único que NO sobrevive al reload es la **posición**:
-[`layout.ts`](src/lib/mapa-procesal/layout.ts) corre dagre en cada render y las columnas
+[`layout.ts`](../src/lib/mapa-procesal/layout.ts) corre dagre en cada render y las columnas
 `posicion_x`/`posicion_y` (que **ya existen** en el schema) están ignoradas (siempre 0).
 
 **Diseño — auto-guardado (viable y barato para 3 usuarios; NO hace falta botón de "Guardar"):**
@@ -213,7 +213,7 @@ DB en cada mutación. Lo único que NO sobrevive al reload es la **posición**:
      "buenos aires"/"provincia"/"la plata"…→`pba`; "caba"/"nacional"/"nación"→`nacion`.
    - c) fallback: extender `PRE_ANALISIS_SYSTEM_PROMPT` + el JSON de `armarPromptPreAnalisis`
      para emitir `datos_detectados.fuero_sugerido: "nacion"|"pba"|"federal"|null`, validado
-     en [`schemas.ts`](src/lib/schemas.ts). (Aprovecha que el pre-análisis ya razona F2
+     en [`schemas.ts`](../src/lib/schemas.ts). (Aprovecha que el pre-análisis ya razona F2
      competencia y D5 menores.)
 2. La sugerencia se muestra **pre-seleccionada** en el selector de la Fase A; el abogado
    confirma o cambia. Nunca se fija sola (decisión "IA sugiere + confirma").

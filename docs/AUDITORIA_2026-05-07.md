@@ -21,17 +21,17 @@
 - **Embeddings:** `openai` v6.34.0 — `text-embedding-3-small`.
 - **UI:** shadcn/ui v4.4.0 sobre Tailwind v4. Dark-only (`<html class="dark">`).
 - **Validación:** `zod` v4.3.6 en cada API route + en cliente (defense in depth).
-- **Archivos en repo:** 287 tracked totales; **82 en [src/](src/)**.
+- **Archivos en repo:** 287 tracked totales; **82 en [src/](../src/)**.
 - **Estructura clave:**
-  - [src/proxy.ts](src/proxy.ts) — middleware Clerk (Next 16 lo nombra "proxy.ts", no "middleware.ts")
-  - [src/app/](src/app/) — `page.tsx`, `layout.tsx`, `sign-in/`, `sign-up/`, `forbidden/`, `dashboard/mis-casos/`, `api/` (6 routes)
-  - [src/lib/agent/](src/lib/agent/) — `run-agent.ts`, `prompts.ts`, `tools.ts`, `parse.ts`, `pricing.ts`
-  - [src/lib/auth/](src/lib/auth/) — `whitelist.ts`, `enforce-rate.ts`
-  - [src/lib/rag/](src/lib/rag/) — `embed.ts`, `match-documents.ts`
-  - [src/components/](src/components/) — `app-shell.tsx`, `header/`, `consumo/`, `nuevo-analisis/`, `mis-casos/`, `ui/` (shadcn)
-  - [supabase/migrations/](supabase/migrations/) — 5 SQL migrations versionadas
-  - [scripts/](scripts/) — `test-agent.ts`, `count-system-tokens.ts`, `ingestar-cppf.ts`
-  - [legacy/](legacy/) — sistema viejo (Express + index.html + n8n) congelado, no se ejecuta
+  - [src/proxy.ts](../src/proxy.ts) — middleware Clerk (Next 16 lo nombra "proxy.ts", no "middleware.ts")
+  - [src/app/](../src/app/) — `page.tsx`, `layout.tsx`, `sign-in/`, `sign-up/`, `forbidden/`, `dashboard/mis-casos/`, `api/` (6 routes)
+  - [src/lib/agent/](../src/lib/agent/) — `run-agent.ts`, `prompts.ts`, `tools.ts`, `parse.ts`, `pricing.ts`
+  - [src/lib/auth/](../src/lib/auth/) — `whitelist.ts`, `enforce-rate.ts`
+  - [src/lib/rag/](../src/lib/rag/) — `embed.ts`, `match-documents.ts`
+  - [src/components/](../src/components/) — `app-shell.tsx`, `header/`, `consumo/`, `nuevo-analisis/`, `mis-casos/`, `ui/` (shadcn)
+  - [supabase/migrations/](../supabase/migrations/) — 5 SQL migrations versionadas
+  - [scripts/](../scripts/) — `test-agent.ts`, `count-system-tokens.ts`, `ingestar-cppf.ts`
+  - [legacy/](../legacy/) — sistema viejo (Express + index.html + n8n) congelado, no se ejecuta
 
 ## 3. Frontend (Next.js)
 
@@ -39,16 +39,16 @@
 
 | Ruta | Contenido | Notas |
 |---|---|---|
-| `/` | Dashboard con tabs **Nuevo análisis** + **Mi consumo** | [app-shell.tsx:18-29](src/components/app-shell.tsx#L18-L29) |
+| `/` | Dashboard con tabs **Nuevo análisis** + **Mi consumo** | [app-shell.tsx:18-29](../src/components/app-shell.tsx#L18-L29) |
 | `/sign-in/[[...sign-in]]` | Clerk SignIn (solo Google) | esES + baseTheme shadcn |
 | `/sign-up/[[...sign-up]]` | Idem `/sign-in` (mismo flow Google) | |
 | `/forbidden` | 403 cuando email no está en whitelist | |
 | `/dashboard/mis-casos` | Sidebar con lista de casos del usuario | Empty state si no hay nada — y hoy no hay (0 casos en DB) |
-| `/dashboard/mis-casos/[id]` | Detalle: header + caso original + estrategia + timeline + placeholder agente | [mis-casos/[id]/page.tsx](src/app/dashboard/mis-casos/[id]/page.tsx) |
+| `/dashboard/mis-casos/[id]` | Detalle: header + caso original + estrategia + timeline + placeholder agente | [mis-casos/[id]/page.tsx](../src/app/dashboard/mis-casos/[id]/page.tsx) |
 
 ### Tab "Nuevo análisis" — flujo dinámico
 
-5-fase state machine en [nuevo-analisis-panel.tsx:43-72](src/components/nuevo-analisis/nuevo-analisis-panel.tsx#L43-L72):
+5-fase state machine en [nuevo-analisis-panel.tsx:43-72](../src/components/nuevo-analisis/nuevo-analisis-panel.tsx#L43-L72):
 
 `input → loading-pre → form → analizando → resultado` (con ramas `error-pre` y `error-analisis`).
 
@@ -59,7 +59,7 @@
 
 ### Tab "Mi consumo"
 
-Provider `ConsumoProvider` ([use-consumo.tsx](src/lib/hooks/use-consumo.tsx)) con in-flight guard + AbortController. Componentes:
+Provider `ConsumoProvider` ([use-consumo.tsx](../src/lib/hooks/use-consumo.tsx)) con in-flight guard + AbortController. Componentes:
 
 - **MetricCards** — 4 cards: tokens usados / cupo / costo USD / ejecuciones.
 - **HistorialTable** — top 20 del mes, click abre `HistorialDetalle` (modal con drill-down: caso, contexto, resultado, búsquedas RAG, parseo, errores).
@@ -75,20 +75,20 @@ Provider `ConsumoProvider` ([use-consumo.tsx](src/lib/hooks/use-consumo.tsx)) co
 ### Issues detectados (frontend)
 
 - **Inconsistencia menor de UX:** la pestaña principal vive en `/` con tabs Tabs(Nuevo / Consumo), pero **Mis casos** vive bajo `/dashboard/mis-casos`. El header tiene los dos primeros como tabs internos y "Mis casos" como link de nav — el modelo mental dual puede confundir; o todo van como tabs, o todo como rutas.
-- En [seleccionar-estrategia-modal.tsx:107-110](src/components/nuevo-analisis/seleccionar-estrategia-modal.tsx#L107-L110) hay un comentario `TODO Fase 5: cuando exista /dashboard/mis-casos/[id], redirigir ahí`. La página ya existe (Fase 5b) pero el redirect sigue yendo a la lista. Debería ir a `/dashboard/mis-casos/{caso_id}`.
+- En [seleccionar-estrategia-modal.tsx:107-110](../src/components/nuevo-analisis/seleccionar-estrategia-modal.tsx#L107-L110) hay un comentario `TODO Fase 5: cuando exista /dashboard/mis-casos/[id], redirigir ahí`. La página ya existe (Fase 5b) pero el redirect sigue yendo a la lista. Debería ir a `/dashboard/mis-casos/{caso_id}`.
 
 ## 4. Backend (API routes)
 
 | Route | Método | maxDuration | Descripción |
 |---|---|---|---|
-| [/api/pre-analisis](src/app/api/pre-analisis/route.ts) | POST | 60s | Single-shot sin RAG. Devuelve `resumen_preliminar`, `datos_detectados`, `preguntas[]`. |
-| [/api/analizar-caso](src/app/api/analizar-caso/route.ts) | POST | 120s | Tool-use loop con RAG. `maxIterations=10`, `HARD_CAP_BUSQUEDAS=6`. |
-| [/api/consumo](src/app/api/consumo/route.ts) | GET | default | Consumo del mes (vista) + historial (top 20). |
-| [/api/ejecuciones/buscar](src/app/api/ejecuciones/buscar/route.ts) | GET | default | Polling para recuperar análisis tras 502 del proxy. |
-| [/api/casos](src/app/api/casos/route.ts) | POST / GET | default | Crea caso desde una ejecución / lista casos del usuario. |
-| [/api/casos/[id]](src/app/api/casos/[id]/route.ts) | GET / DELETE | default | Detalle / cascade delete. |
-| [/api/casos/[id]/eventos](src/app/api/casos/[id]/eventos/route.ts) | POST | default | Agrega evento manual al timeline. |
-| [/api/casos/[id]/eventos/[evento_id]](src/app/api/casos/[id]/eventos/[evento_id]/route.ts) | DELETE | default | Borra evento. |
+| [/api/pre-analisis](../src/app/api/pre-analisis/route.ts) | POST | 60s | Single-shot sin RAG. Devuelve `resumen_preliminar`, `datos_detectados`, `preguntas[]`. |
+| [/api/analizar-caso](../src/app/api/analizar-caso/route.ts) | POST | 120s | Tool-use loop con RAG. `maxIterations=10`, `HARD_CAP_BUSQUEDAS=6`. |
+| [/api/consumo](../src/app/api/consumo/route.ts) | GET | default | Consumo del mes (vista) + historial (top 20). |
+| [/api/ejecuciones/buscar](../src/app/api/ejecuciones/buscar/route.ts) | GET | default | Polling para recuperar análisis tras 502 del proxy. |
+| [/api/casos](../src/app/api/casos/route.ts) | POST / GET | default | Crea caso desde una ejecución / lista casos del usuario. |
+| [/api/casos/[id]](../src/app/api/casos/[id]/route.ts) | GET / DELETE | default | Detalle / cascade delete. |
+| [/api/casos/[id]/eventos](../src/app/api/casos/[id]/eventos/route.ts) | POST | default | Agrega evento manual al timeline. |
+| [/api/casos/[id]/eventos/[evento_id]](../src/app/api/casos/[id]/eventos/[evento_id]/route.ts) | DELETE | default | Borra evento. |
 
 **Patrón consistente:**
 1. Parse del body con Zod.
@@ -98,14 +98,14 @@ Provider `ConsumoProvider` ([use-consumo.tsx](src/lib/hooks/use-consumo.tsx)) co
 5. INSERT en `ejecuciones` con tokens reales del SDK + `costo_usd` calculado.
 6. Response con `ok: true/false`. En `isDev()` agrega `detail` con el mensaje del error.
 
-### Agente RAG ([run-agent.ts](src/lib/agent/run-agent.ts))
+### Agente RAG ([run-agent.ts](../src/lib/agent/run-agent.ts))
 
-- Tool única `buscar_documentos_legales` ([tools.ts:6-21](src/lib/agent/tools.ts#L6-L21)).
+- Tool única `buscar_documentos_legales` ([tools.ts:6-21](../src/lib/agent/tools.ts#L6-L21)).
 - Tool flow: `embedQuery(OpenAI text-embedding-3-small)` → `match_documents` RPC en pgvector (top 5).
 - En cada iteración: pushea `assistant` content y `user` con tool_results, re-llama Claude.
 - **`AgentError`** con `partialUsage` para que aún si el loop falla mid-way los tokens cobrados se persistan en `ejecuciones`.
 
-### Pricing ([pricing.ts](src/lib/agent/pricing.ts))
+### Pricing ([pricing.ts](../src/lib/agent/pricing.ts))
 
 - Sonnet 4.5: input $3 / output $15 por MTok. Cache write 5m $3.75, cache read $0.30.
 - **Long-context tier** (>200K input): input $6, output $22.50. Detectado correctamente sumando input + cache_create + cache_read.
@@ -113,17 +113,17 @@ Provider `ConsumoProvider` ([use-consumo.tsx](src/lib/hooks/use-consumo.tsx)) co
 
 ### Issues detectados (backend)
 
-- **`HARD_CAP_BUSQUEDAS = 6` se viola por construcción.** En [run-agent.ts:176-183](src/lib/agent/run-agent.ts#L176-L183) el check pasa *después* de pushear todas las búsquedas de la iteración. Si una iteración tiene 4 tool_use blocks y ya había 4 acumuladas, queda en 8 antes del check → throw. Las 3 ejecuciones fallidas del 2026-05-01 cayeron exactamente acá (`n_busquedas=8, iterations=2, error=LIMITE_BUSQUEDAS_EXCEDIDO`).
-- **El system prompt es text plain string** ([prompts.ts:3-4](src/lib/agent/prompts.ts#L3-L4)) — no array con `cache_control`. Para activar prompt caching habría que migrar a `system: [{ type: "text", text: ..., cache_control: { type: "ephemeral" }}]` y igual con tools. Es la mejora más alta de ROI antes de deploy si crece volumen.
+- **`HARD_CAP_BUSQUEDAS = 6` se viola por construcción.** En [run-agent.ts:176-183](../src/lib/agent/run-agent.ts#L176-L183) el check pasa *después* de pushear todas las búsquedas de la iteración. Si una iteración tiene 4 tool_use blocks y ya había 4 acumuladas, queda en 8 antes del check → throw. Las 3 ejecuciones fallidas del 2026-05-01 cayeron exactamente acá (`n_busquedas=8, iterations=2, error=LIMITE_BUSQUEDAS_EXCEDIDO`).
+- **El system prompt es text plain string** ([prompts.ts:3-4](../src/lib/agent/prompts.ts#L3-L4)) — no array con `cache_control`. Para activar prompt caching habría que migrar a `system: [{ type: "text", text: ..., cache_control: { type: "ephemeral" }}]` y igual con tools. Es la mejora más alta de ROI antes de deploy si crece volumen.
 - **El system prompt es enorme y monolítico**: 1 string con todas las instrucciones + reglas de fundamentación + advertencia CPPF vs CPP viejo. Es candidato directo a caching.
-- **`repairJSON` defensivo en [parse.ts:15-25](src/lib/agent/parse.ts#L15-L25)** — limpia backticks aunque el system prompt diga "JSON puro sin backticks". Trade-off OK pero indica que el modelo a veces igual los pone.
+- **`repairJSON` defensivo en [parse.ts:15-25](../src/lib/agent/parse.ts#L15-L25)** — limpia backticks aunque el system prompt diga "JSON puro sin backticks". Trade-off OK pero indica que el modelo a veces igual los pone.
 - **No hay test automatizado** — `scripts/test-agent.ts` es smoke manual. Sin CI.
 
 ## 5. Auth y whitelist
 
-- [src/proxy.ts](src/proxy.ts): `clerkMiddleware`, public routes `/sign-in(.*)`, `/sign-up(.*)`. Resto pasa por `auth.protect()`.
-- [whitelist.ts:24-81](src/lib/auth/whitelist.ts#L24-L81): lazy-sync Clerk→Supabase. Match por `email = LOWER(clerk_email)`. Si `clerk_user_id IS NULL`, lo setea con guard `.is('clerk_user_id', null)`. Si ya está seteado a otro userId → 403.
-- [enforce-rate.ts](src/lib/auth/enforce-rate.ts): consulta `v_consumo_mensual.tokens_restantes`. Si <= 0 → 429.
+- [src/proxy.ts](../src/proxy.ts): `clerkMiddleware`, public routes `/sign-in(.*)`, `/sign-up(.*)`. Resto pasa por `auth.protect()`.
+- [whitelist.ts:24-81](../src/lib/auth/whitelist.ts#L24-L81): lazy-sync Clerk→Supabase. Match por `email = LOWER(clerk_email)`. Si `clerk_user_id IS NULL`, lo setea con guard `.is('clerk_user_id', null)`. Si ya está seteado a otro userId → 403.
+- [enforce-rate.ts](../src/lib/auth/enforce-rate.ts): consulta `v_consumo_mensual.tokens_restantes`. Si <= 0 → 429.
 
 ### Issues detectados (auth)
 
