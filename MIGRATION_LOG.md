@@ -515,7 +515,7 @@ WHERE table_schema = 'public'
 
 **Contexto:** Fase 9 / sub-paso 9.1. La causa gana su identidad. Hoy `casos` tiene 13 columnas y ninguna dice cómo se llama oficialmente el expediente, qué número tiene, ante qué organismo tramita ni quién está imputado. Medido contra la base el 2026-08-22: **de 8 causas, 4 se llaman con un pedazo del relato** — una es literalmente `"El 3 de julio de 2026, cerca de las 04:15"`. Eso degrada a la vez la lista de causas, el buscador global, el contexto de LEXIE y el header del chat, porque los cuatro leen `casos.titulo`.
 
-El orden lo había fijado [REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md) §6: la ficha va primero y sirve aunque la reportería no se construya nunca. El plan completo está en [PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md).
+El orden lo había fijado [REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](docs/REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md) §6: la ficha va primero y sirve aunque la reportería no se construya nunca. El plan completo está en [PLAN_FICHA_CAUSA.md](docs/PLAN_FICHA_CAUSA.md).
 
 **Tipo:** aditiva. 8 columnas nuevas en `casos` + 1 tabla nueva (`partes_caso`) + 1 CHECK recreado con el patrón defensivo por definición. Cero cambios destructivos, cero backfill.
 

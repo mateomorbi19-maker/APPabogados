@@ -328,7 +328,7 @@ tope de tamaño y el corte automático de la grabación a los 10 minutos.
 ### Ficha de causa — `PATCH /api/casos/:id` y `/api/casos/:id/partes`
 
 La identidad del expediente. Ver la Fase 9 más abajo y
-[PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md).
+[PLAN_FICHA_CAUSA.md](docs/PLAN_FICHA_CAUSA.md).
 
 - `PATCH /api/casos/[id]` — edita la ficha. **Es la primera ruta de escritura
   sobre el recurso `caso`**: hasta la Fase 9 sólo había `GET` y `DELETE`, o sea
@@ -513,7 +513,7 @@ sobre requisa sin orden?").
   lado, así que un hilo en mal estado no se podía resetear y cada turno
   siguiente fallaba igual.
 
-**Desde la Fase 11 LEXIE ACTÚA** (ver [PLAN_LEXIE_ACCIONES.md](PLAN_LEXIE_ACCIONES.md)).
+**Desde la Fase 11 LEXIE ACTÚA** (ver [PLAN_LEXIE_ACCIONES.md](docs/PLAN_LEXIE_ACCIONES.md)).
 Lectura: `mi_agenda`, `buscar_mis_casos`, `leer_caso`
 ([lexie-tools.ts](src/lib/agent/lexie-tools.ts)), `buscar_jurisprudencia` /
 `leer_jurisprudencia`, `buscar_documentos_legales`, `buscar_modelos_escrito` /
@@ -1026,7 +1026,7 @@ Pendientes conocidos:
 
 ### Fase 9 — Ficha de causa
 
-La identidad del expediente. Ver [PLAN_FICHA_CAUSA.md](PLAN_FICHA_CAUSA.md) para el
+La identidad del expediente. Ver [PLAN_FICHA_CAUSA.md](docs/PLAN_FICHA_CAUSA.md) para el
 plan completo, las decisiones tomadas y lo que queda explícitamente afuera
 (honorarios, gastos, prueba como entidad, escritos generados, las 6 tabs del
 mockup, autocompletado con IA e integración con portales judiciales).
@@ -1134,7 +1134,7 @@ Pendientes conocidos:
 
 ### Fase 11 — LEXIE con manos
 
-Plan y decisiones en [PLAN_LEXIE_ACCIONES.md](PLAN_LEXIE_ACCIONES.md). Pedido
+Plan y decisiones en [PLAN_LEXIE_ACCIONES.md](docs/PLAN_LEXIE_ACCIONES.md). Pedido
 de Mateo (5/9/2026): que LEXIE sea «un Jarvis dentro de la app» —correo,
 agenda, escritos y ficha— menos crear causas.
 
