@@ -15,7 +15,7 @@ App web para 3 abogados penales argentinos (Lautaro, Gonzalo, Mateo). Cada uno d
 - **Embeddings:** OpenAI `text-embedding-3-small`, 1536 dimensiones. Se usa en runtime para embeddear queries de búsqueda RAG, y en los scripts offline de ingesta del corpus.
 - **UI:** shadcn/ui sobre Tailwind v4. Dark-only, clase `.dark` siempre en `<html>`.
 - **Validación:** Zod en el borde de cada API route.
-- **Deploy:** Easypanel manual (Dockerfile en raíz, **pendiente de Fase 5.4**). Dominio objetivo: `lexstrategy.teotec.org`. Sin CI, sin auto-deploy.
+- **Deploy:** Easypanel manual (Dockerfile en raíz, **Fase 5.4 ✅**; falta ejecutar el pasaje a producción de la 5.6, ver [DEPLOY_5.6.md](DEPLOY_5.6.md)). Dominio objetivo: `lexstrategy.teotec.org`. Sin CI, sin auto-deploy.
 
 ## Estructura del repo
 
@@ -73,6 +73,7 @@ scripts/
 legacy/                           # Sistema viejo (Express + index.html + n8n).
                                   # Apagado, queda por referencia histórica.
 notas-migracion/                  # Gitignored. Datos sensibles + workflow n8n de ingesta original.
+docs/                             # Planes, auditorías y briefings de fases cerradas. Índice en docs/README.md.
 ```
 
 ## Auth y whitelist
