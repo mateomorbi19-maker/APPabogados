@@ -4,6 +4,10 @@ import { createServerClient } from "@/lib/supabase/server";
 import type { CasoNombrable } from "@/lib/types";
 import { nombreCaso, sinCaratula } from "@/lib/casos/nombre";
 import { getEventosByUser } from "@/lib/agenda/queries";
+import {
+  clientesSinNovedades,
+  type ClienteSinNovedades,
+} from "@/lib/reporteria/pendientes";
 import { ConsumoProvider } from "@/lib/hooks/use-consumo";
 import { NavShell } from "@/components/nav/nav-shell";
 import {
@@ -65,10 +69,25 @@ export default async function InicioPage() {
     console.error("[InicioPage] error cargando eventos:", e);
   }
 
+  // «Clientes sin novedades» (Fase 12): la memoria que reemplaza al envío
+  // automático de reportes. Misma degradación: sin esto, el Inicio se dibuja
+  // igual.
+  let sinNovedades: ClienteSinNovedades[] = [];
+  try {
+    sinNovedades = await clientesSinNovedades(result.usuario_id);
+  } catch (e) {
+    console.error("[InicioPage] error calculando reportes pendientes:", e);
+  }
+
   return (
     <ConsumoProvider>
       <NavShell nombreUsuario={result.nombre} isAdmin={result.role === "admin"}>
-        <InicioDashboard nombre={result.nombre} casos={casos} eventos={eventos} />
+        <InicioDashboard
+          nombre={result.nombre}
+          casos={casos}
+          eventos={eventos}
+          sinNovedades={sinNovedades}
+        />
       </NavShell>
     </ConsumoProvider>
   );

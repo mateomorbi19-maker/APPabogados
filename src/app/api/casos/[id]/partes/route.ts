@@ -5,6 +5,7 @@ import { jsonResponse, isDev } from "@/lib/http";
 import { casoEsDelUsuario } from "@/lib/casos/propiedad";
 import {
   agregarParte,
+  ErrorMigracionContacto,
   listarPartes,
   MAX_PARTES,
 } from "@/lib/casos/escritura";
@@ -126,6 +127,11 @@ export async function POST(
       }
     }
   } catch (e) {
+    // Teléfono o mail sin la migración de reportería aplicada: se dice qué
+    // aplicar en vez de un 500 opaco. La alta sin contacto no pasa por acá.
+    if (e instanceof ErrorMigracionContacto) {
+      return jsonResponse({ ok: false, error: e.message }, 503);
+    }
     console.error("[POST partes] error:", e);
     return jsonResponse(
       {

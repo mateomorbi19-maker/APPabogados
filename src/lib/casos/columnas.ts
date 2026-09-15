@@ -54,8 +54,17 @@ export const COLS_CASO_NOMBRE_EXPEDIENTE =
 
 // Todas las columnas de `partes_caso`. La tabla es chica y siempre se lee
 // entera; no hay subconjuntos.
-// `documento` llegó con la migración 20260904120000 (escritos): sin ella
-// aplicada, TODOS los reads de partes devuelven 42703 → 500.
+// `documento` llegó con la migración 20260904120000 (escritos); `telefono` y
+// `email` con la 20260915120000 (reportería). A diferencia de las veces
+// anteriores, un SELECT con las columnas de contacto SIN la migración no
+// tira 500 a toda la sección: `listarPartes` / `leerParte` (escritura.ts)
+// detectan el 42703 y reintentan con `COLS_PARTE_BASE`. Los call sites que
+// leen partes deberían pasar por esas dos funciones.
 export const COLS_PARTE =
+  "id, caso_id, nombre, rol, es_cliente, situacion_libertad, documento, telefono, email, creado_en";
+
+// La lista anterior a la reportería: es el fallback mientras la migración
+// 20260915120000 no esté aplicada.
+export const COLS_PARTE_BASE =
   "id, caso_id, nombre, rol, es_cliente, situacion_libertad, documento, creado_en";
 

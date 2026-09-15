@@ -5,6 +5,7 @@ import { DOMINIO_AGENDA } from "@/lib/agent/agenda-tools";
 import { DOMINIO_FICHA } from "@/lib/agent/ficha-tools";
 import { DOMINIO_ESCRITOS } from "@/lib/agent/escritos-tools";
 import { DOMINIO_CORREO } from "@/lib/agent/correo-tools";
+import { DOMINIO_REPORTERIA } from "@/lib/agent/reporteria-tools";
 
 // El ÚNICO ejecutor de acciones pendientes. Lo llaman los dos caminos de
 // confirmación —el botón de la tarjeta (la ruta, sin modelo) y el texto (la
@@ -18,6 +19,7 @@ export const DOMINIOS_LEXIE: DominioLexie[] = [
   DOMINIO_FICHA,
   DOMINIO_ESCRITOS,
   DOMINIO_CORREO,
+  DOMINIO_REPORTERIA,
 ];
 
 /**

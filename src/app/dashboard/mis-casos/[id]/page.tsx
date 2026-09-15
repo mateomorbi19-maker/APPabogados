@@ -7,12 +7,14 @@
 import { notFound } from "next/navigation";
 import { requireUsuarioOr403 } from "@/lib/auth/whitelist";
 import { createServerClient } from "@/lib/supabase/server";
-import { COLS_CASO, COLS_PARTE } from "@/lib/casos/columnas";
+import { COLS_CASO } from "@/lib/casos/columnas";
+import { listarPartes } from "@/lib/casos/escritura";
 import { getNodosDelCaso } from "@/lib/mapa-procesal/queries";
 import { etapaActual } from "@/lib/mapa-procesal/etapa-actual";
 import { DetalleCaso } from "@/components/mis-casos/detalle-caso";
 import { estrategiaSchema } from "@/lib/schemas";
 import { listarEscritos } from "@/lib/escritos/queries";
+import { listarReportes } from "@/lib/reporteria/queries";
 import type { Caso, EventoCaso, ParteCaso } from "@/lib/types";
 
 const UUID_RE =
@@ -37,7 +39,7 @@ export default async function CasoDetallePage({
   // mapa. `getNodosDelCaso` no valida propiedad —la validó el SELECT de
   // `casos` de acá al lado, con el mismo `id`— y su query está scopeada por
   // caso_id, así que no puede devolver nodos de otra causa.
-  const [casoRes, eventosRes, partesRes, nodos, escritos] = await Promise.all([
+  const [casoRes, eventosRes, partesRes, nodos, escritos, reportes] = await Promise.all([
     supabase
       .from("casos")
       .select(COLS_CASO)
@@ -51,11 +53,15 @@ export default async function CasoDetallePage({
       )
       .eq("caso_id", id)
       .order("ocurrido_en", { ascending: true }),
-    supabase
-      .from("partes_caso")
-      .select(COLS_PARTE)
-      .eq("caso_id", id)
-      .order("creado_en", { ascending: true }),
+    // Las partes pasan por `listarPartes`: sabe degradar si las columnas de
+    // contacto (migración 20260915120000) todavía no existen. La propiedad
+    // la valida el SELECT de `casos` de acá al lado.
+    listarPartes(id)
+      .then((partes) => ({ data: partes, error: null as Error | null }))
+      .catch((e: unknown) => ({
+        data: [] as ParteCaso[],
+        error: e instanceof Error ? e : new Error(String(e)),
+      })),
     // El mapa puede no existir todavía; un fallo acá degrada a "sin etapa",
     // que es lo mismo que ve una causa sin mapa. No puede tirar la pantalla.
     getNodosDelCaso(id).catch((e) => {
@@ -67,6 +73,12 @@ export default async function CasoDetallePage({
     // ficha se muestra igual con la lista vacía y el error queda en logs.
     listarEscritos(id, auth.usuario_id).catch((e) => {
       console.error("[caso detalle] error escritos:", e);
+      return [];
+    }),
+    // Los reportes al cliente (Fase 12). Misma degradación: sin la tabla, la
+    // ficha se muestra igual con la lista vacía.
+    listarReportes(id, auth.usuario_id).catch((e) => {
+      console.error("[caso detalle] error reportes:", e);
       return [];
     }),
   ]);
@@ -101,7 +113,7 @@ export default async function CasoDetallePage({
   if (partesRes.error) {
     console.error("[caso detalle] error partes:", partesRes.error);
   }
-  const partes = (partesRes.data ?? []) as ParteCaso[];
+  const partes = partesRes.data;
 
   // Se pasa serializada (label + nodo) y no el objeto entero: el componente es
   // client y no tiene por qué recibir el árbol del mapa para pintar un badge.
@@ -116,6 +128,7 @@ export default async function CasoDetallePage({
       eventosIniciales={eventos}
       partesIniciales={partes}
       escritosIniciales={escritos}
+      reportesIniciales={reportes}
       etapa={etapa}
       mapaInicializado={nodos.length > 0}
     />

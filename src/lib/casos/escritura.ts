@@ -45,7 +45,7 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { normalizar } from "@/lib/casos/buscar";
-import { COLS_CASO, COLS_PARTE } from "@/lib/casos/columnas";
+import { COLS_CASO, COLS_PARTE, COLS_PARTE_BASE } from "@/lib/casos/columnas";
 import { casoEsDelUsuario } from "@/lib/casos/propiedad";
 import type {
   CrearParteInput,
@@ -95,6 +95,66 @@ export async function leerFicha(
   return data ? (data as unknown as CasoFicha) : null;
 }
 
+// === El contacto de la parte y la migración 20260915120000 ===
+//
+// `telefono` y `email` llegan con la migración de reportería, que Mateo corre
+// a mano. Las dos veces anteriores que `COLS_PARTE` creció (riesgo_alto,
+// documento), TODOS los reads de partes devolvieron 500 hasta que la
+// migración se aplicó. Acá no: si PostgREST contesta 42703 ("column … does
+// not exist"), se reintenta con la lista vieja y el contacto sale null. Se
+// recuerda por un minuto para no pagar dos queries por lectura.
+//
+// Las ESCRITURAS de contacto sin la migración sí fallan, con
+// `ErrorMigracionContacto`, que las rutas traducen a 503 con el mensaje de
+// qué aplicar.
+let contactoNoDisponibleHasta = 0;
+
+export class ErrorMigracionContacto extends Error {
+  constructor() {
+    super(
+      "Falta aplicar la migración de reportería en la base (20260915120000_reporteria_cliente.sql): hasta entonces no se puede guardar teléfono ni correo de una parte.",
+    );
+    this.name = "ErrorMigracionContacto";
+  }
+}
+
+function faltaColumnaContacto(msg: string): boolean {
+  return (
+    /42703/.test(msg) ||
+    /column .*(telefono|email).* does not exist/i.test(msg) ||
+    /schema cache/i.test(msg)
+  );
+}
+
+function completarContacto(fila: Record<string, unknown>): ParteCaso {
+  return {
+    ...(fila as unknown as ParteCaso),
+    telefono: (fila.telefono as string | null | undefined) ?? null,
+    email: (fila.email as string | null | undefined) ?? null,
+  };
+}
+
+async function seleccionarPartes(
+  casoId: string,
+  parteId: string | null,
+): Promise<ParteCaso[]> {
+  const supabase = createServerClient();
+  const conContacto = Date.now() >= contactoNoDisponibleHasta;
+  const cols: string = conContacto ? COLS_PARTE : COLS_PARTE_BASE;
+  let q = supabase.from("partes_caso").select(cols).eq("caso_id", casoId);
+  if (parteId) q = q.eq("id", parteId);
+  const { data, error } = await q.order("creado_en", { ascending: true });
+  if (error && conContacto && faltaColumnaContacto(error.message)) {
+    contactoNoDisponibleHasta = Date.now() + 60_000;
+    console.warn(
+      "[partes] sin columnas de contacto (migración 20260915120000 sin aplicar); se leen sin telefono/email",
+    );
+    return seleccionarPartes(casoId, parteId);
+  }
+  if (error) throw new Error(`partes_caso: ${error.message}`);
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map(completarContacto);
+}
+
 /**
  * Las partes de una causa, en orden de carga.
  *
@@ -103,14 +163,7 @@ export async function leerFicha(
  * (o por `leerFicha`) antes; es el mismo contrato que `buildContextoCaso`.
  */
 export async function listarPartes(casoId: string): Promise<ParteCaso[]> {
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("partes_caso")
-    .select(COLS_PARTE)
-    .eq("caso_id", casoId)
-    .order("creado_en", { ascending: true });
-  if (error) throw new Error(`listarPartes: ${error.message}`);
-  return (data ?? []) as unknown as ParteCaso[];
+  return seleccionarPartes(casoId, null);
 }
 
 /**
@@ -122,15 +175,8 @@ export async function leerParte(
   casoId: string,
   parteId: string,
 ): Promise<ParteCaso | null> {
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("partes_caso")
-    .select(COLS_PARTE)
-    .eq("id", parteId)
-    .eq("caso_id", casoId)
-    .maybeSingle();
-  if (error) throw new Error(`leerParte: ${error.message}`);
-  return data ? (data as unknown as ParteCaso) : null;
+  const filas = await seleccionarPartes(casoId, parteId);
+  return filas[0] ?? null;
 }
 
 // === Ficha ===
@@ -340,6 +386,14 @@ export async function agregarParte(
   // Lista blanca explícita: `caso_id` sale del argumento (que ya pasó el
   // guard), nunca del input. Si viniera del input, un abogado podría cargar
   // una parte en la causa de otro.
+  // El contacto sólo viaja al INSERT si vino con valor: así una alta sin
+  // teléfono ni mail sigue funcionando aunque la migración de reportería no
+  // esté aplicada (las columnas no se nombran).
+  const contacto: { telefono?: string | null; email?: string | null } = {};
+  if (input.telefono !== undefined && input.telefono !== null) contacto.telefono = input.telefono;
+  if (input.email !== undefined && input.email !== null) contacto.email = input.email;
+  const conContacto = Object.keys(contacto).length > 0;
+
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("partes_caso")
@@ -350,14 +404,18 @@ export async function agregarParte(
       es_cliente: input.es_cliente,
       situacion_libertad: input.situacion_libertad ?? null,
       documento: input.documento ?? null,
+      ...contacto,
     })
-    .select(COLS_PARTE)
+    .select(conContacto ? COLS_PARTE : COLS_PARTE_BASE)
     .single();
+  if (error && conContacto && faltaColumnaContacto(error.message)) {
+    throw new ErrorMigracionContacto();
+  }
   if (error || !data) {
     throw new Error(`agregarParte: ${error?.message ?? "sin fila"}`);
   }
 
-  return { ok: true, parte: data as unknown as ParteCaso };
+  return { ok: true, parte: completarContacto(data as unknown as Record<string, unknown>) };
 }
 
 type ColumnaParte =
@@ -365,7 +423,9 @@ type ColumnaParte =
   | "rol"
   | "es_cliente"
   | "situacion_libertad"
-  | "documento";
+  | "documento"
+  | "telefono"
+  | "email";
 
 type PatchParte = Partial<Pick<ParteCaso, ColumnaParte>>;
 
@@ -401,6 +461,8 @@ export async function editarParte(
   if (cambios.situacion_libertad !== undefined)
     cols.situacion_libertad = cambios.situacion_libertad;
   if (cambios.documento !== undefined) cols.documento = cambios.documento;
+  if (cambios.telefono !== undefined) cols.telefono = cambios.telefono;
+  if (cambios.email !== undefined) cols.email = cambios.email;
 
   const columnas = Object.keys(cols) as ColumnaParte[];
   if (columnas.length === 0) return { ok: false, motivo: "sin_cambios" };
@@ -410,6 +472,7 @@ export async function editarParte(
 
   const distintas = columnas.filter((c) => cols[c] !== antes[c]);
   if (distintas.length === 0) return { ok: false, motivo: "sin_cambios" };
+  const tocaContacto = distintas.some((c) => c === "telefono" || c === "email");
 
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -417,12 +480,19 @@ export async function editarParte(
     .update(soloEstas(cols, distintas))
     .eq("id", parteId)
     .eq("caso_id", casoId)
-    .select(COLS_PARTE)
+    .select(tocaContacto ? COLS_PARTE : COLS_PARTE_BASE)
     .maybeSingle();
+  if (error && tocaContacto && faltaColumnaContacto(error.message)) {
+    throw new ErrorMigracionContacto();
+  }
   if (error) throw new Error(`editarParte: ${error.message}`);
   if (!data) return { ok: false, motivo: "no_existe" };
 
-  return { ok: true, antes, despues: data as unknown as ParteCaso };
+  return {
+    ok: true,
+    antes,
+    despues: completarContacto(data as unknown as Record<string, unknown>),
+  };
 }
 
 export type ResultadoEliminarParte =

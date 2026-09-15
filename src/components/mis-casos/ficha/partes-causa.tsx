@@ -9,6 +9,9 @@
 //
 // La situación de libertad se muestra sólo cuando el rol la hace significativa
 // (imputado). Un testigo "en libertad" es ruido.
+//
+// El contacto (correo y teléfono, Fase 12) se muestra debajo del nombre para
+// que el abogado vea ADÓNDE va a salir un reporte antes de generarlo.
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { Plus, Pencil, Trash2, UserRound } from "lucide-react";
@@ -129,6 +132,11 @@ export function PartesCausa({ casoId, partes, onPartesChange }: Props) {
                     </span>
                   ) : null}
                 </p>
+                {p.email || p.telefono ? (
+                  <p className="mt-0.5 text-xs text-[var(--el-text-muted)] break-all">
+                    {[p.email, p.telefono].filter(Boolean).join(" · ")}
+                  </p>
+                ) : null}
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <Chip className={ROL_PARTE_BADGE[p.rol]}>
                     {ROL_PARTE_LABEL[p.rol]}

@@ -1,6 +1,7 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
-import { COLS_CASO, COLS_PARTE } from "@/lib/casos/columnas";
+import { COLS_CASO } from "@/lib/casos/columnas";
+import { listarPartes } from "@/lib/casos/escritura";
 import { nombreCaso } from "@/lib/casos/nombre";
 import { buildContextoCaso } from "@/lib/casos/build-contexto-caso";
 import { casoEsDelUsuario } from "@/lib/agenda/queries";
@@ -261,18 +262,16 @@ async function preparar(
   }
 
   const supabase = createServerClient();
-  const [casoRes, partesRes, perfil, modelo] = await Promise.all([
+  // Las partes pasan por `listarPartes`, que sabe degradar si las columnas de
+  // contacto (migración 20260915120000) todavía no existen.
+  const [casoRes, partes, perfil, modelo] = await Promise.all([
     supabase
       .from("casos")
       .select(COLS_CASO)
       .eq("id", casoId)
       .eq("usuario_id", usuarioId)
       .maybeSingle(),
-    supabase
-      .from("partes_caso")
-      .select(COLS_PARTE)
-      .eq("caso_id", casoId)
-      .order("creado_en", { ascending: true }),
+    listarPartes(casoId),
     getPerfilProfesional(usuarioId),
     obtenerModelo(modeloId, usuarioId),
   ]);
@@ -280,7 +279,6 @@ async function preparar(
   // Pasó el guard y ahora no está: la causa se borró entre medio. Misma
   // respuesta que si nunca hubiera sido suya.
   if (!casoRes.data) return { ok: false, motivo: "caso_ajeno" };
-  if (partesRes.error) throw new Error(partesRes.error.message);
   if (!modelo) {
     return {
       ok: false,
@@ -290,7 +288,6 @@ async function preparar(
   }
 
   const caso = casoRes.data as unknown as Caso;
-  const partes = (partesRes.data ?? []) as ParteCaso[];
   return {
     ok: true,
     caso,

@@ -1,15 +1,14 @@
 "use client";
 // Alta y edición de una persona de la causa.
 //
-// Sin teléfono ni mail a propósito. La pregunta que define si el contacto
-// hace falta —¿el reporte al cliente es por causa o por persona?— sigue sin
-// contestar en REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md, y modelar datos de
-// contacto antes de esa respuesta es adivinar. La tabla 1:N, en cambio,
-// funciona igual con las dos respuestas posibles, así que no es una apuesta.
+// El DNI es un dato de IDENTIDAD (Fase 10): el encabezado de todo escrito lo
+// pide ("{{IMPUTADO}}, DNI {{DNI}}"). Sin él, el redactor deja [COMPLETAR: DNI].
 //
-// El DNI sí está (Fase 10): es un dato de IDENTIDAD, no de contacto, y el
-// encabezado de todo escrito lo pide ("{{IMPUTADO}}, DNI {{DNI}}"). Sin él, el
-// redactor deja [COMPLETAR: DNI] y el abogado lo escribe a mano cada vez.
+// Teléfono y correo llegaron con la Fase 12 (reportería), cuando la pregunta
+// «¿el reporte es por causa o por persona?» se contestó POR PERSONA
+// (docs/PLAN_REPORTERIA.md §2). Son datos de CONTACTO y sólo sirven para
+// reportarle al cliente: el correo es la dirección a la que sale un reporte,
+// y se muestra completa antes de confirmar el envío.
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -52,6 +51,8 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
   const [esCliente, setEsCliente] = useState(false);
   const [situacion, setSituacion] = useState<SituacionLibertad | "">("");
   const [documento, setDocumento] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +70,8 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
       setEsCliente(parte?.es_cliente ?? false);
       setSituacion(parte?.situacion_libertad ?? "");
       setDocumento(parte?.documento ?? "");
+      setTelefono(parte?.telefono ?? "");
+      setEmail(parte?.email ?? "");
       setError(null);
     }
   }
@@ -99,6 +102,8 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
       situacion_libertad: situacionFinal,
       // "" viaja como "" y el schema del server la convierte en NULL.
       documento: documento,
+      telefono,
+      email,
     };
 
     try {
@@ -217,6 +222,38 @@ export function ParteForm({ open, casoId, parte, onClose, onSaved }: Props) {
               </select>
             </div>
           ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="p-email">Correo</Label>
+              <Input
+                id="p-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                maxLength={200}
+                placeholder="cliente@ejemplo.com"
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-telefono">Teléfono</Label>
+              <Input
+                id="p-telefono"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                disabled={loading}
+                maxLength={60}
+                placeholder="+54 9 11 5555-5555"
+                autoComplete="off"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground sm:col-span-2">
+              Sólo para reportarle al cliente. El correo es adonde sale un
+              reporte por mail: se muestra completo antes de enviarlo.
+            </p>
+          </div>
 
           <label className="flex items-start gap-2.5 rounded-md border border-border p-3">
             <Checkbox

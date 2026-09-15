@@ -5,6 +5,7 @@ import { jsonResponse, isDev } from "@/lib/http";
 import {
   editarParte,
   eliminarParte,
+  ErrorMigracionContacto,
   leerParte,
 } from "@/lib/casos/escritura";
 import { editarParteInputSchema } from "@/lib/schemas";
@@ -107,6 +108,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
       }
     }
   } catch (e) {
+    if (e instanceof ErrorMigracionContacto) {
+      return jsonResponse({ ok: false, error: e.message }, 503);
+    }
     return error500("PATCH parte", e, "Error actualizando la parte");
   }
 }

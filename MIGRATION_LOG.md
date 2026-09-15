@@ -615,3 +615,77 @@ Cambios de comportamiento sin SQL, declarados: `crearParteInputSchema` es
 `.strict()` (el formulario manda exactamente esas claves); un `POST` de parte
 con nombre repetido devuelve 409; los guardados sin cambios de ficha y partes
 no bumpean `actualizado_en`.
+
+---
+
+## 2026-09-15 — `20260915120000_reporteria_cliente.sql` — ⏳ **PENDIENTE DE APLICAR**
+
+**Contexto:** Fase 12 (reportería al cliente) y Fase 13 (los modelos de escritos
+de Gonzalo). Ver [docs/PLAN_REPORTERIA.md](docs/PLAN_REPORTERIA.md) y
+[docs/PLAN_MODELOS_GONZALO.md](docs/PLAN_MODELOS_GONZALO.md).
+
+**Cambios que trae:**
+
+- `partes_caso.telefono text` y `partes_caso.email text` — el contacto del
+  cliente. La P1 del documento de agosto («¿el reporte es por causa o por
+  persona?») se contesta POR PERSONA, así que el contacto cuelga de la parte.
+- `reportes_cliente` — tabla nueva. Un mensaje del abogado a su cliente sobre el
+  estado de la causa: la plantilla y la variante, el canal, `contenido_generado`
+  (lo que produjo el sistema) y `contenido_enviado` (lo que salió), `enviado_a`
+  con la dirección o el teléfono exactos, el `criterio` que tipeó el abogado y
+  los `datos` que usó el sistema. `usuario_id` redundante a propósito (es el
+  predicado de propiedad), `parte_id` con `ON DELETE SET NULL` para que el
+  registro sobreviva a la persona. Índice parcial sobre lo enviado para la
+  tarjeta del Inicio. Trigger propio de `actualizado_en`, y **sin** trigger
+  sobre `casos.actualizado_en`: reportarle al cliente no es un acto del
+  expediente.
+- `ejecuciones.tipo` suma `'reporte_cliente'` (los 7 previos se conservan).
+- `modelos_escrito.categoria` suma `'extrajudicial'` (los 10 previos se
+  conservan): tres de los modelos de Gonzalo son cartas documento.
+- RLS ENABLE + REVOKE a `anon`/`authenticated` en `reportes_cliente`.
+
+**Acoplamiento código ↔ migración: MEDIO, y esta vez no rompe los reads.**
+`COLS_PARTE` incluye `telefono` y `email`, pero `listarPartes` / `leerParte`
+(`src/lib/casos/escritura.ts`) detectan el 42703 y reintentan con
+`COLS_PARTE_BASE`, así que sin la migración las partes se leen igual, sólo sin
+contacto. Es distinto de lo que pasó con `riesgo_alto` y con `documento`, que
+tiraron 500 en todos los reads del caso hasta que se aplicó la migración.
+
+Lo que sí necesita la base falla con un mensaje claro y **antes** de gastar:
+
+| Camino | Sin la migración |
+|---|---|
+| Guardar teléfono o correo de una parte | 503 con el nombre del archivo a aplicar (`ErrorMigracionContacto`) |
+| `GET /api/casos/[id]/reportes/preparar` | 503 |
+| `POST /api/casos/[id]/reportes` | 503 **antes** de llamar al modelo |
+| El bloque «Reportes» de la ficha | Lista vacía, el detalle degrada |
+| «Clientes sin novedades» del Inicio | No aparece (se loguea un warn) |
+| Guardar un modelo propio `extrajudicial` | Viola el CHECK |
+
+**Aplicación:** ⏳ la tiene que correr Mateo a mano en el SQL Editor. Es
+idempotente.
+
+**Verificación** (después de correrla), gratis y de sólo lectura:
+
+```bash
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-reporteria.ts --sin-modelo
+```
+
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'partes_caso' AND column_name IN ('telefono', 'email');   -- 2 filas
+
+SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'reportes_cliente';  -- t
+SELECT grantee FROM information_schema.role_table_grants
+WHERE table_name = 'reportes_cliente';  -- sin anon ni authenticated
+
+SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con
+JOIN pg_class rel ON rel.oid = con.conrelid
+WHERE rel.relname IN ('ejecuciones', 'modelos_escrito') AND con.contype = 'c';
+```
+
+**Nota sobre lo que NO se pudo verificar el 2026-09-15:** el `.env.local` de
+esta máquina está sin credenciales (las claves existen como líneas, con el
+valor vacío), así que nada de esta fase se corrió contra la base real ni contra
+el modelo. Lo verificado es el camino puro (`--puro`), `tsc --noEmit`, `eslint`
+y `next build`.

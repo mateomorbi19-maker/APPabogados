@@ -3,6 +3,7 @@ import { CATEGORIAS_EVENTO } from "@/lib/casos/categorias";
 import { MIME_TYPES_PERMITIDOS } from "@/lib/casos/adjuntos";
 import { NIVELES_MODELO, NIVEL_DEFAULT } from "@/lib/agent/modelos";
 import { CATEGORIAS_ESCRITO, ROLES_SUGERIDOS } from "@/lib/escritos/types";
+import { CANALES_REPORTE, PLANTILLAS_REPORTE } from "@/lib/reporteria/types";
 
 export const rolSchema = z.enum(["defensor", "querellante", "ambos"]);
 export type RolInput = z.infer<typeof rolSchema>;
@@ -423,6 +424,26 @@ export type EditarCasoInput = z.infer<typeof editarCasoInputSchema>;
 // `.strict()` como los otros dos: un `caso_id` o un `usuario_id` de más en el
 // body es un 400 explícito y no algo que se ignora en silencio. El formulario
 // manda exactamente estas cinco claves (parte-form.tsx).
+// El correo de contacto de una parte (Fase 12, reportería). Se guarda en
+// minúsculas —es la dirección a la que sale un reporte, y comparar dos
+// direcciones con distinta capitalización es la clase de bug que manda un
+// mail dos veces— y "" se guarda como NULL, como el resto de la ficha.
+const EMAIL_SIMPLE_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function emailOpcional(max: number) {
+  return z
+    .string()
+    .max(max)
+    .transform((v) => {
+      const t = v.trim().toLowerCase();
+      return t.length > 0 ? t : null;
+    })
+    .refine((v) => v === null || EMAIL_SIMPLE_RE.test(v), {
+      message: "Correo inválido",
+    })
+    .nullable()
+    .optional();
+}
+
 export const crearParteInputSchema = z
   .object({
     nombre: z.string().min(1).max(300),
@@ -432,6 +453,9 @@ export const crearParteInputSchema = z
     // DNI u otro documento, texto libre (Fase 10, escritos). Misma
     // normalización que la ficha: "" se guarda como NULL.
     documento: fichaTextoOpcional(80),
+    // Contacto (Fase 12, reportería). Sólo para reportarle al cliente.
+    telefono: fichaTextoOpcional(60),
+    email: emailOpcional(200),
   })
   .strict();
 export type CrearParteInput = z.infer<typeof crearParteInputSchema>;
@@ -443,6 +467,8 @@ export const editarParteInputSchema = z
     es_cliente: z.boolean().optional(),
     situacion_libertad: situacionLibertadSchema.nullable().optional(),
     documento: fichaTextoOpcional(80),
+    telefono: fichaTextoOpcional(60),
+    email: emailOpcional(200),
   })
   .strict();
 export type EditarParteInput = z.infer<typeof editarParteInputSchema>;
@@ -733,3 +759,47 @@ export const perfilProfesionalInputSchema = z
   })
   .strict();
 export type PerfilProfesionalInput = z.infer<typeof perfilProfesionalInputSchema>;
+
+// === Reportería al cliente (Fase 12) ===
+
+// Generar un reporte: a quién, con qué plantilla y variante, por qué canal,
+// y el criterio del abogado (las respuestas del formulario corto: strings y
+// checkboxes). Las claves del criterio se filtran del lado del server contra
+// los campos que define la plantilla; acá sólo se acota el tamaño.
+export const generarReporteInputSchema = z
+  .object({
+    parte_id: z.string().uuid(),
+    plantilla: z.enum(PLANTILLAS_REPORTE),
+    variante: z.string().trim().min(1).max(60).nullable().optional(),
+    canal: z.enum(CANALES_REPORTE).default("copia"),
+    criterio: z
+      .record(z.string().max(80), z.union([z.string().max(4000), z.boolean()]))
+      .default({}),
+    nivel: z.enum(NIVELES_MODELO).default(NIVEL_DEFAULT),
+    // Sin IA aunque la variante lo permita: guarda el borrador determinístico.
+    sin_ia: z.boolean().optional(),
+  })
+  .strict();
+export type GenerarReporteInput = z.infer<typeof generarReporteInputSchema>;
+
+// Editar un borrador antes de enviarlo. `estado` sólo admite descartar: el
+// envío tiene su propia ruta.
+export const editarReporteInputSchema = z
+  .object({
+    contenido: z.string().min(1).max(20000).optional(),
+    asunto: fichaTextoOpcional(300),
+    canal: z.enum(CANALES_REPORTE).optional(),
+    estado: z.literal("descartado").optional(),
+  })
+  .strict();
+export type EditarReporteInput = z.infer<typeof editarReporteInputSchema>;
+
+// Enviar: por correo `para` es la dirección tal como la vio el abogado y
+// tiene que coincidir con la cargada en la parte (ver enviar-reporte.ts).
+export const enviarReporteInputSchema = z
+  .object({
+    canal: z.enum(CANALES_REPORTE),
+    para: z.string().trim().max(200).optional(),
+  })
+  .strict();
+export type EnviarReporteInput = z.infer<typeof enviarReporteInputSchema>;

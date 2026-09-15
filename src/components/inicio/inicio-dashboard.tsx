@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock3,
   FolderOpen,
+  MessageSquareWarning,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,8 @@ import {
   type EventoResumen,
 } from "@/lib/inicio/resumen";
 import { BuscadorTrigger } from "@/components/buscador/buscador-global";
+import type { ClienteSinNovedades } from "@/lib/reporteria/pendientes";
+import { DIAS_SIN_REPORTE_AVISO } from "@/lib/reporteria/types";
 
 export type CasoReciente = CasoResumen;
 export type EventoProximo = EventoResumen;
@@ -52,6 +55,7 @@ export function InicioDashboard({
   nombre,
   casos,
   eventos,
+  sinNovedades = [],
 }: {
   nombre: string;
   /** TODAS las causas del usuario: el panel corta lo que muestra, pero los
@@ -59,6 +63,8 @@ export function InicioDashboard({
   casos: CasoReciente[];
   /** Eventos futuros del usuario, ordenados por fecha_inicio ascendente. */
   eventos: EventoProximo[];
+  /** Causas con cliente a las que hace más de 30 días que no se les reporta (Fase 12). */
+  sinNovedades?: ClienteSinNovedades[];
 }) {
   const resumen = construirResumen({ casos, eventos });
   const ctaCompacto = casos.length > CASOS_PARA_CTA_COMPACTO;
@@ -91,6 +97,12 @@ export function InicioDashboard({
           proximo={resumen.proximoVencimiento}
         />
       </div>
+
+      {/* 4b. Clientes sin novedades: sólo cuando hay alguno. Es la memoria
+             que reemplaza al envío automático de reportes (Fase 12). */}
+      {sinNovedades.length > 0 ? (
+        <ClientesSinNovedades pendientes={sinNovedades} />
+      ) : null}
 
       {/* 5. Detalle: causas a la izquierda, agenda a la derecha */}
       <div className="grid gap-4 lg:grid-cols-5">
@@ -165,6 +177,59 @@ function CtaCompacto() {
       <BadgeDuracion className="hidden bg-[var(--el-violet)]/15 text-[var(--el-violet-light)] sm:inline-flex" />
       <ArrowRight className="size-4 shrink-0 text-[var(--el-violet-light)] transition-transform group-hover:translate-x-0.5" />
     </Link>
+  );
+}
+
+// === Clientes sin novedades (Fase 12) ===
+//
+// «Hace 34 días que no le reportás a Fulano». No manda nada: lleva a la ficha
+// con el diálogo de nuevo reporte abierto (`?reporte=nuevo`), donde el abogado
+// genera, lee y decide. Se muestran hasta cuatro; el resto se cuenta.
+
+function ClientesSinNovedades({ pendientes }: { pendientes: ClienteSinNovedades[] }) {
+  const visibles = pendientes.slice(0, FILAS_VISIBLES);
+  return (
+    <section className="rounded-[11px] border border-amber-500/35 bg-amber-500/6 p-5 shadow-[var(--el-shadow-card)]">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-[var(--el-text)]">
+          <MessageSquareWarning className="size-4 text-amber-700 dark:text-amber-300" />
+          Clientes sin novedades
+        </h2>
+        <span className="text-xs text-[var(--el-text-muted)]">
+          más de {DIAS_SIN_REPORTE_AVISO} días sin reporte
+        </span>
+      </div>
+      <ul className="mt-3 divide-y divide-[var(--el-border-soft)]">
+        {visibles.map((p) => (
+          <li key={p.caso_id}>
+            <Link
+              href={`/dashboard/mis-casos/${p.caso_id}?reporte=nuevo`}
+              className="group flex items-center gap-3 py-2.5"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-[var(--el-text)]">
+                  {p.nombre_caso}
+                </span>
+                <span className="block truncate text-xs text-[var(--el-text-muted)]">
+                  {p.dias_sin_reporte === null
+                    ? `Nunca se le reportó a ${p.clientes.join(", ")}`
+                    : `Hace ${p.dias_sin_reporte} días que no le reportás a ${p.clientes.join(", ")}`}
+                </span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-[var(--el-violet-light)] group-hover:underline">
+                Reportar
+                <ChevronRight className="size-3.5" />
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {pendientes.length > visibles.length ? (
+        <p className="mt-2 text-xs text-[var(--el-text-muted)]">
+          y {pendientes.length - visibles.length} más
+        </p>
+      ) : null}
+    </section>
   );
 }
 
