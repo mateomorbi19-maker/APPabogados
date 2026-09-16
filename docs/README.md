@@ -18,7 +18,9 @@ falsificar el registro.
 
 | Documento | Qué es |
 |---|---|
-| [REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md) (+ [.pdf](REPORTERIA_AL_CLIENTE_PARA_DECIDIR.pdf)) | **El único del lote que sigue abierto.** Documento del 12/8/2026 para Gonzalo y Lautaro sobre el módulo de reportería: qué se puede hacer, qué hay que sacar, las 35 variables clasificadas por disponibilidad, y la conclusión de empezar por la ficha de causa antes que por las plantillas. Termina con **6 preguntas que los socios todavía no contestaron**, y la P1 sigue condicionando los datos de contacto de `partes_caso`. El PDF es la exportación para mandar fuera del repo: si cambia el `.md`, regeneralo. |
+| [PLAN_REPORTERIA.md](PLAN_REPORTERIA.md) | **Lo que hay que leer primero sobre reportería.** Plan de la Fase 12 (15/9/2026): qué se construyó, y sobre todo su **§2, que contesta por defecto las seis preguntas** que los socios nunca respondieron, con dónde se cambia cada una. Su §3 son las reglas duras (nada sale sin que un abogado lo lea, el hueco visible en vez del dato verosímil, la promesa de recurso sale de una decisión y no de la plantilla). |
+| [PLAN_MODELOS_GONZALO.md](PLAN_MODELOS_GONZALO.md) | Fase 13 (15/9/2026): los 89 escritos reales que Gonzalo compartió por Drive, cómo se anonimizaron y clasificaron, y por qué el catálogo se partió en dos módulos. Su §6 es lo que todavía tiene que revisar un abogado. |
+| [REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md) (+ [.pdf](REPORTERIA_AL_CLIENTE_PARA_DECIDIR.pdf)) | Documento del 12/8/2026 para Gonzalo y Lautaro: qué se puede hacer, qué hay que sacar, las 35 variables clasificadas por disponibilidad, y la conclusión de empezar por la ficha de causa antes que por las plantillas. **Sus 6 preguntas ya no bloquean nada**: las contesta el §2 del plan de arriba, por defecto y de forma reversible. Vale por el análisis, que sigue siendo el fundamento de las decisiones. El PDF es la exportación para mandar fuera del repo: si cambia el `.md`, regeneralo. |
 
 ## Planes de fases ya ejecutadas
 

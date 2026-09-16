@@ -11,7 +11,7 @@
 //   DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server \
 //     --import dotenv/config scripts/verificar-escritos.ts [--sin-modelo]
 
-import { writeFileSync } from "node:fs";
+import { readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createServerClient } from "../src/lib/supabase/server";
 import { CATALOGO_ESTUDIO } from "../src/lib/escritos/catalogo-estudio";
@@ -40,34 +40,74 @@ const aviso = (t: string) => console.log(`  --   ${t}`);
 
 async function main() {
   // ============ 1. Catálogo (puro) ============
+  // Desde la Fase 13 son 139: los 50 redactados como plantilla más los 89
+  // reales que compartió Gonzalo. El catálogo son RESÚMENES; los cuerpos
+  // viven en su propio módulo y se cargan aparte (se verifican abajo).
   console.log("\n=== 1. Catálogo del estudio ===");
-  if (CATALOGO_ESTUDIO.length === 50) ok("50 modelos");
-  else mal(`${CATALOGO_ESTUDIO.length} modelos, esperaba 50`);
+  // El total NO se fija en un número: el corpus de Drive cambia cuando Gonzalo
+  // agrega o se descarta un modelo, y un test que hay que editar en cada
+  // cambio se termina editando sin mirar. Lo que sí es invariante: los 50
+  // redactados están siempre, y el resto son los archivos del corpus.
+  const TOTAL = CATALOGO_ESTUDIO.length;
+  const enCorpus = readdirSync(path.join(process.cwd(), "scripts/data/modelos-estudio-drive"))
+    .filter((f) => f.endsWith(".md")).length;
+  if (TOTAL === 50 + enCorpus) ok(`${TOTAL} modelos (50 redactados + ${enCorpus} del corpus de Drive)`);
+  else mal(`${TOTAL} modelos, pero 50 + ${enCorpus} archivos del corpus = ${50 + enCorpus}`);
   const ids = new Set(CATALOGO_ESTUDIO.map((m) => m.id));
-  if (ids.size === 50) ok("slugs únicos");
+  if (ids.size === CATALOGO_ESTUDIO.length) ok("slugs únicos");
   else mal("slugs duplicados");
   const rotos = CATALOGO_ESTUDIO.filter(
-    (m) => !m.suma || m.cuerpo.length < 50 || !esModeloDelEstudio(m.id) || esUuid(m.id),
+    (m) => !m.suma || !esModeloDelEstudio(m.id) || esUuid(m.id),
   );
-  if (rotos.length === 0) ok("todos con suma, cuerpo y slug válido");
+  if (rotos.length === 0) ok("todos con suma y slug válido");
   else mal(`modelos rotos: ${rotos.map((m) => m.numero).join(", ")}`);
   const numeros = CATALOGO_ESTUDIO.map((m) => m.numero).sort((a, b) => (a ?? 0) - (b ?? 0));
-  if (numeros[0] === 1 && numeros[49] === 50) ok("numerados 1..50");
-  else mal(`numeración rara: ${numeros[0]}..${numeros[49]}`);
+  if (numeros[0] === 1 && numeros[TOTAL - 1] === TOTAL) ok(`numerados 1..${TOTAL}`);
+  else mal(`numeración rara: ${numeros[0]}..${numeros[TOTAL - 1]}`);
+
+  // Los cuerpos: uno por modelo, todos con contenido, y ningún dato real
+  // olvidado en los que salieron de Drive (nombres propios se buscan a ojo;
+  // acá sólo se verifica que no quedaran blancos sin placeholder).
+  const { CUERPOS } = await import("../src/lib/escritos/catalogo-estudio-cuerpos");
+  const sinCuerpo = CATALOGO_ESTUDIO.filter((m) => !CUERPOS[m.id] || CUERPOS[m.id].length < 50);
+  if (sinCuerpo.length === 0) ok(`${Object.keys(CUERPOS).length} cuerpos, todos con contenido`);
+  else mal(`sin cuerpo: ${sinCuerpo.map((m) => m.id).join(", ")}`);
+  const huerfanos = Object.keys(CUERPOS).filter((id) => !ids.has(id));
+  if (huerfanos.length === 0) ok("ningún cuerpo huérfano");
+  else mal(`cuerpos sin modelo: ${huerfanos.join(", ")}`);
+  // `xxx`, `…` y `___` son blancos que la normalización no reemplazó. Los
+  // números romanos de los expedientes de la CSJN (XXXI, XXXVII) se excluyen.
+  const conBlancos = CATALOGO_ESTUDIO.filter((m) => {
+    const c = CUERPOS[m.id] ?? "";
+    const sinRomanos = c.replace(/\b[IVXLCDM]{2,}\b/g, "");
+    return /…|\.{4,}|_{2,}|[xX]{3,}/.test(sinRomanos);
+  });
+  if (conBlancos.length === 0) ok("ningún cuerpo con blancos sin placeholder");
+  else mal(`con blancos: ${conBlancos.map((m) => m.id).join(", ")}`);
+  const kb = Object.values(CUERPOS).reduce((a, c) => a + c.length, 0) / 1024;
+  aviso(`cuerpos: ${kb.toFixed(0)} KB (módulo de carga diferida, fuera del listado)`);
 
   // ============ 2. Filtro (puro) ============
   console.log("\n=== 2. Búsqueda en el catálogo ===");
-  const casos: Array<[string, number]> = [
-    ["excarcelacion", 8],
-    ["nulidad allanamiento", 24],
-    ["apelación", 44],
-    ["probation", 35],
-    ["habeas", 32],
+  // Se verifica el TEMA del primer resultado, no su número: con 139 modelos
+  // hay varios de excarcelación y de apelación, y cuál gana es una cuestión de
+  // puntaje que no tiene por qué congelarse en un test.
+  const casos: Array<[string, RegExp]> = [
+    ["excarcelacion", /excarcelaci/i],
+    ["nulidad allanamiento", /nulidad/i],
+    ["apelación", /apelaci/i],
+    ["probation", /suspensi[óo]n del juicio a prueba|probation/i],
+    ["habeas", /habeas|h[áa]beas/i],
+    ["carta documento", /carta documento|intima/i],
   ];
   for (const [q, esperado] of casos) {
     const r = filtrarModelos(CATALOGO_ESTUDIO, { q });
-    if (r[0]?.numero === esperado) ok(`"${q}" → #${esperado} ${r[0].titulo}`);
-    else mal(`"${q}" → primero #${r[0]?.numero ?? "-"} (esperaba #${esperado})`);
+    const primero = r[0];
+    if (primero && esperado.test(`${primero.titulo} ${primero.suma}`)) {
+      ok(`"${q}" → #${primero.numero} ${primero.titulo} (${r.length} resultados)`);
+    } else {
+      mal(`"${q}" → primero «${primero?.titulo ?? "-"}», no matchea ${esperado}`);
+    }
   }
   const querella = filtrarModelos(CATALOGO_ESTUDIO, { rol: "querellante" });
   if (querella.some((m) => m.numero === 3) && !querella.some((m) => m.numero === 8)) {
@@ -75,6 +115,9 @@ async function main() {
   } else {
     mal("filtro por querella no separa bien");
   }
+  const extra = filtrarModelos(CATALOGO_ESTUDIO, { categoria: "extrajudicial" });
+  if (extra.length === 3) ok(`categoría extrajudicial: ${extra.length} modelos (cartas documento)`);
+  else mal(`categoría extrajudicial: ${extra.length}, esperaba 3`);
 
   // ============ 3. Migración (SELECTs) ============
   console.log("\n=== 3. Migración 20260904120000 en la base ===");
@@ -219,7 +262,12 @@ async function main() {
   if (SIN_MODELO) {
     aviso("saltado por --sin-modelo");
   } else {
-    const modelo = CATALOGO_ESTUDIO.find((m) => m.numero === (caso.rol === "querellante" ? 4 : 2))!;
+    // Por `obtenerModelo` y no por el catálogo: desde la Fase 13 el catálogo
+    // son resúmenes y el cuerpo se carga aparte.
+    const resumen = CATALOGO_ESTUDIO.find(
+      (m) => m.numero === (caso.rol === "querellante" ? 4 : 2),
+    )!;
+    const modelo = (await obtenerModelo(resumen.id, usuarioId))!;
     const { contextoMarkdown } = await buildContextoCaso(caso.id, { incluirMapa: true });
     const mensaje = armarMensajeEscrito({
       modelo,

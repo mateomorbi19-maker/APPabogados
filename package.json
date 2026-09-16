@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "repo:ingesta": "tsx --conditions=react-server scripts/ingestar-repositorio.ts"
+    "repo:ingesta": "tsx --conditions=react-server scripts/ingestar-repositorio.ts",
+    "escritos:catalogo": "tsx scripts/construir-catalogo-escritos.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.0",

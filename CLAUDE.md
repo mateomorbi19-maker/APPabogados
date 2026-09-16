@@ -44,6 +44,7 @@ src/
   lib/
     agent/                        # run-agent.ts, run-agent-consulta.ts, prompts, parse, pricing, tools
     escritos/                     # modelos de escrito + redactor + PDF (Fase 10; ver sección)
+    reporteria/                   # plantillas, render y envío de reportes al cliente (Fase 12)
     auth/                         # whitelist, enforce-rate
     rag/                          # embed, match-documents
     supabase/server.ts            # cliente con service_role key (server-side)
@@ -64,8 +65,10 @@ scripts/
   verificar-coherencia-mapa.ts    # valida las 12 reglas del mapa contra la base (read-only)
   verificar-lexie.ts              # smoke de LEXIE (--sin-modelo saltea el turno pago)
   verificar-motor.ts              # smoke del tool-use loop genérico
-  construir-catalogo-escritos.ts  # data/50-modelos-escritos-penales.md → src/lib/escritos/catalogo-estudio.ts
+  construir-catalogo-escritos.ts  # las dos fuentes de modelos → catalogo-estudio.ts + catalogo-estudio-cuerpos.ts
+  verificar-anonimizacion.ts      # ¿quedó algún dato real en los modelos de Drive? (Fase 13)
   verificar-escritos.ts           # smoke de escritos (--sin-modelo saltea la redacción paga)
+  verificar-reporteria.ts         # Fase 12: plantillas, render y pre-vuelo (--puro no toca base ni modelo)
   verificar-lexie-*.ts            # Fase 11: reserva atómica, agenda, ficha, escritos, correo, tarjetas (todo gratis)
   verificar-*-servicio.ts         # Fase 11: los servicios extraídos de las rutas, contra la base real
   verificar-gmail-texto.ts        # Fase 11: correo aplanado sin lo oculto (puro, sin red)
@@ -390,21 +393,43 @@ los datos esenciales", y llevarlo al portal judicial. Con dos flujos de
 modelos —los que cargó el estudio y los que trae cada abogado— y con LEXIE
 recomendando cuál presentar. Ver la Fase 10 más abajo.
 
-**Los 50 modelos del estudio viven en código, no en la base.**
-[scripts/data/50-modelos-escritos-penales.md](scripts/data/50-modelos-escritos-penales.md)
-es el documento redactado por el estudio;
-`npx tsx scripts/construir-catalogo-escritos.ts` lo parsea a
-[src/lib/escritos/catalogo-estudio.ts](src/lib/escritos/catalogo-estudio.ts)
-(módulo generado, no editar a mano). Mismo criterio que el catálogo del
-Repositorio: son iguales para los tres abogados, se corrigen por git y no
-dependen de una migración. Los modelos **propios** de cada abogado —y los que
-LEXIE redacta a pedido— van a la tabla `modelos_escrito`, con `origen`
-(`abogado` | `lexie`) para que se vea de dónde salió cada uno. Un modelo se
-identifica por **slug** (catálogo) o **UUID** (tabla); `esModeloDelEstudio()`
-en [types.ts](src/lib/escritos/types.ts) es la única forma correcta de
-distinguirlos.
+**Los 136 modelos del estudio viven en código, no en la base**, y salen de DOS
+fuentes (`npm run escritos:catalogo` las junta):
 
-- `GET /api/escritos/modelos` — resúmenes (sin cuerpo) de los 50 + los propios.
+1. **Los 50 REDACTADOS** —
+   [scripts/data/50-modelos-escritos-penales.md](scripts/data/50-modelos-escritos-penales.md),
+   el documento que escribió el estudio. Cuerpos tipo cortos y abstractos.
+2. **Los 86 REALES** (Fase 13) — `scripts/data/modelos-estudio-drive/*.md`, un
+   archivo por modelo. Son escritos que el estudio **presentó de verdad**, que
+   Gonzalo compartió por Drive: se bajaron, se les reemplazaron los datos de
+   esas causas por placeholders y se clasificaron. Traen la argumentación
+   completa con sus citas y sus fallos, que es lo que un modelo abstracto no
+   puede dar. Ver [PLAN_MODELOS_GONZALO.md](docs/PLAN_MODELOS_GONZALO.md).
+
+El generador emite **dos módulos**:
+[catalogo-estudio.ts](src/lib/escritos/catalogo-estudio.ts) con los 136
+RESÚMENES (123 KB) y `catalogo-estudio-cuerpos.ts` con los textos (599 KB).
+El listado, la búsqueda y la recomendación de LEXIE sólo necesitan los
+resúmenes; los cuerpos se cargan con un `await import()` desde `obtenerModelo`,
+o sea sólo cuando hay que redactar. Ninguno de los dos entra en el bundle del
+cliente: el único importador es `queries.ts`, que es `server-only`.
+
+Mismo criterio que el catálogo del Repositorio: son iguales para los tres
+abogados, se corrigen por git y no dependen de una migración. Los modelos
+**propios** de cada abogado —y los que LEXIE redacta a pedido— van a la tabla
+`modelos_escrito`, con `origen` (`abogado` | `lexie`) para que se vea de dónde
+salió cada uno. Un modelo se identifica por **slug** (catálogo) o **UUID**
+(tabla); `esModeloDelEstudio()` en [types.ts](src/lib/escritos/types.ts) es la
+única forma correcta de distinguirlos.
+
+**Un modelo que es un escrito real trae los hechos de OTRA causa**, y sin
+decírselo el redactor los copia. El prompt tiene una sección propia para eso:
+del modelo se toman la estructura, la argumentación y las citas; los hechos son
+los de esta causa, siempre. Y el placeholder de escape `{{DATO_A_COMPLETAR}}`
+—un blanco del original que no se pudo identificar— se reemplaza
+por el dato real o por `[COMPLETAR: qué]`, nunca se copia tal cual.
+
+- `GET /api/escritos/modelos` — resúmenes (sin cuerpo) de los 136 + los propios.
 - `POST /api/escritos/modelos` — "Nuevo modelo" del abogado (origen `abogado`).
 - `GET|PATCH|DELETE /api/escritos/modelos/[id]` — el completo; editar y
   archivar sólo aplican a los propios (un modelo del estudio devuelve 409:
@@ -494,6 +519,94 @@ Verificación (todo gratis salvo una redacción real de ~USD 0,09, que
 DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-escritos.ts --sin-modelo
 ```
 
+### Reportería al cliente — `/api/casos/:id/reportes/*` y `/api/reportes/pendientes`
+
+Pedido de Mateo (15/9/2026) sobre la ficha «Sistema de Reportería al Cliente
+v1.0» del estudio: seis plantillas (P-01 a P-06) para contarle al cliente cómo
+va su causa. El análisis de agosto
+([REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md](docs/REPORTERIA_AL_CLIENTE_PARA_DECIDIR.md))
+había dejado seis preguntas sin contestar; el plan las contesta una por una en
+su §2, marcadas para que Gonzalo y Lautaro las revisen. Ver
+[PLAN_REPORTERIA.md](docs/PLAN_REPORTERIA.md).
+
+- `GET /api/casos/[id]/reportes/preparar?parte_id=` — **el pre-vuelo GRATIS**:
+  a quién se le puede escribir, etapa, último movimiento, agenda, qué plantilla
+  sugiere y por qué, y qué va a faltar en cada una. No llama al modelo.
+- `GET|POST /api/casos/[id]/reportes` — lista y genera. `maxDuration = 60`.
+- `GET|PATCH|DELETE .../[reporte_id]` — leer, corregir, descartar o borrar.
+- `POST .../[reporte_id]/enviar` — la ÚNICA salida hacia afuera.
+- `GET /api/reportes/pendientes` — «clientes sin novedades» del Inicio.
+
+**Mitad sistema, mitad criterio, y esa mitad no se automatiza.** De las 35
+variables del documento, unas 20 las sabe la app (etapa derivada del mapa y
+traducida por un glosario, último movimiento y su fecha, movimientos del mes,
+próximos eventos de la agenda, juez, tribunal, carátula, delitos, firma, fecha)
+y unas 15 son criterio profesional (el próximo paso, por qué la resolución es
+buena noticia, qué va a hacer la defensa, qué pruebas hay). Esas se piden en un
+formulario corto, distinto por plantilla, y **nunca se inventan**.
+
+**El borrador se arma sin IA y la IA sólo lo pule.** `render.ts` resuelve los
+bloques condicionales `{{#TAG}}…{{/TAG}}` y sustituye las variables de forma
+determinística; el modelo recibe ese borrador ya armado —no la plantilla con
+huecos— y lo reescribe en lenguaje coloquial con prohibición explícita de
+agregar un solo hecho. Si la salida del modelo perdió una marca que el borrador
+tenía, **se descarta la salida y se guarda el borrador**.
+
+**La regla del dato faltante, al revés del documento del estudio.** La
+instrucción 3 de la ficha decía «si falta un dato, usá una frase neutral». Acá
+es lo contrario: el borrador escribe `[FALTA: fecha de la audiencia]` y el
+envío se **rechaza con 409** mientras quede una marca `[FALTA: …]` o
+`[REDACTAR: …]`. Es la misma regla que rige la ficha y los escritos, con más
+razón: esto sale del estudio.
+
+**Las cuatro reglas del envío**, todas en `enviar-reporte.ts` y ninguna en el
+prompt:
+
+1. Generar y enviar son **dos rutas y dos botones**. En el medio el abogado lee
+   el mensaje entero.
+2. `reservarEnvio` es un UPDATE condicional `borrador → enviado` que corre
+   **antes** de tocar Gmail: un doble click o dos pestañas no mandan dos veces.
+   Si Gmail rechaza, la reserva se revierte y vuelve a borrador.
+3. La dirección sale de `partes_caso` **leída en ese momento**, y el `para` que
+   manda el cliente tiene que coincidir letra por letra: es la confirmación de
+   que el abogado leyó la dirección completa en pantalla. Un mail mal tipeado
+   manda la estrategia de defensa a un tercero.
+4. Sólo se le reporta a una parte con `es_cliente = true` (409 si no). Una causa
+   con dos imputados de intereses contrapuestos no puede recibir el mismo texto.
+
+**Las dos plantillas de peores noticias no pasan por el modelo.** En las
+variantes `prision_preventiva` (P-02) y `condenatoria` (P-04) la app escribe el
+encabezado y el cierre, y el cuerpo queda como `[REDACTAR: …]`. Cuesta cero y
+es la decisión 6 del plan: son los mensajes donde un párrafo mal calibrado hace
+más daño, y donde el documento del estudio se contradice solo (pide «sin
+eufemismos» y «sin generar ansiedad» a la vez).
+
+**La promesa de recurrir sale de una decisión, no de la plantilla.** P-02 y
+P-04 traían «vamos a apelar porque…» por el solo tipo de resolución. Ahora ese
+bloque está detrás de la condición `SE_RECURRE`, que es un checkbox del
+formulario. Es la única modificación al texto del estudio y está documentada.
+
+**Un reporte no es un acto procesal:** enviarlo NO crea un evento del timeline
+ni bumpea `casos.actualizado_en`. La «última actuación» de la ficha es el
+expediente, no la comunicación con el cliente.
+
+**WhatsApp es copiar y pegar.** Sin API de Meta: el canal oficial exige textos
+fijos preaprobados, que es exactamente lo contrario del lenguaje coloquial que
+el documento pide. El botón copia el texto y el reporte se marca «enviado por
+WhatsApp» con el teléfono a la vista.
+
+**Envío periódico: memoria, no automatismo.** No hay cron (la app no se
+despierta sola, y un mensaje sobre una causa penal no debería salir sin que un
+abogado lo lea). En su lugar el Inicio muestra «Clientes sin novedades»: causas
+activas con cliente a las que hace más de 30 días que no se les reporta.
+
+Verificación, en tres modos:
+
+```bash
+npx tsx scripts/verificar-reporteria.ts --puro          # sin base ni modelo
+DOTENV_CONFIG_PATH=.env.local npx tsx --conditions=react-server --import dotenv/config scripts/verificar-reporteria.ts --sin-modelo
+```
+
 ### LEXIE — `/api/lexie` (asistente global)
 
 LEXIE es el agente conversacional GLOBAL de la app: a diferencia del chat del
@@ -529,10 +642,21 @@ tramo de prompt y manual, y los archivos compartidos no cambian al sumar una too
 | [ficha-tools.ts](src/lib/agent/ficha-tools.ts) | `ficha_lectura` 4 · `ficha_escritura` 4 · `ficha_eliminacion` 1 | ver ficha, editar ficha, agregar/editar/eliminar parte |
 | [escritos-tools.ts](src/lib/agent/escritos-tools.ts) | `escritos` 4 · `escritos_escritura` 2 · `escritos_generacion` 1 | modelos, guardar modelo, perfil profesional, generar escrito |
 | [correo-tools.ts](src/lib/agent/correo-tools.ts) | `correo_lectura` 4 · `correo_organizar` 4 · `correo_envio` 1 | buscar, leer, organizar, papelera, responder, enviar |
+| [reporteria-tools.ts](src/lib/agent/reporteria-tools.ts) | `reporteria_lectura` 3 · `reporteria_generacion` 1 · `reporteria_envio` 1 | pendientes, preparar, generar reporte, enviar reporte |
 
 Las familias de correo se declaran sólo si `ctx.gmail` existe (resuelto una vez
 por turno en la ruta); sin scope, el modelo recibe cómo reconectar, nunca datos
 demo. `maxIterations` es 18.
+
+**El dominio de reportería (Fase 12) sigue el molde del de escritos**, con una
+vuelta más de cuidado porque el resultado sale del estudio: `generar_reporte_cliente`
+es un pre-vuelo gratis que se confirma con el botón (cuesta plata), y
+`enviar_reporte_cliente` queda SIEMPRE pendiente con **el texto completo y la
+dirección exacta** en la vista previa — confirmar es mandar exactamente eso. El
+prompt del dominio le dice a LEXIE lo que no sabe y tiene que preguntar (el
+próximo paso, por qué la resolución es buena noticia, si se decidió recurrir),
+que generar no es enviar, y que con dos clientes en la misma causa pregunte a
+cuál: dos imputados pueden tener intereses contrapuestos.
 
 **La reversibilidad decide el gate, no el dominio.** Lo REVERSIBLE (crear o
 editar un evento, completar un campo vacío, agregar o editar una persona,
@@ -814,7 +938,7 @@ Proyecto: `xvdlnevcvcsgxbngwliv` (región us-west-2, Postgres 17.6). RLS habilit
 
 **Tablas de tracking / usuario:**
 - `usuarios`: `id UUID, nombre UNIQUE, email, clerk_user_id, role (admin|user), limite_tokens_mensual=1.000.000, created_at` + el **perfil profesional** de la Fase 10 (`nombre_completo, matricula, domicilio_constituido, domicilio_electronico`, todos nullable).
-- `ejecuciones`: `usuario_id FK, tipo (pre_analisis|analizar_caso|consulta_caso|simular_mapa|simular_audiencia|lexie|generar_escrito), modelo, input_tokens, output_tokens, total_tokens (GENERATED), costo_usd, latencia_ms, ejecutado_en, metadata jsonb`. Las ejecuciones con `metadata.refunded=true` se excluyen del consumo mensual.
+- `ejecuciones`: `usuario_id FK, tipo (pre_analisis|analizar_caso|consulta_caso|simular_mapa|simular_audiencia|lexie|generar_escrito|reporte_cliente), modelo, input_tokens, output_tokens, total_tokens (GENERATED), costo_usd, latencia_ms, ejecutado_en, metadata jsonb`. Las ejecuciones con `metadata.refunded=true` se excluyen del consumo mensual.
 - `casos`: la causa. Identidad + ficha + estrategia elegida. Las columnas de la
   **ficha** (`caratula`, `expediente_numero`, `organismo`, `secretaria`, `juez`,
   `fiscalia`, `delitos text[]`) son **todas nullable**; `estado_seguimiento` es el
@@ -822,12 +946,19 @@ Proyecto: `xvdlnevcvcsgxbngwliv` (región us-west-2, Postgres 17.6). RLS habilit
   la ficha. Ver la Fase 9 y la migración `20260822120000`.
 - `partes_caso`: personas de una causa (imputado, víctima, querellante, testigo).
   `es_cliente` es **ortogonal al rol**: en una querella el cliente es la víctima.
-  Sin datos de contacto hasta que se conteste la P1 de REPORTERIA; el
-  `documento` (DNI) sí está desde la Fase 10, porque es identidad y el
-  encabezado de todo escrito lo pide.
+  `documento` (DNI) desde la Fase 10 —es identidad y el encabezado de todo
+  escrito lo pide—, y `telefono` / `email` desde la Fase 12, cuando la P1 de
+  REPORTERIA se contestó POR PERSONA. El contacto **sólo se usa para reportarle
+  al cliente**, y sin la migración `20260915120000` los reads degradan en vez de
+  romperse (ver `COLS_PARTE_BASE`).
+- `reportes_cliente`: un mensaje del abogado a su cliente (Fase 12). Guarda lo
+  que generó el sistema, lo que el abogado editó y lo que efectivamente salió,
+  más `enviado_a` con la dirección o el teléfono exactos. `usuario_id`
+  redundante a propósito; `parte_id` es `ON DELETE SET NULL` para que el
+  registro sobreviva a la persona.
 - `modelos_escrito`: modelos de escrito PROPIOS de cada abogado (`origen`
-  `abogado` | `lexie`), archivables. Los 50 del estudio NO están acá: viven en
-  `src/lib/escritos/catalogo-estudio.ts`.
+  `abogado` | `lexie`), archivables. Los 136 del estudio NO están acá: viven en
+  `src/lib/escritos/catalogo-estudio.ts` (+ `catalogo-estudio-cuerpos.ts`).
 - `escritos_generados`: un escrito redactado para una causa (`contenido` en
   markdown liviano, `estado` `borrador` | `presentado`, `modelo_id` como text
   —slug o UUID—, `ejecucion_id` FK nullable). Con `usuario_id` redundante a
@@ -1186,5 +1317,81 @@ Pendientes conocidos:
 - El prefijo cacheado es 2,5x el de la Fase 8 (15.187 contra 5.930) por las 26
   tools. Las tools de escritura están a 70-100 tokens del piso de su schema;
   lo que queda por recortar, si hace falta, es el manual de la app (1.647).
+
+### Fase 12 — Reportería al cliente
+
+Plan y decisiones en [PLAN_REPORTERIA.md](docs/PLAN_REPORTERIA.md). Pedido de
+Mateo (15/9/2026) sobre la ficha del estudio con las seis plantillas. Cierra el
+documento de agosto, que estaba esperando la ficha de causa (Fase 9, hecha) y
+seis respuestas que nunca llegaron: el plan las contesta por defecto y las deja
+marcadas para que Gonzalo y Lautaro las revisen.
+
+- 12.0 ✅ migración `20260915120000_reporteria_cliente.sql` — **PENDIENTE DE
+  APLICAR** (`partes_caso.telefono/email`, tabla `reportes_cliente`,
+  `ejecuciones.tipo` suma `reporte_cliente`, `modelos_escrito.categoria` suma
+  `extrajudicial`). A diferencia de las anteriores, sin aplicar NO rompe los
+  reads de partes: degradan con `COLS_PARTE_BASE`.
+- 12.1 ✅ las seis plantillas, sus variables, condiciones y variantes, en
+  `src/lib/reporteria/plantillas.ts` (módulo puro).
+- 12.2 ✅ render determinístico + datos del sistema + sugerencia de plantilla.
+- 12.3 ✅ el redactor (single-shot, sin tools, system cacheado) que sólo pule.
+- 12.4 ✅ las cinco rutas y el servicio de envío.
+- 12.5 ✅ bloque «Reportes al cliente» en la ficha, con sus dos diálogos, y
+  contacto en el formulario de partes.
+- 12.6 ✅ «Clientes sin novedades» en el Inicio.
+- 12.7 ✅ dominio de LEXIE (preparar → generar → enviar, las dos últimas con
+  confirmación).
+
+Pendientes conocidos:
+- **Aplicar la migración.** Hasta entonces la sección responde 503 al generar.
+- **QA manual en el navegador**: cargar el mail de un cliente en Partes →
+  «Nuevo reporte» → P-01 → generar → leer → «Enviar por correo» (ver la
+  dirección completa) → Confirmar → revisar Enviados. Y un reporte con un
+  `[FALTA: …]` sin completar, que NO debe dejar enviar.
+- **Que los socios lean el §2 del plan** y digan si cambian alguna de las seis
+  decisiones. Todas son de una línea.
+- El glosario de traducción del prompt es el de la ficha del estudio (cinco
+  filas, CPPN) más las seis etapas del mapa. Gonzalo lo puede ampliar por fuero.
+- La tabla de plazos de recurso por fuero sigue sin existir: el plazo lo tipea
+  el abogado, acá también.
+
+### Fase 13 — Los modelos de escritos de Gonzalo
+
+Ver [PLAN_MODELOS_GONZALO.md](docs/PLAN_MODELOS_GONZALO.md). El catálogo del
+estudio pasa de 50 a **136**: los 86 escritos reales que Gonzalo compartió por
+Drive, anonimizados y clasificados.
+
+- 13.0 ✅ bajada verbatim de los 94 documentos y deduplicación (94 → 89).
+- 13.1 ✅ anonimización con placeholders y limpieza de formato.
+- 13.2 ✅ clasificación (título, suma, cuándo, base normativa, claves,
+  categoría, rol, fuero) y volcado a `scripts/data/modelos-estudio-drive/`.
+- 13.3 ✅ el generador lee las dos fuentes y emite dos módulos (resúmenes +
+  cuerpos de carga diferida).
+- 13.4 ✅ `extrajudicial` como categoría, sección nueva en el prompt del
+  redactor, y tope de lectura en la tool de LEXIE.
+- 13.5 ✅ revisión de anonimización en dos vueltas + `verificar-anonimizacion.ts`.
+
+> **El incidente de esta fase, que vale para cualquier corpus que entre desde
+> afuera.** La primera versión se commiteó con un archivo sin anonimizar: tenía
+> el nombre de una abogada, su CUIT, y una causa real de abuso sexual contra una
+> menor identificable por sus iniciales, su fecha de nacimiento y el juzgado. Se
+> descubrió antes de pushear. La causa: el normalizador determinístico sólo
+> reemplaza BLANCOS (`xxxx`, `…`, `___`), y un dato real escrito con naturalidad
+> no es un blanco. Ese archivo se descartó, se rehízo el commit para que no
+> quedara en el historial, y los 88 restantes pasaron por dos revisiones
+> independientes: 66 estaban limpios, 20 se corrigieron y 2 más se declararon
+> irrecuperables por la misma razón. Quedaron 86.
+> **Un regex normaliza formato; anonimizar es leer.**
+
+Pendientes conocidos:
+- **Que Gonzalo revise la clasificación**: la dedujo un modelo leyendo cada
+  escrito, y son 86 sin revisión de un abogado.
+- **Y que mire la anonimización de los cuatro más largos** (47, 43, 42 y 34 KB).
+  Pasaron dos revisiones y el verificador no encuentra nada, pero acá el margen
+  de error importa.
+- Los tres modelos descartados no están en el corpus. Para recuperarlos hay que
+  reescribirles los hechos con un caso inventado.
+- Los `{{DATO_A_COMPLETAR}}`: cada uno que se convierta en un placeholder con
+  nombre es un hueco menos en un escrito generado.
 
 El plan detallado de las fases vive en la memoria del proyecto, no en el repo.

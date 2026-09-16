@@ -7,11 +7,15 @@
 // Gonzalo lo pidió textual: "diferenciar por flujos el modelo de escrito que
 // trajo el abogado del que nosotros cargamos". Eso acá es `origen`:
 //
-//   estudio  Los 50 modelos que redactó el estudio. Viven en un módulo
-//            generado y versionado (catalogo-estudio.ts), igual que el
-//            catálogo del Repositorio: entran en memoria de sobra, se
+//   estudio  Los modelos del estudio: los 50 REDACTADOS como plantilla más
+//            los 89 REALES que compartió Gonzalo (escritos efectivamente
+//            presentados, con los datos de las causas reemplazados por
+//            placeholders). Viven en un módulo generado y versionado
+//            (catalogo-estudio.ts), igual que el catálogo del Repositorio: se
 //            corrigen por git y no dependen de una migración. Son iguales
 //            para los tres abogados y NO se editan desde la app.
+//            Sus CUERPOS van aparte (catalogo-estudio-cuerpos.ts, ~650 KB) y
+//            se cargan sólo cuando hay que redactar; ver el script generador.
 //   abogado  Los que cada abogado carga con "Nuevo modelo". Viven en la tabla
 //            `modelos_escrito` y sólo los ve su dueño.
 //   lexie    Los que LEXIE redactó desde afuera del catálogo y el abogado le
@@ -32,6 +36,10 @@ export const CATEGORIAS_ESCRITO = [
   "juicio",
   "recursos",
   "ejecucion",
+  // Fase 13: los modelos de Gonzalo traen cartas documento e intimaciones
+  // previas a la acción. No son escritos judiciales —no se presentan en un
+  // tribunal— pero los redacta el mismo abogado con los mismos datos.
+  "extrajudicial",
   "otro",
 ] as const;
 export type CategoriaEscrito = (typeof CATEGORIAS_ESCRITO)[number];
@@ -46,6 +54,7 @@ export const CATEGORIA_ESCRITO_LABEL: Record<CategoriaEscrito, string> = {
   juicio: "Etapa de juicio",
   recursos: "Recursos",
   ejecucion: "Ejecución de la pena",
+  extrajudicial: "Cartas documento e intimaciones",
   otro: "Otros",
 };
 
@@ -68,7 +77,7 @@ export type ModeloEscrito = {
   /** Slug (modelo del estudio) o UUID (modelo de la tabla). */
   id: string;
   origen: OrigenModelo;
-  /** 1..50 en los del estudio; null en los demás. */
+  /** 1..139 en los del estudio (1..50 los redactados, 51.. los reales); null en los demás. */
   numero: number | null;
   categoria: CategoriaEscrito;
   titulo: string;
