@@ -86,16 +86,14 @@ type FilaModelo = {
   creado_en: string;
 };
 
-function resumenDe(m: ModeloEscrito): ModeloEscritoResumen {
-  const { cuerpo: _cuerpo, ...resto } = m;
-  void _cuerpo;
-  return resto;
-}
-
 /**
- * Todos los modelos que el abogado puede elegir: los 50 del estudio seguidos
- * de los suyos (más nuevos primero). Sin el cuerpo, que es lo pesado: para
+ * Todos los modelos que el abogado puede elegir: los del estudio seguidos de
+ * los suyos (más nuevos primero). Sin el cuerpo, que es lo pesado: para
  * generar se pide el modelo entero con `obtenerModelo`.
+ *
+ * `CATALOGO_ESTUDIO` ya son resúmenes: desde la Fase 13 los cuerpos viven en
+ * un módulo aparte que este camino NO importa. Son ~650 KB que no tienen por
+ * qué cargarse para pintar un listado.
  */
 export async function listarModelos(
   usuarioId: string,
@@ -110,7 +108,7 @@ export async function listarModelos(
   if (error) {
     if (faltaMigracion(error.message)) {
       console.warn("[escritos] modelos_escrito no existe todavía (migración 20260904120000 sin aplicar); se listan sólo los del estudio");
-      return CATALOGO_ESTUDIO.map(resumenDe);
+      return [...CATALOGO_ESTUDIO];
     }
     throw new Error(`listarModelos: ${error.message}`);
   }
@@ -130,20 +128,34 @@ export async function listarModelos(
       creado_en: f.creado_en,
     }),
   );
-  return [...CATALOGO_ESTUDIO.map(resumenDe), ...propios];
+  return [...CATALOGO_ESTUDIO, ...propios];
 }
 
 /**
  * Un modelo completo, con el cuerpo. Null si no existe o no es del abogado.
  * El id decide dónde buscar: slug → catálogo versionado; UUID → tabla, con
  * el filtro de propiedad dentro de la query.
+ *
+ * El `await import()` de los cuerpos es lo que mantiene el módulo pesado fuera
+ * del camino del listado: se carga la primera vez que alguien genera un
+ * escrito y después queda en la caché de módulos de Node.
  */
 export async function obtenerModelo(
   id: string,
   usuarioId: string,
 ): Promise<ModeloEscrito | null> {
   if (esModeloDelEstudio(id)) {
-    return CATALOGO_ESTUDIO.find((m) => m.id === id) ?? null;
+    const resumen = CATALOGO_ESTUDIO.find((m) => m.id === id);
+    if (!resumen) return null;
+    const { CUERPOS } = await import("./catalogo-estudio-cuerpos");
+    const cuerpo = CUERPOS[id];
+    if (cuerpo === undefined) {
+      // El catálogo y los cuerpos se generan juntos: esto sólo puede pasar si
+      // alguien editó uno a mano. Se avisa en vez de devolver un modelo vacío.
+      console.error(`[escritos] el modelo «${id}» está en el catálogo pero no tiene cuerpo`);
+      return null;
+    }
+    return { ...resumen, cuerpo };
   }
   if (!esUuid(id)) return null;
 

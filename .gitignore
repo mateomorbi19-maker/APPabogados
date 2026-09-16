@@ -33,6 +33,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...salvo el ejemplo: es la unica documentacion viva de las 11 variables.
+# Sin esta excepcion, `git add .env.example` se rechaza en silencio si alguien
+# lo borra y lo vuelve a crear (hoy sobrevive por un add forzado).
+!.env.example
 
 # vercel
 .vercel
@@ -60,3 +64,7 @@ notas-migracion/
 # Bytecode de Python (las skills traen algún script .py)
 __pycache__/
 *.py[cod]
+
+# Artefacto de prueba: scripts/verificar-escritos.ts:244 escribe este PDF en la
+# raiz del repo cada vez que se corre con --con-escrito.
+escrito-prueba.pdf

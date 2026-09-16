@@ -307,6 +307,9 @@ const ETIQUETA_PERFIL: Record<CampoPerfil, string> = {
 
 const MAX_RESULTADOS = 12;
 
+/** Tope del cuerpo que `leer_modelo_escrito` mete en el turno. ~2.500 tokens. */
+const MAX_CUERPO_LEIDO = 8000;
+
 function str(v: unknown): string | null {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : null;
 }
@@ -419,6 +422,12 @@ export async function ejecutarToolEscritos(
         }),
       };
     }
+    // Los modelos reales del estudio (Fase 13) son escritos completos: el más
+    // largo pasa los 45.000 caracteres, unos 15.000 tokens metidos en un turno
+    // de LEXIE. Se recorta: acá el cuerpo es para MOSTRÁRSELO al abogado o
+    // decirle qué acompañar, no para redactar — eso lo hace el redactor, que
+    // recibe el modelo entero por `generar_escrito_causa`.
+    const recortado = m.cuerpo.length > MAX_CUERPO_LEIDO;
     return {
       contentJSON: JSON.stringify({
         modelo_id: m.id,
@@ -431,7 +440,14 @@ export async function ejecutarToolEscritos(
         cuando: m.cuando,
         base_normativa: m.base_normativa,
         claves: m.claves,
-        cuerpo_tipo: m.cuerpo,
+        cuerpo_tipo: recortado
+          ? m.cuerpo.slice(0, MAX_CUERPO_LEIDO) + "\n\n[… el modelo sigue]"
+          : m.cuerpo,
+        ...(recortado
+          ? {
+              cuerpo_recortado: `El modelo completo tiene ${m.cuerpo.length.toLocaleString("es-AR")} caracteres y acá ves el principio. Es un escrito real del estudio. Para el escrito de la causa usá generar_escrito_causa: el redactor recibe el modelo entero.`,
+            }
+          : {}),
         nota: "Las citas de artículos del modelo son orientativas: la numeración cambia entre el CPPF, el CPPN y los códigos provinciales.",
       }),
     };

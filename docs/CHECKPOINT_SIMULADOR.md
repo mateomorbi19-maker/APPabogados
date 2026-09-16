@@ -101,7 +101,7 @@ Se descartó reemplazar el legacy de `lexstrategy.teotec.org`. El plan es un ser
 
 ## Contexto que no está en el código
 
-- **CLAUDE.md tiene 6 afirmaciones desactualizadas** (documentadas en `AUDIT-HEARSIM.md` §7.3). La más peligrosa: dice que `analizar-caso` no fuerza el RAG con `tool_choice` — es falso, [run-agent.ts:207](src/lib/agent/run-agent.ts#L207) sí lo fuerza. También dice que falta el Dockerfile de raíz: ya existe.
+- **CLAUDE.md tiene 6 afirmaciones desactualizadas** (documentadas en `AUDIT-HEARSIM.md` §7.3). La más peligrosa: dice que `analizar-caso` no fuerza el RAG con `tool_choice` — es falso, [run-agent.ts:207](../src/lib/agent/run-agent.ts#L207) sí lo fuerza. También dice que falta el Dockerfile de raíz: ya existe.
 - **El MCP de Supabase no sirve** en esta cuenta: el token está scopeado a otra organización y el proyecto `xvdlnevcvcsgxbngwliv` da *access denied*. Todo lo de DB se verifica con SQL que corre Mateo.
 - **`gh` CLI no está instalado** → los PR se abren desde la web.
 - Lección de esta sesión: la migración de fundación se creyó aplicada dos sesiones seguidas y no lo estaba. **Verificar contra la DB, no contra el archivo del repo.**

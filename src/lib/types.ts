@@ -160,6 +160,12 @@ export type ParteCaso = {
   // DNI u otro documento, texto libre. Lo consumen los escritos ("{{IMPUTADO}},
   // DNI {{DNI}}"); null se muestra vacío y el redactor deja [COMPLETAR: DNI].
   documento: string | null;
+  // Contacto (Fase 12, reportería). Sólo se usa para reportarle al cliente:
+  // el correo es la dirección a la que sale un reporte y se muestra completa
+  // antes de confirmar. Llegan con la migración 20260915120000; sin ella,
+  // `listarPartes` los devuelve null (ver escritura.ts).
+  telefono: string | null;
+  email: string | null;
   creado_en: string;
 };
 

@@ -1,49 +1,91 @@
 // Generador del catálogo de modelos de escritos del estudio.
 //
-//   Lee   scripts/data/50-modelos-escritos-penales.md  (el documento de Gonzalo)
-//   Emite src/lib/escritos/catalogo-estudio.ts         (CATALOGO_ESTUDIO)
+//   Lee   scripts/data/50-modelos-escritos-penales.md   (el documento redactado)
+//         scripts/data/modelos-estudio-drive/*.md       (los modelos reales de Gonzalo)
+//   Emite src/lib/escritos/catalogo-estudio.ts          (CATALOGO_ESTUDIO, resúmenes)
+//         src/lib/escritos/catalogo-estudio-cuerpos.ts  (CUERPOS, los textos)
 //
 // Uso: npx tsx scripts/construir-catalogo-escritos.ts
 //
-// Por qué un módulo TS y no filas en Supabase: son 50 modelos que redactó el
-// estudio, iguales para los tres abogados. Versionados en git se corrigen con
-// un diff que Gonzalo puede leer, no dependen de una migración ni de un seed, y
-// la búsqueda sale en memoria. Los modelos PROPIOS de cada abogado —que sí son
-// datos— van a la tabla `modelos_escrito`. Ver src/lib/escritos/types.ts.
+// === Dos fuentes, un catálogo ===
 //
-// El parser es deliberadamente estricto: si un modelo no trae Suma o Cuerpo
-// tipo, el script ABORTA en vez de emitir un catálogo con agujeros. Es mejor
-// que falle acá que descubrirlo cuando un abogado elige el modelo 37 y le sale
-// un escrito vacío.
+// 1. Los 50 REDACTADOS: un solo documento con el cuerpo tipo de cada escrito,
+//    corto y abstracto. Son plantillas escritas para ser plantillas.
+// 2. Los 89 REALES (Fase 13): escritos que el estudio efectivamente presentó,
+//    que Gonzalo compartió por Drive. Se bajaron, se les sacaron los datos de
+//    las causas (nombres, DNI, números de expediente, fechas) reemplazándolos
+//    por placeholders, y quedaron uno por archivo con su frontmatter. Son
+//    largos y concretos: traen la argumentación completa, con sus citas y sus
+//    fallos, que es justamente lo que un modelo abstracto no puede dar.
 //
-// Formato que espera (el del documento original):
+// Los dos grupos son `origen: "estudio"` —son del estudio, iguales para los
+// tres abogados— y conviven numerados 1..139. Ninguna otra parte de la app
+// cambia por esto.
+//
+// === Por qué dos módulos de salida ===
+//
+// Los cuerpos suman ~650 KB y el promedio es 7 KB por modelo (el más largo,
+// 47 KB). El listado —lo que usan la búsqueda del diálogo, la tool de LEXIE y
+// el filtro— no los necesita: sólo hace falta el cuerpo del ÚNICO modelo que
+// se va a redactar. Con todo en un módulo, cada `listarModelos()` arrastraría
+// los 650 KB. Por eso el catálogo liviano va aparte y los cuerpos se cargan
+// con un `await import()` desde `obtenerModelo`. El catálogo NO entra en el
+// bundle del cliente en ningún caso: sólo lo importa `queries.ts`, que es
+// server-only, y el diálogo recibe los resúmenes por `/api/escritos/modelos`.
+//
+// === Formato que espera de cada fuente ===
+//
+// (1) El documento de los 50:
 //
 //   # I. Sección                      ← categoría, por número romano
 //   ## 12. Título del modelo           ← número + título
 //   **Suma:** ...
 //   **Cuándo:** ...
 //   **Base normativa (orientativa):** ...   (el paréntesis es opcional)
-//   **Objeto:** ...                         (opcional)
 //   **Cuerpo tipo:**                        (o "Cuerpo tipo (impugnación):")
-//   > párrafo citado
 //   > párrafo citado
 //   **Claves:** ...
 //   ---
+//
+// (2) Cada archivo de `modelos-estudio-drive/` (el slug es el nombre del archivo):
+//
+//   ---
+//   titulo: ...
+//   suma: ...
+//   cuando: ...
+//   base_normativa: ...
+//   claves: ...
+//   categoria: recursos
+//   rol_sugerido: defensor
+//   tipo_documento: escrito_judicial | carta_documento | otro
+//   fuero: nacion | federal | pba | desconocido
+//   drive_id: ...
+//   ---
+//   <el escrito completo, con placeholders {{ASI}}>
+//
+// El parser es deliberadamente estricto en las dos: si a un modelo le falta la
+// suma o el cuerpo, el script ABORTA en vez de emitir un catálogo con
+// agujeros. Es mejor que falle acá que descubrirlo cuando un abogado elige el
+// modelo 37 y le sale un escrito vacío.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type {
-  CategoriaEscrito,
-  ModeloEscrito,
-  RolSugerido,
+import {
+  CATEGORIAS_ESCRITO,
+  ROLES_SUGERIDOS,
+  type CategoriaEscrito,
+  type ModeloEscrito,
+  type RolSugerido,
 } from "../src/lib/escritos/types";
 import { slugificar } from "../src/lib/repositorio/texto";
 
 const RAIZ = process.cwd();
-const ENTRADA = path.join(RAIZ, "scripts/data/50-modelos-escritos-penales.md");
+const ENTRADA_50 = path.join(RAIZ, "scripts/data/50-modelos-escritos-penales.md");
+const ENTRADA_DRIVE = path.join(RAIZ, "scripts/data/modelos-estudio-drive");
 const SALIDA = path.join(RAIZ, "src/lib/escritos/catalogo-estudio.ts");
+const SALIDA_CUERPOS = path.join(RAIZ, "src/lib/escritos/catalogo-estudio-cuerpos.ts");
 
-// Las nueve secciones del documento, por su número romano.
+// Las nueve secciones del documento de los 50, por su número romano.
 const CATEGORIA_POR_ROMANO: Record<string, CategoriaEscrito> = {
   I: "actos_iniciales",
   II: "libertad_coercion",
@@ -56,10 +98,11 @@ const CATEGORIA_POR_ROMANO: Record<string, CategoriaEscrito> = {
   IX: "ejecucion",
 };
 
-// Para quién está pensado cada modelo. No está en el documento: se deduce del
-// contenido ("en mi carácter de defensor", "en representación de la víctima")
-// y se fija acá a mano para que el filtro por rol de la causa y la
-// recomendación de LEXIE tengan un dato y no una adivinanza.
+// Para quién está pensado cada modelo de los 50. No está en el documento: se
+// deduce del contenido ("en mi carácter de defensor", "en representación de la
+// víctima") y se fija acá a mano para que el filtro por rol de la causa y la
+// recomendación de LEXIE tengan un dato y no una adivinanza. Los de Drive lo
+// traen en su frontmatter.
 const ROL_POR_NUMERO: Record<number, RolSugerido> = {
   1: "defensor",
   2: "defensor",
@@ -114,7 +157,7 @@ const ROL_POR_NUMERO: Record<number, RolSugerido> = {
 };
 
 // ————————————————————————————————————————————————————————————————
-// Parser
+// Fuente 1: el documento de los 50
 // ————————————————————————————————————————————————————————————————
 
 type Bloque = {
@@ -222,13 +265,94 @@ function aModelo(b: Bloque): ModeloEscrito {
 }
 
 // ————————————————————————————————————————————————————————————————
+// Fuente 2: los modelos reales de Drive
+// ————————————————————————————————————————————————————————————————
+
+function esCategoria(v: string): v is CategoriaEscrito {
+  return (CATEGORIAS_ESCRITO as readonly string[]).includes(v);
+}
+
+function esRol(v: string): v is RolSugerido {
+  return (ROLES_SUGERIDOS as readonly string[]).includes(v);
+}
+
+function leerDrive(desdeNumero: number): ModeloEscrito[] {
+  let archivos: string[];
+  try {
+    archivos = readdirSync(ENTRADA_DRIVE)
+      .filter((f) => f.endsWith(".md"))
+      .sort();
+  } catch {
+    console.warn(`  (sin ${path.relative(RAIZ, ENTRADA_DRIVE)}: se emite sólo el documento de los 50)`);
+    return [];
+  }
+
+  const out: ModeloEscrito[] = [];
+  let n = desdeNumero;
+  for (const archivo of archivos) {
+    const slug = archivo.slice(0, -3);
+    const crudo = readFileSync(path.join(ENTRADA_DRIVE, archivo), "utf8");
+    const m = crudo.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+    if (!m) throw new Error(`${archivo}: sin frontmatter`);
+
+    const meta: Record<string, string> = {};
+    for (const linea of m[1].split(/\r?\n/)) {
+      const i = linea.indexOf(":");
+      if (i < 0) continue;
+      meta[linea.slice(0, i).trim()] = linea.slice(i + 1).trim();
+    }
+    const cuerpoTexto = m[2].trim();
+
+    const titulo = meta.titulo;
+    const suma = meta.suma;
+    if (!titulo) throw new Error(`${archivo}: sin titulo`);
+    if (!suma) throw new Error(`${archivo}: sin suma`);
+    if (cuerpoTexto.length < 200) {
+      throw new Error(`${archivo}: cuerpo demasiado corto (${cuerpoTexto.length} caracteres)`);
+    }
+    const categoria = meta.categoria ?? "";
+    if (!esCategoria(categoria)) throw new Error(`${archivo}: categoría inválida "${categoria}"`);
+    const rol = meta.rol_sugerido ?? "";
+    if (!esRol(rol)) throw new Error(`${archivo}: rol_sugerido inválido "${rol}"`);
+
+    out.push({
+      id: slug,
+      origen: "estudio",
+      numero: n++,
+      categoria,
+      titulo,
+      suma,
+      cuando: meta.cuando || null,
+      base_normativa: meta.base_normativa || null,
+      cuerpo: cuerpoTexto,
+      claves: meta.claves || null,
+      rol_sugerido: rol,
+      creado_en: null,
+    });
+  }
+  return out;
+}
+
+// ————————————————————————————————————————————————————————————————
 // Main
 // ————————————————————————————————————————————————————————————————
 
+const CABECERA_COMUN = [
+  "// GENERADO por scripts/construir-catalogo-escritos.ts — NO EDITAR A MANO.",
+  "// Fuentes: scripts/data/50-modelos-escritos-penales.md (los 50 redactados)",
+  "//          scripts/data/modelos-estudio-drive/*.md     (los 89 reales de Gonzalo)",
+  "// Para corregir un modelo: editar su fuente y volver a correr el script.",
+  "//",
+  "// Las citas de artículos son ORIENTATIVAS: la numeración cambia entre el CPPF,",
+  "// el CPPN y los códigos provinciales, y el redactor (y el abogado) tienen que",
+  "// verificarlas contra el texto vigente del fuero de la causa.",
+].join("\n");
+
 function main() {
-  const md = readFileSync(ENTRADA, "utf8");
-  const bloques = partirEnBloques(md);
-  const modelos = bloques.map(aModelo);
+  const md = readFileSync(ENTRADA_50, "utf8");
+  const redactados = partirEnBloques(md).map(aModelo);
+  const reales = leerDrive(redactados.length + 1);
+  const modelos = [...redactados, ...reales];
 
   // Ids únicos: dos títulos que slugifiquen igual serían dos modelos que la
   // URL y LEXIE no pueden distinguir.
@@ -238,29 +362,53 @@ function main() {
     vistos.add(m.id);
   }
 
+  // --- Catálogo liviano: todo menos el cuerpo ---
+  const resumenes = modelos.map(({ cuerpo: _c, ...resto }) => {
+    void _c;
+    return resto;
+  });
   const cabecera = [
-    "// GENERADO por scripts/construir-catalogo-escritos.ts — NO EDITAR A MANO.",
-    "// Fuente: scripts/data/50-modelos-escritos-penales.md (redactado por el estudio).",
-    "// Para corregir un modelo: editar el .md y volver a correr el script.",
+    CABECERA_COMUN,
     "//",
-    "// Las citas de artículos son ORIENTATIVAS: la numeración cambia entre el CPPF,",
-    "// el CPPN y los códigos provinciales, y el redactor (y el abogado) tienen que",
-    "// verificarlas contra el texto vigente del fuero de la causa.",
+    "// Los CUERPOS no están acá: viven en ./catalogo-estudio-cuerpos y se cargan",
+    "// con un import dinámico desde `obtenerModelo`. El listado, la búsqueda y la",
+    "// recomendación de LEXIE sólo necesitan estos resúmenes.",
     "",
-    'import type { ModeloEscrito } from "./types";',
+    'import type { ModeloEscritoResumen } from "./types";',
     "",
-    "export const CATALOGO_ESTUDIO: readonly ModeloEscrito[] = ",
+    "export const CATALOGO_ESTUDIO: readonly ModeloEscritoResumen[] = ",
   ].join("\n");
+  writeFileSync(SALIDA, `${cabecera}${JSON.stringify(resumenes, null, 2)};\n`, "utf8");
 
-  const cuerpoTs = JSON.stringify(modelos, null, 2);
-  writeFileSync(SALIDA, `${cabecera}${cuerpoTs};\n`, "utf8");
+  // --- Cuerpos: el módulo pesado, de carga diferida ---
+  const cuerpos: Record<string, string> = {};
+  for (const m of modelos) cuerpos[m.id] = m.cuerpo;
+  const cabeceraCuerpos = [
+    CABECERA_COMUN,
+    "//",
+    "// Módulo PESADO (cientos de KB): se carga con `await import()` sólo cuando",
+    "// hay que redactar un escrito concreto. Nunca desde el listado.",
+    "",
+    "export const CUERPOS: Readonly<Record<string, string>> = ",
+  ].join("\n");
+  writeFileSync(
+    SALIDA_CUERPOS,
+    `${cabeceraCuerpos}${JSON.stringify(cuerpos, null, 2)};\n`,
+    "utf8",
+  );
 
   const porCategoria = new Map<string, number>();
   for (const m of modelos) {
     porCategoria.set(m.categoria, (porCategoria.get(m.categoria) ?? 0) + 1);
   }
-  console.log(`✓ ${modelos.length} modelos → ${path.relative(RAIZ, SALIDA)}`);
-  for (const [cat, n] of porCategoria) console.log(`  ${cat}: ${n}`);
+  const bytes = modelos.reduce((a, m) => a + m.cuerpo.length, 0);
+  console.log(
+    `✓ ${modelos.length} modelos (${redactados.length} redactados + ${reales.length} reales) → ${path.relative(RAIZ, SALIDA)}`,
+  );
+  console.log(
+    `  cuerpos: ${(bytes / 1024).toFixed(0)} KB → ${path.relative(RAIZ, SALIDA_CUERPOS)}`,
+  );
+  for (const [cat, n] of [...porCategoria].sort()) console.log(`  ${cat}: ${n}`);
 }
 
 main();

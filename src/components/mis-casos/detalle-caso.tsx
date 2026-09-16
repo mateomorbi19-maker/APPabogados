@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { Caso, EventoCaso, ParteCaso } from "@/lib/types";
 import type { EscritoGeneradoLista } from "@/lib/escritos/types";
+import type { ReporteClienteLista } from "@/lib/reporteria/types";
 import { HeaderCaso } from "./header-caso";
 import { AnalisisOriginalColapsable } from "./analisis-original-colapsable";
 import { TimelineProcesal } from "./timeline-procesal";
@@ -9,12 +10,14 @@ import { FichaCausa } from "./ficha/ficha-causa";
 import { PartesCausa } from "./ficha/partes-causa";
 import { AccesosRapidos } from "./ficha/accesos-rapidos";
 import { EscritosCausa } from "./escritos/escritos-causa";
+import { ReportesCausa } from "./reportes/reportes-causa";
 
 type Props = {
   caso: Caso;
   eventosIniciales: EventoCaso[];
   partesIniciales: ParteCaso[];
   escritosIniciales: EscritoGeneradoLista[];
+  reportesIniciales: ReporteClienteLista[];
   /** Etapa procesal derivada del mapa en el server. */
   etapa: { label: string; nodoTitulo: string } | null;
   /** `true` si el caso ya tiene nodos de mapa procesal: congela el fuero. */
@@ -42,6 +45,7 @@ export function DetalleCaso({
   eventosIniciales,
   partesIniciales,
   escritosIniciales,
+  reportesIniciales,
   etapa,
   mapaInicializado,
 }: Props) {
@@ -50,6 +54,8 @@ export function DetalleCaso({
   const [partes, setPartes] = useState<ParteCaso[]>(partesIniciales);
   const [escritos, setEscritos] =
     useState<EscritoGeneradoLista[]>(escritosIniciales);
+  const [reportes, setReportes] =
+    useState<ReporteClienteLista[]>(reportesIniciales);
 
   // Re-sembrar cuando el SERVER vuelve a mandar los datos. Pasa con el
   // `router.refresh()` que dispara el dock de LEXIE ante una mutación (ver
@@ -67,18 +73,27 @@ export function DetalleCaso({
     eventosIniciales,
     partesIniciales,
     escritosIniciales,
+    reportesIniciales,
   });
   if (
     casoInicial !== origen.casoInicial ||
     eventosIniciales !== origen.eventosIniciales ||
     partesIniciales !== origen.partesIniciales ||
-    escritosIniciales !== origen.escritosIniciales
+    escritosIniciales !== origen.escritosIniciales ||
+    reportesIniciales !== origen.reportesIniciales
   ) {
-    setOrigen({ casoInicial, eventosIniciales, partesIniciales, escritosIniciales });
+    setOrigen({
+      casoInicial,
+      eventosIniciales,
+      partesIniciales,
+      escritosIniciales,
+      reportesIniciales,
+    });
     setCaso(casoInicial);
     setEventos(eventosIniciales);
     setPartes(partesIniciales);
     setEscritos(escritosIniciales);
+    setReportes(reportesIniciales);
   }
 
   // El movimiento más reciente del expediente. Es lo que muestra la ficha como
@@ -125,6 +140,16 @@ export function DetalleCaso({
         escritos={escritos}
         onEscritosChange={setEscritos}
         onEventoNuevo={(ev) => setEventos((prev) => [...prev, ev])}
+      />
+
+      {/* Los reportes al cliente van después de los escritos: son la otra
+          salida hacia afuera de la causa (Fase 12), y como los escritos no
+          navegan a ninguna otra pantalla. */}
+      <ReportesCausa
+        caso={caso}
+        partes={partes}
+        reportes={reportes}
+        onReportesChange={setReportes}
       />
 
       <AnalisisOriginalColapsable caso={caso} />
