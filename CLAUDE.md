@@ -4,7 +4,7 @@
 
 App web para 3 abogados penales argentinos (Lautaro, Gonzalo, Mateo). Cada uno describe un caso, completa un formulario dinámico generado por IA y recibe estrategias legales fundamentadas con citas del Código Penal, código procesal y manuales de litigación argentinos. Cada análisis se trackea en Supabase con tokens reales del SDK y costo en USD.
 
-**Estado:** beta interna en ~10% del desarrollo deseado. Tres usuarios fijos por whitelist, sin multi-tenancy. No está en producción.
+**Estado:** beta interna en ~10% del desarrollo deseado. Tres usuarios fijos por whitelist, sin multi-tenancy. **Está deployada y en uso**: corre en el VPS de Mateo, se pushea a GitHub y se deploya a mano desde Easypanel (ver 5.6 más abajo para lo que falta del pasaje formal a producción).
 
 ## Stack
 
@@ -15,7 +15,7 @@ App web para 3 abogados penales argentinos (Lautaro, Gonzalo, Mateo). Cada uno d
 - **Embeddings:** OpenAI `text-embedding-3-small`, 1536 dimensiones. Se usa en runtime para embeddear queries de búsqueda RAG, y en los scripts offline de ingesta del corpus.
 - **UI:** shadcn/ui sobre Tailwind v4. Dark-only, clase `.dark` siempre en `<html>`.
 - **Validación:** Zod en el borde de cada API route.
-- **Deploy:** Easypanel manual (Dockerfile en raíz, **Fase 5.4 ✅**; falta ejecutar el pasaje a producción de la 5.6, ver [DEPLOY_5.6.md](DEPLOY_5.6.md)). Dominio objetivo: `lexstrategy.teotec.org`. Sin CI, sin auto-deploy.
+- **Deploy:** Easypanel manual desde el Dockerfile de la raíz (**Fase 5.4 ✅**). El ciclo real es: commit → push a GitHub → botón Deploy en Easypanel. **Sin CI, sin auto-deploy**: un push no despliega nada por sí solo. Del checklist de la 5.6 quedan las claves de producción de Clerk (ver [DEPLOY_5.6.md](DEPLOY_5.6.md)).
 
 ## Estructura del repo
 
@@ -567,10 +567,12 @@ prompt:
 2. `reservarEnvio` es un UPDATE condicional `borrador → enviado` que corre
    **antes** de tocar Gmail: un doble click o dos pestañas no mandan dos veces.
    Si Gmail rechaza, la reserva se revierte y vuelve a borrador.
-3. La dirección sale de `partes_caso` **leída en ese momento**, y el `para` que
-   manda el cliente tiene que coincidir letra por letra: es la confirmación de
-   que el abogado leyó la dirección completa en pantalla. Un mail mal tipeado
-   manda la estrategia de defensa a un tercero.
+3. El destinatario sale de `partes_caso` **leído en ese momento**, y el `para`
+   que manda el cliente tiene que coincidir: es la confirmación de que el
+   abogado lo leyó completo en pantalla. Vale igual para el correo (letra por
+   letra) y para WhatsApp (contra el número ya normalizado a E.164). Un mail
+   mal tipeado manda la estrategia de defensa a un tercero; un teléfono mal
+   interpretado le abre el chat a otra persona con el mensaje ya escrito.
 4. Sólo se le reporta a una parte con `es_cliente = true` (409 si no). Una causa
    con dos imputados de intereses contrapuestos no puede recibir el mismo texto.
 
@@ -590,10 +592,32 @@ formulario. Es la única modificación al texto del estudio y está documentada.
 ni bumpea `casos.actualizado_en`. La «última actuación» de la ficha es el
 expediente, no la comunicación con el cliente.
 
-**WhatsApp es copiar y pegar.** Sin API de Meta: el canal oficial exige textos
-fijos preaprobados, que es exactamente lo contrario del lenguaje coloquial que
-el documento pide. El botón copia el texto y el reporte se marca «enviado por
-WhatsApp» con el teléfono a la vista.
+**WhatsApp es un link directo, no una API.** Sin API de Meta (el canal oficial
+exige textos fijos preaprobados, que es lo contrario del lenguaje coloquial que
+el documento pide) y sin proveedor no oficial (un tercero relayando la
+estrategia de una causa penal es un problema de secreto profesional, no de
+integración). El botón **abre `wa.me` con el mensaje ya escrito** en el chat de
+esa persona; el «enviar» lo toca el abogado adentro de WhatsApp y al volver
+confirma, y recién ahí el reporte queda `enviado`. **Son dos pasos porque la
+app no puede saber si él realmente lo mandó**, y dar por enviado algo que no
+salió es peor que no registrar nada.
+
+**El número se normaliza a E.164 y lo que no se puede resolver se rechaza**
+([telefono.ts](src/lib/reporteria/telefono.ts)). `partes_caso.telefono` es
+texto libre y el mismo celular se escribe de seis formas (`+54 9 11 5555-5555`,
+`011 15-5555-5555`, `1155555555`…). La aritmética sale del plan de numeración:
+el número nacional tiene siempre 10 dígitos, el `0` y el `15` no van en E.164,
+y los códigos de área son **prefijos libres** —si `223` es un código, ninguno de
+4 dígitos empieza con `223`—, que es lo que hace que encontrar el `15` sea
+determinístico. Un `15` sin código de área **no se completa con el 11**: se
+devuelve `ambiguo` y el abogado corrige el número. Un `+` con otro código de
+país se respeta tal cual (cliente en el exterior). El control final es el mismo
+que el del correo: **el número formateado se muestra entero en pantalla** antes
+de abrir nada, y el server lo relee de la ficha y exige que coincida.
+
+**El canal `copia` es el escape.** Sin teléfono cargado, o con un número que no
+se puede interpretar, WhatsApp no se ofrece: el reporte se copia y se marca
+«copiado a mano».
 
 **Envío periódico: memoria, no automatismo.** No hay cron (la app no se
 despierta sola, y un mensaje sobre una causa penal no debería salir sin que un
@@ -1117,15 +1141,19 @@ El servicio legacy en Easypanel se apagará al deployar la app nueva, sin coexis
 
 ## Estado de la migración
 
-Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; **Fase 5.6 pendiente**:
+Migración del sistema viejo a este stack en 5 fases. Fases 1–5.5 cerradas; la **5.6 corre en producción** con su checklist a medio cerrar:
 
 - 5.1 ✅ historial drill-down con modal de detalle.
 - 5.2 ✅ legacy movido a `/legacy/`.
 - 5.3 ✅ este documento + auditoría arquitectónica del RAG.
 - 5.4 ✅ Dockerfile en raíz (Next 16 standalone, multi-stage). Ya sufrió deploys reales: tiene el `--max-old-space-size=4096` por el OOM del type-check en el builder de Easypanel y el `--webpack` porque Turbopack necesita el SWC nativo, que la imagen slim no instala.
 - 5.5 ✅ pre-deploy checks (hardening RLS deny-by-default, revoke anon/authenticated, email Lautaro cargado en DB).
-- 5.6 ⏳ deploy manual a Easypanel reemplazando el servicio legacy en `lexstrategy.teotec.org`. Sin coexistencia, sin URL temporal beta, sin swap DNS.
-  **Checklist en [DEPLOY_5.6.md](DEPLOY_5.6.md).** Los dos bloqueos reales: las claves
+- 5.6 🔸 **el deploy ya corre**: la app está levantada en Easypanel desde el
+  Dockerfile del repo y los tres abogados la usan. Lo que queda del checklist
+  formal son los dos bloqueos de abajo, que **no se verificaron contra el
+  Easypanel real** desde este repo — si las claves de Clerk ya son de
+  producción, esta línea se cierra en 5.6 ✅.
+  **Checklist en [DEPLOY_5.6.md](DEPLOY_5.6.md).** Los dos bloqueos: las claves
   de Clerk son de DESARROLLO (`pk_test`) y hay que crear la instancia de producción con
   su dominio, sus credenciales de Google y sus scopes; y las `NEXT_PUBLIC_*` tienen que
   ir como **build args** en Easypanel, porque Next las hornea en el bundle en tiempo de
@@ -1326,10 +1354,10 @@ documento de agosto, que estaba esperando la ficha de causa (Fase 9, hecha) y
 seis respuestas que nunca llegaron: el plan las contesta por defecto y las deja
 marcadas para que Gonzalo y Lautaro las revisen.
 
-- 12.0 ✅ migración `20260915120000_reporteria_cliente.sql` — **PENDIENTE DE
-  APLICAR** (`partes_caso.telefono/email`, tabla `reportes_cliente`,
+- 12.0 ✅ migración `20260915120000_reporteria_cliente.sql` — **aplicada** por
+  Mateo el 2026-09-15 (`partes_caso.telefono/email`, tabla `reportes_cliente`,
   `ejecuciones.tipo` suma `reporte_cliente`, `modelos_escrito.categoria` suma
-  `extrajudicial`). A diferencia de las anteriores, sin aplicar NO rompe los
+  `extrajudicial`). A diferencia de las anteriores, sin aplicar NO rompía los
   reads de partes: degradan con `COLS_PARTE_BASE`.
 - 12.1 ✅ las seis plantillas, sus variables, condiciones y variantes, en
   `src/lib/reporteria/plantillas.ts` (módulo puro).
@@ -1341,13 +1369,20 @@ marcadas para que Gonzalo y Lautaro las revisen.
 - 12.6 ✅ «Clientes sin novedades» en el Inicio.
 - 12.7 ✅ dominio de LEXIE (preparar → generar → enviar, las dos últimas con
   confirmación).
+- 12.8 ✅ WhatsApp por link directo: `telefono.ts` (E.164), panel con el número
+  a la vista, `wa.me` con el mensaje cargado, y el registro del envío contra el
+  número releído de la ficha.
 
 Pendientes conocidos:
-- **Aplicar la migración.** Hasta entonces la sección responde 503 al generar.
 - **QA manual en el navegador**: cargar el mail de un cliente en Partes →
   «Nuevo reporte» → P-01 → generar → leer → «Enviar por correo» (ver la
   dirección completa) → Confirmar → revisar Enviados. Y un reporte con un
   `[FALTA: …]` sin completar, que NO debe dejar enviar.
+- **QA de WhatsApp**: cargar un teléfono propio en Partes → generar → «Enviar
+  por WhatsApp» → verificar que el número en pantalla sea el correcto → «Abrir
+  WhatsApp» (tiene que abrir ESE chat con el texto ya escrito) → mandarlo →
+  «Ya lo mandé, registralo». Probar también con un teléfono tipeado como
+  `15-5555-5555`, que NO debe dejar abrir nada y tiene que explicar por qué.
 - **Que los socios lean el §2 del plan** y digan si cambian alguna de las seis
   decisiones. Todas son de una línea.
 - El glosario de traducción del prompt es el de la ficha del estudio (cinco

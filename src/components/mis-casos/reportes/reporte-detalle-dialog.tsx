@@ -2,14 +2,19 @@
 // El reporte generado: leerlo entero, corregirlo, y recién ahí mandarlo.
 //
 // Tres formas de salir, y ninguna a un click de «Generar»:
-//   - COPIAR: el texto va al portapapeles; el abogado lo pega donde quiera.
-//     Después puede marcarlo como enviado por WhatsApp (con el teléfono a la
-//     vista) o dejarlo como borrador.
 //   - ENVIAR POR CORREO: se abre un panel con la DIRECCIÓN COMPLETA del
 //     cliente y un botón de confirmación. El server vuelve a comparar esa
 //     dirección con la cargada en la parte. Un mail mal tipeado manda la
 //     estrategia de defensa a un tercero, y de eso no se vuelve.
-//   - MARCAR ENVIADO: registra que salió por WhatsApp o copia manual.
+//   - ENVIAR POR WHATSAPP: mismo panel, con el NÚMERO COMPLETO ya normalizado
+//     a formato internacional. El botón abre wa.me con el texto cargado en el
+//     chat de esa persona; el «enviar» lo toca el abogado adentro de WhatsApp,
+//     y al volver confirma acá para que quede registrado. Son dos pasos
+//     porque la app no puede saber si él realmente lo mandó: decir «enviado»
+//     sin que haya salido es peor que no decir nada.
+//   - COPIAR: el texto va al portapapeles y el abogado lo manda por donde
+//     quiera. Es la salida cuando no hay teléfono cargado o cuando el número
+//     no se puede interpretar.
 //
 // Las marcas [FALTA: …] y [REDACTAR: …] bloquean todo envío (y el server lo
 // rechaza igual con 409). Un reporte enviado se muestra en solo lectura.
@@ -20,6 +25,7 @@ import {
   Ban,
   CheckCircle2,
   Copy,
+  ExternalLink,
   Loader2,
   Mail,
   MessageCircle,
@@ -46,6 +52,11 @@ import {
   type ReporteCliente,
 } from "@/lib/reporteria/types";
 import { plantillaPorId } from "@/lib/reporteria/plantillas";
+import {
+  enlaceWhatsApp,
+  normalizarTelefonoAr,
+  textoDemasiadoLargoParaLink,
+} from "@/lib/reporteria/telefono";
 
 type Props = {
   casoId: string;
@@ -71,6 +82,10 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
   const [guardando, setGuardando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [panelCorreo, setPanelCorreo] = useState(false);
+  const [panelWhatsapp, setPanelWhatsapp] = useState(false);
+  // Se enciende recién cuando se abrió wa.me. Hasta entonces no se ofrece
+  // registrar el envío: nada salió todavía.
+  const [abrioWhatsapp, setAbrioWhatsapp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [idVisto, setIdVisto] = useState<string | null>(null);
@@ -80,6 +95,8 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
     setErrorCarga(null);
     setError(null);
     setPanelCorreo(false);
+    setPanelWhatsapp(false);
+    setAbrioWhatsapp(false);
     setCargando(reporteId !== null);
   }
 
@@ -117,7 +134,10 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
   const plantilla = reporte ? plantillaPorId(reporte.plantilla) : null;
   const parte = reporte?.parte_id ? (partes.find((p) => p.id === reporte.parte_id) ?? null) : null;
   const email = parte?.email?.trim().toLowerCase() ?? null;
-  const telefono = parte?.telefono?.trim() ?? null;
+  // El mismo número que va a releer el servidor al registrar el envío. Si acá
+  // no se puede interpretar, tampoco allá: el panel muestra el motivo en vez
+  // del botón.
+  const tel = useMemo(() => normalizarTelefonoAr(parte?.telefono), [parte?.telefono]);
   const enviado = reporte?.estado === "enviado";
   const descartado = reporte?.estado === "descartado";
   const soloLectura = enviado || descartado;
@@ -174,21 +194,51 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
     }
   };
 
+  /**
+   * Abre wa.me con el texto ya cargado en el chat del cliente. GUARDA ANTES:
+   * el link se lleva el texto que está en pantalla y el registro del envío se
+   * lleva el que está en la base, así que si no coincidieran quedaría
+   * asentado un mensaje distinto del que salió.
+   */
+  const abrirWhatsapp = async () => {
+    if (!reporte || ocupado || pendientes.length > 0 || !tel.ok) return;
+    setError(null);
+    // La pestaña se abre EN EL CLICK, vacía, y recién después se navega. Si se
+    // abriera después del `await` del guardado, el navegador ya no la vería
+    // como consecuencia de un gesto del usuario y la trataría como popup.
+    const ventana = window.open("", "_blank");
+    if (ventana) ventana.opener = null;
+    const guardado = dirty ? await guardar() : reporte;
+    if (!guardado) {
+      ventana?.close();
+      return;
+    }
+    if (!ventana) {
+      setError(
+        "El navegador bloqueó la ventana de WhatsApp. Permitilas para este sitio, o copiá el texto y pegalo vos.",
+      );
+      return;
+    }
+    ventana.location.replace(enlaceWhatsApp(tel.e164, guardado.contenido));
+    setAbrioWhatsapp(true);
+  };
+
   const enviar = async (canal: "email" | "whatsapp" | "copia") => {
     if (!reporte || ocupado || pendientes.length > 0) return;
-    if (canal !== "email") {
-      const a = canal === "whatsapp" ? `por WhatsApp${telefono ? ` a ${telefono}` : ""}` : "copiado a mano";
-      if (!window.confirm(`¿Marcar este reporte como enviado ${a}? Después no se puede editar.`)) return;
+    if (canal === "copia") {
+      if (!window.confirm("¿Marcar este reporte como copiado a mano? Después no se puede editar.")) return;
     }
+    if (canal === "whatsapp" && !tel.ok) return;
     const guardado = dirty ? await guardar() : reporte;
     if (!guardado) return;
     setEnviando(true);
     setError(null);
     try {
+      const para = canal === "email" ? email : canal === "whatsapp" && tel.ok ? tel.e164 : null;
       const res = await fetch(`/api/casos/${casoId}/reportes/${guardado.id}/enviar`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(canal === "email" ? { canal, para: email } : { canal }),
+        body: JSON.stringify(para ? { canal, para } : { canal }),
       });
       const json = (await res.json().catch(() => null)) as RespuestaEnvio;
       if (!res.ok || !json || json.ok !== true) {
@@ -198,8 +248,13 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
       setReporte(json.reporte);
       onActualizado(json.reporte);
       setPanelCorreo(false);
+      setPanelWhatsapp(false);
       toast.success(
-        canal === "email" ? `Enviado a ${json.enviado_a}` : "Reporte marcado como enviado",
+        canal === "email"
+          ? `Enviado a ${json.enviado_a}`
+          : canal === "whatsapp"
+            ? `Registrado: ${json.enviado_a}`
+            : "Reporte marcado como enviado",
       );
     } catch {
       setError("No pude enviar el reporte. Revisá la conexión.");
@@ -358,6 +413,91 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
                   )}
                 </div>
               ) : null}
+
+              {panelWhatsapp && !soloLectura ? (
+                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/8 px-3 py-3 text-sm">
+                  {tel.ok ? (
+                    <>
+                      <p className="font-medium">
+                        {abrioWhatsapp ? "Se abrió WhatsApp con el mensaje cargado en el chat de:" : "Se va a abrir el chat de WhatsApp de:"}
+                      </p>
+                      <p className="mt-1 break-all font-mono text-base">{tel.visible}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {reporte.destinatario_nombre}. Revisá el número completo: un teléfono mal cargado abre el chat de otra persona con el mensaje ya escrito.
+                      </p>
+
+                      {textoDemasiadoLargoParaLink(tel.e164, contenido) ? (
+                        <p className="mt-2 flex items-start gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-300">
+                          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                          <span>
+                            El mensaje es largo y algunos teléfonos recortan el texto al abrirlo por link. Conviene copiarlo y pegarlo en WhatsApp a mano.
+                          </span>
+                        </p>
+                      ) : null}
+
+                      {abrioWhatsapp ? (
+                        <>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            El mensaje todavía no salió: en WhatsApp tenés que tocar enviar vos. Cuando lo hayas mandado, registralo acá.
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button size="sm" onClick={() => enviar("whatsapp")} disabled={ocupado || pendientes.length > 0}>
+                              {enviando ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                              Ya lo mandé, registralo
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => void abrirWhatsapp()} disabled={ocupado}>
+                              <ExternalLink className="size-3.5" />
+                              Volver a abrir
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setPanelWhatsapp(false)} disabled={ocupado}>
+                              Todavía no
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button size="sm" onClick={() => void abrirWhatsapp()} disabled={ocupado || pendientes.length > 0}>
+                            {guardando ? <Loader2 className="size-3.5 animate-spin" /> : <MessageCircle className="size-3.5" />}
+                            Abrir WhatsApp
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={copiar} disabled={ocupado}>
+                            <Copy className="size-3.5" />
+                            Copiar el texto
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setPanelWhatsapp(false)} disabled={ocupado}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium">
+                        {tel.motivo === "vacio"
+                          ? `${reporte.destinatario_nombre} no tiene teléfono cargado.`
+                          : `No puedo usar el teléfono de ${reporte.destinatario_nombre}.`}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {tel.motivo === "vacio"
+                          ? "Cargalo en el bloque Partes de la ficha y volvé a abrir este reporte."
+                          : tel.mensaje}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={copiar} disabled={ocupado}>
+                          <Copy className="size-3.5" />
+                          Copiar el texto
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => enviar("copia")} disabled={ocupado || pendientes.length > 0}>
+                          Marcarlo como copiado a mano
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setPanelWhatsapp(false)} disabled={ocupado}>
+                          Cerrar
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
             </>
           ) : null}
 
@@ -397,16 +537,22 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => enviar("whatsapp")}
-                  disabled={!reporte || ocupado || pendientes.length > 0}
-                  title={pendientes.length > 0 ? "Completá las marcas antes de enviar" : "Copiá el texto, pegalo en WhatsApp y marcá el envío"}
+                  onClick={() => {
+                    setPanelCorreo(false);
+                    setPanelWhatsapp(true);
+                  }}
+                  disabled={!reporte || ocupado || pendientes.length > 0 || panelWhatsapp}
+                  title={pendientes.length > 0 ? "Completá las marcas antes de enviar" : "Abre el chat del cliente con el mensaje ya escrito"}
                 >
                   <MessageCircle className="size-3.5" />
-                  Enviado por WhatsApp
+                  Enviar por WhatsApp
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => setPanelCorreo(true)}
+                  onClick={() => {
+                    setPanelWhatsapp(false);
+                    setPanelCorreo(true);
+                  }}
                   disabled={!reporte || ocupado || pendientes.length > 0 || panelCorreo}
                   title={pendientes.length > 0 ? "Completá las marcas antes de enviar" : undefined}
                 >

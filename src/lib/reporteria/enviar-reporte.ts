@@ -5,6 +5,7 @@ import { getGmailClientEnvio, gmailErrorMessage } from "@/lib/gmail/client";
 import { enviarMensaje } from "@/lib/gmail/mensajes";
 import { plantillaPorId } from "./plantillas";
 import { renderizarAsunto } from "./render";
+import { normalizarTelefonoAr } from "./telefono";
 import {
   obtenerReporte,
   registrarMessageId,
@@ -34,8 +35,17 @@ import {
 //   5. Si Gmail rechaza el envío, la reserva se revierte y el reporte vuelve
 //      a borrador.
 //
-// WhatsApp y copia no salen de la app: el abogado pega el texto donde
-// corresponda y acá sólo queda el registro (a qué teléfono, qué texto).
+// WHATSAPP no sale de la app tampoco, pero desde el link directo ya no es un
+// «marcar a mano»: el abogado abre wa.me con el texto cargado, lo manda desde
+// su propio WhatsApp y vuelve a confirmar. Como el destinatario es un número
+// concreto, se le aplican las MISMAS cuatro reglas que al correo —incluida la
+// tercera, la que importa—: el teléfono se relee de `partes_caso`, se
+// normaliza a E.164 y el `para` que manda el cliente tiene que coincidir. Un
+// número mal interpretado no falla: le abre el chat a otra persona.
+//
+// COPIA sigue siendo la salida manual sin destinatario: el abogado copió el
+// texto y lo mandó por donde quiso. Es el escape cuando no hay teléfono
+// cargado o cuando el número no se puede interpretar.
 
 export type EnviarReporteInput = {
   casoId: string;
@@ -44,7 +54,10 @@ export type EnviarReporteInput = {
   clerkUserId: string;
   reporteId: string;
   canal: CanalReporte;
-  /** La dirección tal como la vio el abogado. Obligatoria para email. */
+  /**
+   * El destinatario tal como lo vio el abogado: la dirección de correo, o el
+   * teléfono normalizado en E.164. Obligatorio para email y para whatsapp.
+   */
   para?: string | null;
 };
 
@@ -58,6 +71,8 @@ export type EnviarReporteResultado =
         | "ya_enviado"
         | "marcas_pendientes"
         | "sin_email"
+        | "sin_telefono"
+        | "telefono_invalido"
         | "destinatario_no_coincide"
         | "sin_gmail"
         | "gmail_rechazo";
@@ -174,13 +189,48 @@ export async function enviarReporte(
     }
   }
 
-  // === WhatsApp / copia: el abogado lo pega a mano; acá queda el registro ===
-  const enviadoA =
-    input.canal === "whatsapp"
-      ? parte?.telefono?.trim()
-        ? `WhatsApp ${parte.telefono.trim()}`
-        : "WhatsApp (teléfono no cargado en la parte)"
-      : "copiado a mano";
+  // === WhatsApp: el abogado lo mandó desde su propio WhatsApp ===
+  // El link se lo abrió la app con el texto cargado, pero el «enviar» lo tocó
+  // él adentro de WhatsApp. Acá se registra a QUÉ NÚMERO, releído de la ficha
+  // y comparado con el que vio en pantalla.
+  if (input.canal === "whatsapp") {
+    const tel = normalizarTelefonoAr(parte?.telefono);
+    if (!tel.ok) {
+      return {
+        ok: false,
+        motivo: tel.motivo === "vacio" ? "sin_telefono" : "telefono_invalido",
+        mensaje:
+          tel.motivo === "vacio"
+            ? `${reporte.destinatario_nombre} no tiene teléfono cargado. Cargalo en Partes y volvé a intentar, o marcá el reporte como copiado a mano.`
+            : `${tel.mensaje} Corregilo en Partes, o marcá el reporte como copiado a mano.`,
+      };
+    }
+    const confirmado = (input.para ?? "").replace(/\D/g, "");
+    if (confirmado !== tel.e164) {
+      return {
+        ok: false,
+        motivo: "destinatario_no_coincide",
+        mensaje: `El número confirmado no coincide con el cargado para ${reporte.destinatario_nombre} (${tel.visible}). Revisalo antes de registrar el envío.`,
+      };
+    }
+    const reservadoWa = await reservarEnvio(input.reporteId, input.casoId, input.usuarioId, {
+      canal: "whatsapp",
+      enviadoA: `WhatsApp ${tel.visible}`,
+      contenidoEnviado: reporte.contenido,
+      asunto: reporte.asunto,
+    });
+    if (!reservadoWa) {
+      return {
+        ok: false,
+        motivo: "ya_enviado",
+        mensaje: "Este reporte ya figura como enviado.",
+      };
+    }
+    return { ok: true, reporte: reservadoWa, enviado_a: `WhatsApp ${tel.visible}` };
+  }
+
+  // === Copia: salida manual, sin destinatario registrado ===
+  const enviadoA = "copiado a mano";
   const reservado = await reservarEnvio(input.reporteId, input.casoId, input.usuarioId, {
     canal: input.canal,
     enviadoA,

@@ -14,8 +14,9 @@ const uuidSchema = z.string().uuid();
 //
 // El único punto por el que un reporte sale de la app. Las reglas viven en
 // enviar-reporte.ts; acá sólo se traducen a HTTP:
-//   409  ya enviado / marcas pendientes / dirección que no coincide
-//   412  sin correo cargado en la parte, o sin Gmail con permiso de envío
+//   409  ya enviado / marcas pendientes / destinatario que no coincide
+//   412  sin correo o sin teléfono usable en la parte, o sin Gmail con
+//        permiso de envío
 //   502  Gmail rechazó el envío (el reporte volvió a borrador)
 export async function POST(
   req: NextRequest,
@@ -66,6 +67,8 @@ export async function POST(
           409,
         );
       case "sin_email":
+      case "sin_telefono":
+      case "telefono_invalido":
       case "sin_gmail":
         return jsonResponse({ ok: false, error: r.mensaje }, 412);
       case "gmail_rechazo":

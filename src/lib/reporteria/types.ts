@@ -21,7 +21,7 @@ export type CanalReporte = (typeof CANALES_REPORTE)[number];
 
 export const CANAL_REPORTE_LABEL: Record<CanalReporte, string> = {
   email: "Correo electrónico",
-  whatsapp: "WhatsApp (copiar y pegar)",
+  whatsapp: "WhatsApp",
   copia: "Copiar el texto",
 };
 

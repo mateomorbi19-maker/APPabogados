@@ -18,6 +18,11 @@ import { condicionesDe, renderizarAsunto, renderizarReporte, variablesDe } from 
 import { armarDatosReporte, nombreDePila, fechaColoquial, mesAño } from "../src/lib/reporteria/datos";
 import { sugerirPlantilla } from "../src/lib/reporteria/sugerir";
 import { contarMarcasReporte, marcasReporte } from "../src/lib/reporteria/types";
+import {
+  enlaceWhatsApp,
+  normalizarTelefonoAr,
+  textoDemasiadoLargoParaLink,
+} from "../src/lib/reporteria/telefono";
 import type { Caso, EventoCaso, ParteCaso } from "../src/lib/types";
 
 const PURO = process.argv.includes("--puro");
@@ -413,6 +418,89 @@ function verificarRender(datos: ReturnType<typeof verificarDatosYSugerencia>) {
 }
 
 // ————————————————————————————————————————————————————————————————
+// 3.bis: teléfonos → E.164 (el link directo de WhatsApp)
+// ————————————————————————————————————————————————————————————————
+//
+// Lo que se prueba acá es lo que decide a qué chat se abre WhatsApp con la
+// estrategia de la causa ya escrita. Los casos «ambiguo» importan tanto como
+// los «ok»: un número sin código de área NO se completa con el 11 porque la
+// mayoría de los clientes sean de Buenos Aires.
+
+function verificarTelefonos() {
+  console.log("\n=== 3.bis. Teléfonos a E.164 ===");
+
+  // Todas estas formas son el MISMO celular de CABA.
+  const mismoNumero = [
+    "+54 9 11 5555-5555",
+    "+5491155555555",
+    "5491155555555",
+    "011 15-5555-5555",
+    "11 15 5555 5555",
+    "(011) 15 5555-5555",
+    "1155555555",
+    "0054 9 11 5555 5555",
+  ];
+  for (const t of mismoNumero) {
+    const r = normalizarTelefonoAr(t);
+    if (r.ok && r.e164 === "5491155555555") ok(`«${t}» → ${r.visible}`);
+    else mal(`«${t}» → ${r.ok ? r.e164 : `${r.motivo}: ${r.mensaje}`} (esperaba 5491155555555)`);
+  }
+
+  // Códigos de área de 3 y 4 dígitos: el 15 está en otra posición y el largo
+  // del área lo decide la tabla, no el largo del número.
+  const porArea: [string, string, string][] = [
+    ["223 15 445-5667", "5492234455667", "Mar del Plata, área de 3"],
+    ["0223 4455667", "5492234455667", "Mar del Plata sin 15"],
+    ["0351 15 444-5566", "5493514445566", "Córdoba, área de 3"],
+    ["02966 15 42-5566", "5492966425566", "Río Gallegos, área de 4"],
+    ["2966 425566", "5492966425566", "Río Gallegos sin 15"],
+    ["0221 15 456-7890", "5492214567890", "La Plata, área de 3"],
+  ];
+  for (const [crudo, esperado, que] of porArea) {
+    const r = normalizarTelefonoAr(crudo);
+    if (r.ok && r.e164 === esperado) ok(`${que}: «${crudo}» → ${r.visible}`);
+    else mal(`${que}: «${crudo}» → ${r.ok ? r.e164 : r.motivo} (esperaba ${esperado})`);
+  }
+
+  // Lo que NO se adivina.
+  const rechazos: [string, string, string][] = [
+    ["15-5555-5555", "ambiguo", "un 15 sin código de área no dice la ciudad"],
+    ["5555-5555", "ambiguo", "ocho dígitos sin área"],
+    ["", "vacio", "vacío"],
+    ["   ", "vacio", "sólo espacios"],
+    ["no tiene", "invalido", "texto sin números"],
+    ["11 5555-555", "invalido", "un dígito de menos"],
+    ["11 5555-55555", "invalido", "un dígito de más"],
+  ];
+  for (const [crudo, motivo, que] of rechazos) {
+    const r = normalizarTelefonoAr(crudo);
+    if (!r.ok && r.motivo === motivo) ok(`rechaza «${crudo}» (${motivo}): ${que}`);
+    else mal(`«${crudo}» → ${r.ok ? `ok ${r.e164}` : r.motivo} (esperaba ${motivo})`);
+  }
+
+  // Un cliente en el exterior: el + es una declaración de formato y se respeta.
+  const esp = normalizarTelefonoAr("+34 600 123 456");
+  if (esp.ok && esp.e164 === "34600123456" && !esp.argentino) ok(`número extranjero se respeta: ${esp.visible}`);
+  else mal(`+34 600 123 456 → ${esp.ok ? esp.e164 : esp.motivo}`);
+
+  // El link, y el techo de largo.
+  const tel = normalizarTelefonoAr("+54 9 11 5555-5555");
+  if (!tel.ok) {
+    mal("no se pudo armar el link de prueba");
+    return;
+  }
+  const link = enlaceWhatsApp(tel.e164, "Hola Juan, novedades de tu causa.");
+  if (link.startsWith("https://wa.me/5491155555555?text=") && !link.includes("+") && link.includes("%20")) {
+    ok(`link: ${link}`);
+  } else mal(`link mal armado: ${link}`);
+
+  if (!textoDemasiadoLargoParaLink(tel.e164, "Hola Juan.")) ok("un mensaje corto no dispara el aviso de largo");
+  else mal("un mensaje corto disparó el aviso de largo");
+  if (textoDemasiadoLargoParaLink(tel.e164, "á".repeat(1200))) ok("un mensaje largo dispara el aviso (la URL pasa los 2.000)");
+  else mal("un mensaje largo no disparó el aviso");
+}
+
+// ————————————————————————————————————————————————————————————————
 // 4 y 5: contra la base (sólo sin --puro)
 // ————————————————————————————————————————————————————————————————
 
@@ -509,6 +597,7 @@ async function main() {
   verificarPlantillas();
   const datos = verificarDatosYSugerencia();
   verificarRender(datos);
+  verificarTelefonos();
   if (!PURO) {
     const ctx = await verificarBase();
     if (ctx && !SIN_MODELO) await verificarModelo(ctx);

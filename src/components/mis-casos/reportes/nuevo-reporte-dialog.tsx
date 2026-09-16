@@ -50,6 +50,7 @@ import {
   variantePorId,
   type CampoCriterio,
 } from "@/lib/reporteria/plantillas";
+import { normalizarTelefonoAr } from "@/lib/reporteria/telefono";
 import type { DatosReporte } from "@/lib/reporteria/datos";
 import type { SugerenciaPlantilla } from "@/lib/reporteria/sugerir";
 
@@ -489,6 +490,14 @@ function PasoElegir({
           <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             {destinatario.nombre} no tiene correo cargado. Podés generar igual y cargarlo en Partes antes de enviar.
+          </p>
+        ) : null}
+        {canal === "whatsapp" && destinatario && !normalizarTelefonoAr(destinatario.telefono).ok ? (
+          <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            {destinatario.telefono
+              ? `El teléfono de ${destinatario.nombre} no se puede usar para abrir WhatsApp. Corregilo en Partes (por ejemplo +54 9 11 5555-5555) antes de enviar.`
+              : `${destinatario.nombre} no tiene teléfono cargado. Podés generar igual y cargarlo en Partes antes de enviar.`}
           </p>
         ) : null}
       </div>

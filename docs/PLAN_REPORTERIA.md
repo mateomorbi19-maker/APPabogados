@@ -29,7 +29,7 @@ línea de configuración**; están marcadas para que Gonzalo y Lautaro las revis
 | # | Pregunta | Decisión | Dónde vive |
 |---|---|---|---|
 | 1 | ¿Por causa o por persona? | **Por persona.** Sólo se reporta a partes con `es_cliente = true`; el server rechaza las demás con 409. `partes_caso` suma `telefono` y `email`. | `generar-reporte.ts`, migración |
-| 2 | ¿WhatsApp? | **Copiar y pegar.** Sin API de Meta. El botón copia el texto y el reporte se marca «enviado por WhatsApp» con el teléfono que figura en la parte. | `reporte-detalle-dialog.tsx` |
+| 2 | ¿WhatsApp? | **Link directo.** Sin API de Meta ni proveedor no oficial. El botón abre `wa.me` con el mensaje ya escrito en el chat del cliente; él toca enviar adentro de WhatsApp y después vuelve a registrarlo. El número se normaliza a E.164 y el que no se puede interpretar se rechaza en vez de adivinarse. | `telefono.ts`, `enviar-reporte.ts`, `reporte-detalle-dialog.tsx` |
 | 3 | ¿Cuánto escribe la IA? | **(b): el sistema arma el esqueleto, la IA lo pule.** El borrador se renderiza determinísticamente (datos + criterio del abogado + marcas de faltante) y el modelo lo reescribe en lenguaje coloquial **sin agregar un solo hecho**. Se puede generar sin IA. | `render.ts`, `prompt.ts`, `run-reporte.ts` |
 | 4 | ¿Se guarda lo enviado? | **Sí, las dos versiones**: `contenido_generado` (lo que produjo el sistema) y `contenido_enviado` (lo que salió), más `enviado_a` con la dirección o el teléfono exactos. Un reporte enviado es inmutable. | tabla `reportes_cliente` |
 | 5 | ¿Querella? | **Se usa igual**, con la perspectiva ajustada: el prompt recibe el rol del estudio en la causa y «favorable» significa favorable para NUESTRO cliente (la víctima). Las plantillas no se duplican; Gonzalo puede escribir las espejadas cuando quiera. | `prompt.ts` |
@@ -111,6 +111,7 @@ src/lib/reporteria/
   render.ts       render determinístico: variables + bloques condicionales (puro)
   datos.ts        el esqueleto de datos desde caso/partes/eventos/agenda (puro)
   sugerir.ts      la sugerencia de plantilla                            (puro)
+  telefono.ts     teléfono argentino → E.164 + link de wa.me            (puro)
   prompt.ts       system prompt + mensaje del turno                     (server)
   run-reporte.ts  single-shot al modelo, sin tools, con caché           (server)
   queries.ts      acceso a reportes_cliente + sondeo de migración       (server)
@@ -126,6 +127,14 @@ scripts/verificar-reporteria.ts     --puro (sin base ni modelo) | --sin-modelo |
 ## 8. Lo que queda afuera, a propósito
 
 - WhatsApp por API de Meta (destruye el lenguaje coloquial; ver §4 del documento de agosto).
+- WhatsApp por proveedor no oficial tipo Rapiwa: manda de verdad desde la app y
+  trae acuses de entrega, pero un tercero pasa a relayar la estrategia de una
+  causa penal (secreto profesional, art. 156 CP; datos sensibles, Ley 25.326),
+  con riesgo de baneo del número y una sesión por QR que se cae sola. Si algún
+  día se evalúa, el orden es: aviso por WhatsApp + contenido por correo,
+  primero con un solo número de prueba.
+- Acuses de entrega y respuestas del cliente: el link directo no los puede dar.
+  La app sabe que el abogado dijo «ya lo mandé», no que el cliente lo leyó.
 - Envío automático y periódico (§6).
 - Plantillas espejadas para querella escritas por Gonzalo (§2, pregunta 5).
 - Tabla de plazos de recurso por fuero (la firma Gonzalo; hasta entonces el plazo lo tipea el abogado).

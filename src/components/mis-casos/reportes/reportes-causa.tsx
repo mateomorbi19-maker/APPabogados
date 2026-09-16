@@ -180,7 +180,7 @@ export function ReportesCausa({ caso, partes, reportes, onReportesChange }: Prop
           </p>
           <p className="max-w-sm text-xs leading-relaxed text-[var(--el-text-muted)]">
             {hayCliente
-              ? "Elegí una de las seis plantillas del estudio: la app arma el borrador con lo que sabe de la causa, vos completás el criterio y lo mandás por correo o lo pegás en WhatsApp. Nada sale sin que lo leas."
+              ? "Elegí una de las seis plantillas del estudio: la app arma el borrador con lo que sabe de la causa, vos completás el criterio y lo mandás por correo o por WhatsApp. Nada sale sin que lo leas."
               : "Para reportar hace falta una persona marcada como cliente del estudio en el bloque Partes."}
           </p>
         </div>

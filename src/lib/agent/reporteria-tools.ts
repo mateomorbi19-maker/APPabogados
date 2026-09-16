@@ -32,6 +32,8 @@ import {
 } from "@/lib/reporteria/generar-reporte";
 import { enviarReporte } from "@/lib/reporteria/enviar-reporte";
 import { obtenerReporte } from "@/lib/reporteria/queries";
+import { normalizarTelefonoAr } from "@/lib/reporteria/telefono";
+import { leerParte } from "@/lib/casos/escritura";
 import { camposAplicables, plantillaPorId, PLANTILLAS } from "@/lib/reporteria/plantillas";
 import { clientesSinNovedades } from "@/lib/reporteria/pendientes";
 import {
@@ -638,9 +640,26 @@ async function enviarReporteCliente(
   }
 
   const canal = d.canal ?? reporte.canal;
+
+  // WhatsApp: el número se valida ACÁ, antes de mostrarle la tarjeta. Si el
+  // teléfono de la ficha no se puede interpretar, que se entere ahora y no
+  // después de tocar Confirmar.
+  if (canal === "whatsapp") {
+    const parte = reporte.parte_id ? await leerParte(casoId, reporte.parte_id) : null;
+    const tel = normalizarTelefonoAr(parte?.telefono);
+    if (!tel.ok) {
+      return error(
+        tel.motivo === "vacio"
+          ? `${reporte.destinatario_nombre} no tiene teléfono cargado, así que no se puede registrar un envío por WhatsApp.`
+          : `El teléfono cargado para ${reporte.destinatario_nombre} no se puede usar: ${tel.mensaje}`,
+        "Decile al abogado que lo corrija en el bloque Partes de la ficha, o mandalo por correo.",
+      );
+    }
+  }
+
   const payload = { caso_id: casoId, reporte_id: reporte.id, canal };
-  // La vista previa lleva el TEXTO COMPLETO y la dirección exacta: confirmar
-  // es enviar exactamente esto, así que tiene que poder leerse todo.
+  // La vista previa lleva el TEXTO COMPLETO y el destinatario exacto:
+  // confirmar es mandar exactamente esto, así que tiene que poder leerse todo.
   const vista: Record<string, unknown> = {
     destinatario: reporte.destinatario_nombre,
     canal,
@@ -650,6 +669,9 @@ async function enviarReporteCliente(
   if (canal === "email") {
     vista.va_a_salir_a =
       "la dirección cargada en la ficha de esta persona; el servidor la vuelve a leer al enviar y no acepta otra";
+  } else if (canal === "whatsapp") {
+    vista.aclaracion =
+      "Esto NO manda el WhatsApp: deja asentado que el abogado ya se lo mandó, al teléfono cargado en la ficha. Para mandarlo, el botón que abre el chat con el mensaje escrito está en el detalle del reporte.";
   } else {
     vista.aclaracion =
       "Por este canal la app no manda nada: registra que el abogado lo mandó él. El texto se copia desde el detalle del reporte.";
@@ -658,7 +680,10 @@ async function enviarReporteCliente(
   return emitirPendiente({
     tool: TOOL,
     clave: claveAccion(TOOL, payload),
-    resumen: `Enviar el reporte a ${reporte.destinatario_nombre}`,
+    resumen:
+      canal === "whatsapp"
+        ? `Registrar el envío por WhatsApp a ${reporte.destinatario_nombre}`
+        : `Enviar el reporte a ${reporte.destinatario_nombre}`,
     seccion: "causa",
     vista_previa: vista,
     payload,
@@ -666,7 +691,9 @@ async function enviarReporteCliente(
       "Mostrale el mensaje ENTERO antes de que confirme: sale firmado por él y va a su cliente. " +
       (canal === "email"
         ? "Decile que revise la dirección en la tarjeta."
-        : "Recordale que por este canal tiene que copiar el texto y pegarlo él."),
+        : canal === "whatsapp"
+          ? "Preguntale PRIMERO si ya se lo mandó: confirmar sólo lo deja asentado. Si todavía no, mandalo a abrirlo desde el detalle del reporte."
+          : "Recordale que por este canal tiene que copiar el texto y pegarlo él."),
   });
 }
 
@@ -684,15 +711,25 @@ async function ejecutarEnvioPendiente(
       error: "La acción pendiente no trae caso_id o reporte_id: hay que emitirla de nuevo.",
     });
   }
-  // La dirección la resuelve el servicio desde la ficha. `para` se completa
-  // acá con esa misma dirección para pasar su propio chequeo de coincidencia:
-  // es el paso que, en el camino del UI, hace el abogado al leerla en pantalla.
+  // El destinatario lo resuelve el servicio desde la ficha. `para` se completa
+  // acá con ese mismo destinatario para pasar su propio chequeo de
+  // coincidencia: es el paso que, en el camino del UI, hace el abogado al
+  // leerlo en pantalla.
   const actual = await obtenerReporte(reporteId, casoId, ctx.usuarioId);
   if (!actual) {
     return resolverPendiente(accion, { estado: "error", error: "El reporte ya no existe." });
   }
-  const { leerParte } = await import("@/lib/casos/escritura");
   const parte = actual.parte_id ? await leerParte(casoId, actual.parte_id) : null;
+  let para: string | null = null;
+  if (canal === "email") {
+    para = parte?.email ?? null;
+  } else if (canal === "whatsapp") {
+    const tel = normalizarTelefonoAr(parte?.telefono);
+    if (!tel.ok) {
+      return resolverPendiente(accion, { estado: "error", error: tel.mensaje });
+    }
+    para = tel.e164;
+  }
 
   const r = await enviarReporte({
     casoId,
@@ -700,7 +737,7 @@ async function ejecutarEnvioPendiente(
     clerkUserId: ctx.clerkUserId,
     reporteId,
     canal,
-    para: canal === "email" ? (parte?.email ?? null) : null,
+    para,
   });
   if (!r.ok) return resolverPendiente(accion, { estado: "error", error: r.mensaje });
   return resolverPendiente(accion, {
@@ -778,11 +815,11 @@ export const PROMPT_REPORTERIA =
   "DESTINATARIO: sólo personas marcadas como cliente del estudio. Si hay más de una, preguntá a cuál: dos imputados de la misma causa pueden tener intereses contrapuestos y el mismo texto no les sirve a los dos. " +
   "GENERAR NO ES ENVIAR: son dos confirmaciones distintas y en el medio el abogado lee el mensaje entero. Decíselo así. " +
   "PRISIÓN PREVENTIVA Y CONDENA: esas dos situaciones no pasan por la IA por decisión del estudio. Generalas igual —la app arma el encabezado y el cierre— y avisale que el cuerpo lo escribe él. " +
-  "WHATSAPP: la app no manda WhatsApp. Por ese canal sólo se registra que el mensaje salió; el texto lo copia y lo pega él.";
+  "WHATSAPP: vos no podés mandarlo. El abogado sí, desde el detalle del reporte: un botón le abre el chat de su cliente con el mensaje ya escrito y él toca enviar. `enviar_reporte_cliente` con canal whatsapp SÓLO DEJA ASENTADO que ya lo mandó, así que preguntale primero si lo mandó; si todavía no, mandalo al detalle del reporte en vez de registrarlo.";
 
 export const MANUAL_REPORTERIA =
-  "REPORTES AL CLIENTE (dónde se ve lo que hiciste): Mis casos → la causa → bloque «Reportes al cliente». Ahí se genera («Nuevo reporte»), se lee, se corrige el texto, se copia y se manda por correo o se marca como enviado por WhatsApp. " +
-  "El correo y el teléfono del cliente se cargan en el bloque «Partes», en la persona marcada como cliente. " +
+  "REPORTES AL CLIENTE (dónde se ve lo que hiciste): Mis casos → la causa → bloque «Reportes al cliente». Ahí se genera («Nuevo reporte»), se lee, se corrige el texto y se manda: «Enviar por correo» lo manda desde el Gmail del abogado, y «Enviar por WhatsApp» le muestra el número completo y le abre el chat de esa persona con el mensaje ya escrito, para que él toque enviar y después lo registre. " +
+  "El correo y el teléfono del cliente se cargan en el bloque «Partes», en la persona marcada como cliente; el teléfono conviene cargarlo como +54 9 11 5555-5555. " +
   "En el Inicio aparece «Clientes sin novedades» cuando hace más de 30 días que no se le reporta a alguno.";
 
 export const DOMINIO_REPORTERIA: DominioLexie = {
