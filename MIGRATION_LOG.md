@@ -689,3 +689,50 @@ esta máquina está sin credenciales (las claves existen como líneas, con el
 valor vacío), así que nada de esta fase se corrió contra la base real ni contra
 el modelo. Lo verificado es el camino puro (`--puro`), `tsc --noEmit`, `eslint`
 y `next build`.
+
+---
+
+## 2026-09-22 · 12:00:00 UTC — `20260922120000_gonzalo_limite_tokens.sql` — ⏳ **PENDIENTE DE APLICAR**
+
+**Contexto:** Gonzalo avisó que se le terminó el cupo mensual y no puede usar
+la app. Todo lo que gasta tokens pasa por `enforceTokenLimit`, que lee
+`v_consumo_mensual` y devuelve 429 cuando `tokens_restantes <= 0`. Su tope
+era el default del schema original, 1.000.000 tokens/mes, y a esta altura del
+mes ya lo consumió. Es la primera vez que un abogado llega al tope.
+
+**Cambio (operación de DATOS, no de schema):**
+
+- `UPDATE usuarios SET limite_tokens_mensual = 3000000` para la fila con
+  `LOWER(email) = 'gonzalo.ezequiel.brandoni@gmail.com'`, sólo si el tope
+  actual es menor (idempotente, nunca baja).
+
+**Por qué subir el tope y no reembolsar:** `metadata.refunded=true` es para
+ejecuciones que fallaron por un bug nuestro (20260507180000 y
+20260508000000). El consumo de Gonzalo fue uso real y tiene que seguir
+apareciendo en «Mi consumo» y en `/admin`. Subir el tope no reescribe nada.
+
+**Por qué 3.000.000:** consumió 1.000.000 en 22 días, así que 2.000.000
+quedaría justo. Los tokens que cuentan para el cupo incluyen las lecturas de
+caché (`inputTokensParaCuota`), que se cobran a 0,1x: en plata, 3.000.000
+son unos USD 15 de techo mensual. El número se cambia con el mismo UPDATE.
+
+**Filas afectadas esperadas:** 1.
+
+**Efecto:** inmediato y permanente. La vista no es materializada y el server
+la consulta en cada request: en cuanto se aplica, el próximo pedido de
+Gonzalo pasa. Del lado de él alcanza con recargar la página (la barra de cupo
+se refresca sola). Lautaro y Mateo siguen en 1.000.000.
+
+**Aplicación:** ⏳ la tiene que correr Mateo a mano en el SQL Editor. Desde
+esta máquina no se pudo: el `.env.local` sigue sin credenciales, no hay
+Supabase CLI ni MCP configurado.
+
+**Verificación** (después de correrla, sólo lectura):
+
+```sql
+SELECT nombre, limite_tokens_mensual, tokens_usados_mes, tokens_restantes,
+       ejecuciones_mes, gasto_usd_mes
+  FROM v_consumo_mensual
+ ORDER BY nombre;
+-- Gonzalo: limite 3000000, tokens_restantes > 0. Lautaro y Mateo: 1000000.
+```
