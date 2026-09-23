@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignOutButton, useUser } from "@clerk/nextjs";
-import { LogOut, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { CuentaEnLista } from "@/components/cuenta/menu-cuenta";
 import { ConsumoBar } from "@/components/header/consumo-bar";
 import { useMediaQuery } from "@/lib/hooks/use-cliente";
 import { itemsVisibles } from "./nav-items";
@@ -28,7 +28,6 @@ export function MobileNav({
 }) {
   const [abierto, setAbierto] = useState(false);
   const pathname = usePathname();
-  const { user } = useUser();
   const items = itemsVisibles(isAdmin);
   const panelRef = useRef<HTMLDivElement>(null);
   const botonRef = useRef<HTMLButtonElement>(null);
@@ -178,32 +177,10 @@ export function MobileNav({
               </div>
 
               <div className="shrink-0 border-t border-[var(--el-border-soft)] px-3 py-3">
-                <div className="flex items-center gap-3 px-1">
-                  {user?.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={user.imageUrl}
-                      alt=""
-                      className="size-8 shrink-0 rounded-full"
-                    />
-                  ) : (
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-medium text-primary">
-                      {nombreUsuario.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {nombreUsuario}
-                  </span>
-                </div>
-                <SignOutButton>
-                  <button
-                    type="button"
-                    className="mt-2 flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <LogOut className="size-[18px] shrink-0" />
-                    Salir
-                  </button>
-                </SignOutButton>
+                <CuentaEnLista
+                  nombreUsuario={nombreUsuario}
+                  onElegir={() => setAbierto(false)}
+                />
               </div>
             </div>
           </div>,

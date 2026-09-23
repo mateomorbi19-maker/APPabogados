@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
 import { ConsumoBar } from "@/components/header/consumo-bar";
-import { AjustesDialog } from "@/components/tema/ajustes-dialog";
 import { MobileNav } from "./mobile-nav";
 
-// Header reducido full-width: logo + medidor de consumo + ajustes + avatar.
+// Header reducido full-width: logo + medidor de consumo. La cuenta (foto,
+// nombre, apariencia, cerrar sesión) vive abajo a la izquierda: en la
+// sidebar en escritorio y al pie del drawer en móvil.
 // La navegación migró a la sidebar. El medidor reusa ConsumoBar tal cual
 // (requiere <ConsumoProvider> aguas arriba, igual que antes).
 //
@@ -38,8 +38,6 @@ export function TopBar({
         </Link>
         <div className="flex-1" />
         <ConsumoBar />
-        <AjustesDialog />
-        <UserButton />
       </div>
     </header>
   );

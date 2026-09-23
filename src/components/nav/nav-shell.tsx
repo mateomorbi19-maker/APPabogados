@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BuscadorProvider } from "@/components/buscador/buscador-global";
+import { CuentaDialog } from "@/components/cuenta/cuenta-dialog";
 import { AppSidebar } from "./app-sidebar";
 import { TopBar } from "./top-bar";
 
@@ -36,6 +37,8 @@ export function NavShell({
     <BuscadorProvider>
       <div className="flex min-h-dvh flex-col bg-[var(--el-canvas)] text-[var(--el-text)]">
         <TopBar nombreUsuario={nombreUsuario} isAdmin={isAdmin} />
+        {/* «Tu cuenta»: montado una vez, lo abre el menú de cuenta por evento. */}
+        <CuentaDialog nombreUsuario={nombreUsuario} />
         <div className="flex flex-1">
           <AppSidebar nombreUsuario={nombreUsuario} isAdmin={isAdmin} />
           <main className="min-w-0 flex-1 bg-[var(--el-canvas)]">
