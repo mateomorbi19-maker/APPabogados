@@ -13,7 +13,11 @@
 //   sistema   lo calcula la app (etapa, último movimiento, fechas, resumen del
 //             mes). El abogado no tipea nada.
 //   ficha     sale de la ficha, las partes o el perfil (nombre del cliente, juez,
-//             tribunal, firma). Si falta, queda [FALTA: …] y se carga en la ficha.
+//             tribunal, firma). NO bloquea el envío: la frase que la usa va en
+//             un bloque {{#SI_HAY_X}} y, si el dato falta, se omite o se
+//             generaliza («el juzgado resolvió»). Igual con lo que el sistema
+//             deriva de la causa (etapa, último movimiento). El nombre del
+//             cliente y la firma tienen respaldo en datos.ts.
 //   criterio  es criterio profesional (el próximo paso, por qué es buena
 //             noticia, qué tiene que hacer el cliente). Lo escribe el abogado
 //             en el formulario corto; el sistema nunca lo inventa.
@@ -233,9 +237,9 @@ const P01: DefinicionPlantilla = {
   texto: [
     "Hola {{NOMBRE_CLIENTE}}, te mando estas líneas para que estés al tanto de cómo va tu causa.",
     "",
-    "En este momento el expediente está en {{ETAPA_PROCESAL_COLOQUIAL}}. En pocas palabras, eso significa que {{EXPLICACION_ETAPA}}.",
+    "{{#SI_HAY_ETAPA}}En este momento el expediente está en {{ETAPA_PROCESAL_COLOQUIAL}}. En pocas palabras, eso significa que {{EXPLICACION_ETAPA}}.{{/SI_HAY_ETAPA}}",
     "",
-    "Lo último que se movió en la causa fue {{ULTIMO_MOVIMIENTO}} ({{FECHA_ULTIMO_MOVIMIENTO}}). {{DETALLE_ADICIONAL_MOVIMIENTO}}",
+    "{{#SI_HAY_MOVIMIENTO}}Lo último que se movió en la causa fue {{ULTIMO_MOVIMIENTO}} ({{FECHA_ULTIMO_MOVIMIENTO}}).{{/SI_HAY_MOVIMIENTO}} {{DETALLE_ADICIONAL_MOVIMIENTO}}",
     "",
     "{{#SI_HAY_PROXIMO_PASO}}Lo que sigue es {{PROXIMO_PASO_COLOQUIAL}}, que está estimado para {{FECHA_O_PLAZO_ESTIMADO}}.{{/SI_HAY_PROXIMO_PASO}}",
     "",
@@ -308,6 +312,18 @@ const P01: DefinicionPlantilla = {
     NOMBRE_ABOGADO,
   ],
   condiciones: [
+    {
+      tag: "SI_HAY_ETAPA",
+      label: "La causa tiene etapa (mapa procesal)",
+      fuente: "variable",
+      variable: "ETAPA_PROCESAL_COLOQUIAL",
+    },
+    {
+      tag: "SI_HAY_MOVIMIENTO",
+      label: "Hay un movimiento registrado",
+      fuente: "variable",
+      variable: "ULTIMO_MOVIMIENTO",
+    },
     {
       tag: "SI_HAY_PROXIMO_PASO",
       label: "Hay un próximo paso",
@@ -395,7 +411,7 @@ const P02: DefinicionPlantilla = {
   texto: [
     "Hola {{NOMBRE_CLIENTE}}, te escribo porque acaba de salir una resolución importante en tu causa.",
     "",
-    "El juez {{NOMBRE_JUEZ}} resolvió {{TIPO_RESOLUCION_COLOQUIAL}}. En concreto, eso significa {{EXPLICACION_COLOQUIAL_RESOLUCION}}.",
+    "{{#SI_HAY_JUEZ}}El juez {{NOMBRE_JUEZ}} resolvió{{/SI_HAY_JUEZ}}{{#SIN_JUEZ}}El juzgado resolvió{{/SIN_JUEZ}} {{TIPO_RESOLUCION_COLOQUIAL}}. En concreto, eso significa {{EXPLICACION_COLOQUIAL_RESOLUCION}}.",
     "",
     "{{#FAVORABLE}}Es una buena noticia: {{RAZON_FAVORABLE}}.{{/FAVORABLE}}",
     "",
@@ -460,6 +476,8 @@ const P02: DefinicionPlantilla = {
     NOMBRE_ABOGADO,
   ],
   condiciones: [
+    { tag: "SI_HAY_JUEZ", label: "La ficha tiene juez", fuente: "variable", variable: "NOMBRE_JUEZ" },
+    { tag: "SIN_JUEZ", label: "La ficha no tiene juez", fuente: "variable", variable: "NOMBRE_JUEZ", negada: true },
     { tag: "FAVORABLE", label: "Resolución favorable", fuente: "variante" },
     { tag: "DESFAVORABLE", label: "Resolución desfavorable", fuente: "variante" },
     { tag: "ELEVACION_JUICIO", label: "Elevación a juicio", fuente: "variante" },
@@ -497,7 +515,7 @@ const P02: DefinicionPlantilla = {
       },
       sin_ia: {
         cabecera:
-          "Hola {{NOMBRE_CLIENTE}}, te escribo porque acaba de salir una resolución importante en tu causa: el juez {{NOMBRE_JUEZ}} dictó tu procesamiento con prisión preventiva.",
+          "Hola {{NOMBRE_CLIENTE}}, te escribo porque acaba de salir una resolución importante en tu causa: {{#SI_HAY_JUEZ}}el juez {{NOMBRE_JUEZ}}{{/SI_HAY_JUEZ}}{{#SIN_JUEZ}}el juzgado{{/SIN_JUEZ}} dictó tu procesamiento con prisión preventiva.",
         cierre: "Te llamo hoy mismo para explicarte todo con calma. Saludos, {{NOMBRE_ABOGADO}}",
       },
     },
@@ -619,7 +637,7 @@ const P03: DefinicionPlantilla = {
   texto: [
     "Hola {{NOMBRE_CLIENTE}}, necesito que leas esto con atención porque se viene la instancia más importante de tu causa.",
     "",
-    "El juicio oral está fijado para el {{FECHA_DEBATE}}, a las {{HORA_INICIO}}, en {{LUGAR_SEDE_DEBATE}}. El tribunal que va a juzgar es {{COMPOSICION_TRIBUNAL}}.",
+    "El juicio oral está fijado para el {{FECHA_DEBATE}}{{#SI_HAY_HORA}}, a las {{HORA_INICIO}}{{/SI_HAY_HORA}}, en {{LUGAR_SEDE_DEBATE}}.{{#SI_HAY_TRIBUNAL}} El tribunal que va a juzgar es {{COMPOSICION_TRIBUNAL}}.{{/SI_HAY_TRIBUNAL}}",
     "",
     "Este es el momento donde se juega todo: acá el tribunal va a escuchar las pruebas, los testigos y los argumentos de ambas partes, y después va a decidir. Tu presencia es obligatoria, no opcional.",
     "",
@@ -629,7 +647,7 @@ const P03: DefinicionPlantilla = {
     "",
     "{{#HAY_TESTIGOS}}Vamos a declarar {{CANTIDAD_TESTIGOS}} testigos: {{LISTA_TESTIGOS_COLOQUIAL}}. Eso va a fortalecer mucho tu posición.{{/HAY_TESTIGOS}}",
     "",
-    "Vamos a coordinar una reunión previa el {{FECHA_REUNION_PREPARATORIA}} para repasar todo juntos. Estoy trabajando en esto y estamos bien preparados.",
+    "Vamos a coordinar una reunión previa{{#SI_HAY_REUNION}} el {{FECHA_REUNION_PREPARATORIA}}{{/SI_HAY_REUNION}} para repasar todo juntos. Estoy trabajando en esto y estamos bien preparados.",
     "",
     "Cualquier duda que te surja, escribime. Saludos, {{NOMBRE_ABOGADO}}",
   ].join("\n"),
@@ -712,6 +730,24 @@ const P03: DefinicionPlantilla = {
     NOMBRE_ABOGADO,
   ],
   condiciones: [
+    {
+      tag: "SI_HAY_HORA",
+      label: "El debate tiene hora en la agenda",
+      fuente: "variable",
+      variable: "HORA_INICIO",
+    },
+    {
+      tag: "SI_HAY_TRIBUNAL",
+      label: "La ficha tiene tribunal",
+      fuente: "variable",
+      variable: "COMPOSICION_TRIBUNAL",
+    },
+    {
+      tag: "SI_HAY_REUNION",
+      label: "Hay reunión previa en la agenda",
+      fuente: "variable",
+      variable: "FECHA_REUNION_PREPARATORIA",
+    },
     {
       tag: "HAY_TESTIGOS",
       label: "Hay testigos",
@@ -1097,7 +1133,7 @@ const P06: DefinicionPlantilla = {
     "Hola {{NOMBRE_CLIENTE}}, te mando el resumen mensual de tu causa para que tengas todo en un solo lugar.",
     "",
     "📌 DÓNDE ESTAMOS",
-    "Tu causa {{CARATULA_COLOQUIAL}} está en {{ETAPA_PROCESAL_COLOQUIAL}} ante {{JUZGADO_O_TRIBUNAL}}. {{EXPLICACION_ETAPA_BREVE}}.",
+    "Tu causa{{#SI_HAY_CARATULA}} {{CARATULA_COLOQUIAL}}{{/SI_HAY_CARATULA}}{{#SI_HAY_ETAPA}} está en {{ETAPA_PROCESAL_COLOQUIAL}}{{/SI_HAY_ETAPA}}{{#SIN_ETAPA}} sigue en trámite{{/SIN_ETAPA}}{{#SI_HAY_JUZGADO}} ante {{JUZGADO_O_TRIBUNAL}}{{/SI_HAY_JUZGADO}}.{{#SI_HAY_EXPLICACION_ETAPA}} {{EXPLICACION_ETAPA_BREVE}}.{{/SI_HAY_EXPLICACION_ETAPA}}",
     "",
     "📋 QUÉ PASÓ ESTE MES",
     "{{RESUMEN_MOVIMIENTOS_MES}}",
@@ -1185,6 +1221,37 @@ const P06: DefinicionPlantilla = {
     },
   ],
   condiciones: [
+    {
+      tag: "SI_HAY_CARATULA",
+      label: "La causa tiene carátula o delitos",
+      fuente: "variable",
+      variable: "CARATULA_COLOQUIAL",
+    },
+    {
+      tag: "SI_HAY_ETAPA",
+      label: "La causa tiene etapa (mapa procesal)",
+      fuente: "variable",
+      variable: "ETAPA_PROCESAL_COLOQUIAL",
+    },
+    {
+      tag: "SIN_ETAPA",
+      label: "La causa no tiene etapa",
+      fuente: "variable",
+      variable: "ETAPA_PROCESAL_COLOQUIAL",
+      negada: true,
+    },
+    {
+      tag: "SI_HAY_JUZGADO",
+      label: "La ficha tiene juzgado",
+      fuente: "variable",
+      variable: "JUZGADO_O_TRIBUNAL",
+    },
+    {
+      tag: "SI_HAY_EXPLICACION_ETAPA",
+      label: "Hay explicación de la etapa",
+      fuente: "variable",
+      variable: "EXPLICACION_ETAPA_BREVE",
+    },
     {
       tag: "HAY_ACCION_CLIENTE",
       label: "El cliente tiene que hacer algo",

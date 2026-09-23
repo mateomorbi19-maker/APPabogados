@@ -363,7 +363,12 @@ export function armarDatosReporte(e: EntradaDatosReporte): DatosReporte {
     FECHA_REUNION_PREPARATORIA: reunion
       ? `${reunion.fecha.replace(/^el /, "")}${reunion.hora ? ` a las ${reunion.hora}` : ""}`
       : null,
-    NOMBRE_IMPUTADO: imputados.length > 0 ? imputados.map((p) => p.nombre.trim()).join(" y ") : null,
+    // Sólo lo usan los textos de querella de P-02 («procesar a …»). Sin el
+    // imputado cargado en Partes se nombra genérico en vez de bloquear.
+    NOMBRE_IMPUTADO:
+      imputados.length > 0
+        ? imputados.map((p) => p.nombre.trim()).join(" y ")
+        : "la persona imputada",
   };
 
   return {
@@ -416,7 +421,7 @@ export function serializarDatosReporte(d: DatosReporte): string {
     lineas.push("- Próximos eventos en la agenda de la causa: ninguno cargado");
   }
   for (const k of ["NOMBRE_JUEZ", "JUZGADO_O_TRIBUNAL", "NOMBRE_ABOGADO"] as const) {
-    lineas.push(`- ${k}: ${d.valores[k] ?? "FALTA"}`);
+    lineas.push(`- ${k}: ${d.valores[k] ?? "no cargado — no lo menciones ni lo inventes"}`);
   }
   if (d.caratula_provisoria) {
     lineas.push("- La causa no tiene carátula cargada: no nombres el expediente por su carátula.");

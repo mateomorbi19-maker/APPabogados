@@ -9,6 +9,9 @@
 // Dos reglas:
 //   1. Una variable sin valor se escribe como `[FALTA: label]`, salvo que sea
 //      opcional: entonces se omite. Nunca se rellena con nada verosímil.
+//      Los datos de la ficha y los derivados de la causa no llegan a esta
+//      regla: su frase va en un bloque {{#SI_HAY_X}} de la plantilla y, si el
+//      dato falta, se omite o se generaliza. La ficha incompleta no bloquea.
 //   2. Los bloques {{#TAG}}…{{/TAG}} se incluyen o se quitan enteros. Admiten
 //      anidamiento con tags distintos (SE_RECURRE adentro de DESFAVORABLE).
 
@@ -181,13 +184,18 @@ export function renderizarReporte(e: EntradaRender): ResultadoRender {
   let texto: string;
   const sinIa = !!variante?.sin_ia;
   if (variante?.sin_ia) {
-    texto = [
-      variante.sin_ia.cabecera,
-      "",
-      "[REDACTAR: cuerpo del mensaje — qué significa, qué va a hacer la defensa y qué viene]",
-      "",
-      variante.sin_ia.cierre,
-    ].join("\n");
+    // La cabecera también lleva bloques ({{#SI_HAY_JUEZ}}): se resuelven igual
+    // que en el texto de la plantilla.
+    texto = resolverBloques(
+      [
+        variante.sin_ia.cabecera,
+        "",
+        "[REDACTAR: cuerpo del mensaje — qué significa, qué va a hacer la defensa y qué viene]",
+        "",
+        variante.sin_ia.cierre,
+      ].join("\n"),
+      condiciones,
+    );
   } else {
     texto = resolverBloques(p.texto, condiciones);
   }

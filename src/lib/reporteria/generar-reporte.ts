@@ -219,11 +219,24 @@ async function preparar(
   return { ok: true, caso, partes, perfil, datos };
 }
 
-/** Etiquetas de las variables de sistema/ficha sin valor, para una plantilla. */
+/**
+ * Etiquetas de las variables de sistema/ficha que van a salir como [FALTA: …]
+ * en una plantilla. Sale del mismo render que arma el borrador: una variable
+ * cuya frase se omite cuando falta (juez, tribunal, etapa) no se lista.
+ */
 function faltantesDe(p: DefinicionPlantilla, datos: DatosReporte): string[] {
-  return p.variables
-    .filter((v) => v.fuente !== "criterio" && !v.opcional && !datos.valores[v.clave])
-    .map((v) => v.label);
+  const r = renderizarReporte({
+    plantilla: p,
+    variante: null,
+    rolEstudio: datos.rol_estudio,
+    valoresSistema: datos.valores,
+    criterio: {},
+  });
+  const porClave = new Map(p.variables.map((v) => [v.clave, v]));
+  return r.faltantes.flatMap((k) => {
+    const v = porClave.get(k);
+    return v && v.fuente !== "criterio" ? [v.label] : [];
+  });
 }
 
 // ————————————————————————————————————————————————————————————————

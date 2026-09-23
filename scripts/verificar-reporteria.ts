@@ -280,6 +280,75 @@ function verificarDatosYSugerencia() {
 // 3. Render
 // ————————————————————————————————————————————————————————————————
 
+// La ficha incompleta no bloquea el envío: lo que sale de la ficha o se
+// deriva de la causa se omite o se generaliza. Las únicas marcas [FALTA] que
+// pueden quedar son las del criterio del abogado.
+function verificarFichaVacia(base: Record<string, string | null>) {
+  const vacia: Record<string, string | null> = {
+    ...base,
+    NOMBRE_JUEZ: null,
+    JUZGADO_O_TRIBUNAL: null,
+    COMPOSICION_TRIBUNAL: null,
+    CARATULA_COLOQUIAL: null,
+    ETAPA_PROCESAL_COLOQUIAL: null,
+    EXPLICACION_ETAPA: null,
+    EXPLICACION_ETAPA_BREVE: null,
+    ULTIMO_MOVIMIENTO: null,
+    FECHA_ULTIMO_MOVIMIENTO: null,
+    HORA_INICIO: null,
+    FECHA_REUNION_PREPARATORIA: null,
+  };
+  const render = (id: string, varianteId: string | null, extra: Record<string, string> = {}) => {
+    const p = plantillaPorId(id)!;
+    const texto = renderizarReporte({
+      plantilla: p,
+      variante: varianteId ? (p.variantes.find((v) => v.id === varianteId) ?? null) : null,
+      rolEstudio: "defensor",
+      valoresSistema: { ...vacia, ...extra },
+      criterio: {},
+    }).texto;
+    const criterio = new Set(p.variables.filter((v) => v.fuente === "criterio").map((v) => v.label));
+    const ajenas = Array.from(texto.matchAll(/\[FALTA: ([^\]]+)\]/g))
+      .map((m) => m[1])
+      .filter((l) => !criterio.has(l));
+    return { texto, ajenas };
+  };
+  const limpio = (codigo: string, r: { texto: string; ajenas: string[] }) => {
+    if (r.ajenas.length === 0 && !r.texto.includes("{{")) ok(`${codigo} con ficha vacía: sólo marcas de criterio`);
+    else mal(`${codigo} con ficha vacía dejó marcas de ficha: ${r.ajenas.join(", ")}\n${r.texto}`);
+  };
+
+  const p01 = render("P01", null);
+  limpio("P01", p01);
+  if (!p01.texto.includes("el expediente está en")) ok("P01: sin mapa → la frase de la etapa se omite");
+  else mal("P01: habló de la etapa sin mapa");
+
+  const p02 = render("P02", "procesamiento");
+  limpio("P02", p02);
+  if (p02.texto.includes("El juzgado resolvió")) ok("P02: sin juez → «El juzgado resolvió»");
+  else mal(`P02: sin juez no generalizó\n${p02.texto}`);
+
+  const p02pp = render("P02", "prision_preventiva");
+  limpio("P02 prisión preventiva", p02pp);
+  if (p02pp.texto.includes("el juzgado dictó tu procesamiento")) ok("P02 sin IA: la cabecera también generaliza el juez");
+  else mal(`P02 sin IA: cabecera sin generalizar\n${p02pp.texto}`);
+
+  const p03 = render("P03", null, { FECHA_DEBATE: "20 de octubre" });
+  limpio("P03", p03);
+  if (
+    p03.texto.includes("fijado para el 20 de octubre, en") &&
+    !p03.texto.includes("El tribunal que va a juzgar") &&
+    p03.texto.includes("reunión previa para repasar")
+  )
+    ok("P03: sin hora, tribunal ni reunión → se omiten");
+  else mal(`P03: quedaron restos\n${p03.texto}`);
+
+  const p06 = render("P06", null);
+  limpio("P06", p06);
+  if (p06.texto.includes("Tu causa sigue en trámite.")) ok("P06: sin carátula, etapa ni juzgado → «Tu causa sigue en trámite.»");
+  else mal(`P06: frase de «dónde estamos» rota\n${p06.texto}`);
+}
+
 function verificarRender(datos: ReturnType<typeof verificarDatosYSugerencia>) {
   console.log("\n=== 3. Render determinístico ===");
   const P01 = plantillaPorId("P01")!;
@@ -297,8 +366,10 @@ function verificarRender(datos: ReturnType<typeof verificarDatosYSugerencia>) {
   });
   if (r1.texto.includes("Hola Juan,")) ok("P01: saluda por el nombre de pila");
   else mal("P01: sin nombre");
-  if (r1.texto.includes("[FALTA: último movimiento]")) ok("P01: último movimiento faltante marcado");
-  else mal(`P01: no marcó el último movimiento\n${r1.texto}`);
+  // Un dato de la causa que falta no bloquea: la frase se omite, sin marca.
+  if (!r1.texto.includes("Lo último que se movió") && !r1.texto.includes("[FALTA: último movimiento]"))
+    ok("P01: sin movimientos → la frase se omite, sin marca");
+  else mal(`P01: el último movimiento faltante dejó rastro\n${r1.texto}`);
   if (r1.texto.includes("[FALTA: ritmo de la causa]")) ok("P01: ritmo (criterio requerido) marcado");
   else mal("P01: ritmo sin marcar");
   if (!r1.texto.includes("Lo que sigue es")) ok("P01: sin próximo paso → bloque omitido");
@@ -309,6 +380,8 @@ function verificarRender(datos: ReturnType<typeof verificarDatosYSugerencia>) {
   else mal("P01: quedaron {{}}");
   if (!/\(\s*\)/.test(r1.texto) && !/\.\s*\./.test(r1.texto)) ok("P01: sin restos de puntuación");
   else mal(`P01: restos de puntuación\n${r1.texto}`);
+
+  verificarFichaVacia(datos.base.valores);
 
   // P01 con criterio completo.
   const r1b = renderizarReporte({

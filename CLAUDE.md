@@ -559,6 +559,16 @@ envío se **rechaza con 409** mientras quede una marca `[FALTA: …]` o
 `[REDACTAR: …]`. Es la misma regla que rige la ficha y los escritos, con más
 razón: esto sale del estudio.
 
+**Excepción: la ficha incompleta no bloquea** (pedido de Mateo, 23/9/2026).
+Las frases que usan un dato de la ficha o derivado de la causa —juez,
+tribunal, juzgado, carátula, etapa, último movimiento, hora del debate,
+reunión previa, imputado en querella— van en bloques `{{#SI_HAY_X}}` y, si el
+dato falta, se omiten o se generalizan («el juzgado resolvió», «sigue en
+trámite»). El dato nunca se inventa. `[FALTA]` queda para el criterio del
+abogado y para la fecha del juicio en P-03, sin la cual el aviso no tiene
+sentido. El pre-vuelo calcula sus faltantes con el mismo render, así que la
+lista que ve el abogado coincide con las marcas que va a encontrar.
+
 **Las cuatro reglas del envío**, todas en `enviar-reporte.ts` y ninguna en el
 prompt:
 

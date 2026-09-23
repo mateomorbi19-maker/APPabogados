@@ -577,7 +577,7 @@ function PasoCriterio({
           <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              Van a quedar como <code>[FALTA: …]</code>: {faltantes.join(", ")}. Se completan a mano antes de enviar, o cargalos en la ficha.
+              Van a quedar como <code>[FALTA: …]</code>: {faltantes.join(", ")}. Se completan a mano en el detalle antes de enviar.
             </span>
           </p>
         ) : null}
