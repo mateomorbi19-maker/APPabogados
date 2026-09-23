@@ -16,8 +16,11 @@
 //     quiera. Es la salida cuando no hay teléfono cargado o cuando el número
 //     no se puede interpretar.
 //
-// Las marcas [FALTA: …] y [REDACTAR: …] bloquean todo envío (y el server lo
-// rechaza igual con 409). Un reporte enviado se muestra en solo lectura.
+// Las marcas [FALTA: …] y [REDACTAR: …] NO traban al abogado: al tocar Enviar
+// se quitan, a la vista, las frases que las tienen (quitarFrasesIncompletas),
+// y el envío guarda antes de salir. El server sigue rechazando un texto con
+// marcas (409), así que lo que sale es siempre lo que quedó en pantalla. Un
+// reporte enviado se muestra en solo lectura.
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -49,6 +52,7 @@ import {
   CANAL_REPORTE_LABEL,
   ESTADO_REPORTE_LABEL,
   MARCA_REPORTE_RE,
+  quitarFrasesIncompletas,
   type ReporteCliente,
 } from "@/lib/reporteria/types";
 import { plantillaPorId } from "@/lib/reporteria/plantillas";
@@ -79,6 +83,8 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [asunto, setAsunto] = useState("");
   const [contenido, setContenido] = useState("");
+  // true después de quitar las frases incompletas: el aviso pide releerlo.
+  const [limpiado, setLimpiado] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [panelCorreo, setPanelCorreo] = useState(false);
@@ -115,6 +121,7 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
         setReporte(r);
         setAsunto(r.asunto ?? "");
         setContenido(r.contenido);
+        setLimpiado(false);
       })
       .catch(() => {
         if (vivo) setErrorCarga("No pude abrir el reporte. Revisá la conexión.");
@@ -131,6 +138,11 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
     () => Array.from(new Set(contenido.match(MARCA_REPORTE_RE) ?? [])),
     [contenido],
   );
+  const quitarIncompletas = () => {
+    if (pendientes.length === 0) return;
+    setContenido(quitarFrasesIncompletas(contenido));
+    setLimpiado(true);
+  };
   const plantilla = reporte ? plantillaPorId(reporte.plantilla) : null;
   const parte = reporte?.parte_id ? (partes.find((p) => p.id === reporte.parte_id) ?? null) : null;
   const email = parte?.email?.trim().toLowerCase() ?? null;
@@ -356,7 +368,18 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
                   <p className="flex items-center gap-1.5 font-medium">
                     <AlertTriangle className="size-3.5" />
-                    {pendientes.length} marca{pendientes.length === 1 ? "" : "s"} por completar antes de enviar
+                    {pendientes.length} dato{pendientes.length === 1 ? "" : "s"} sin completar
+                  </p>
+                  <p className="mt-0.5">
+                    Completalos en el texto, o enviá igual: esas frases se quitan antes de mandarlo.{" "}
+                    <button
+                      type="button"
+                      onClick={quitarIncompletas}
+                      disabled={ocupado}
+                      className="font-medium underline underline-offset-2 hover:no-underline"
+                    >
+                      Quitarlas ahora
+                    </button>
                   </p>
                   <ul className="mt-1 flex flex-wrap gap-1">
                     {pendientes.map((m) => (
@@ -366,6 +389,10 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
                     ))}
                   </ul>
                 </div>
+              ) : limpiado && !soloLectura ? (
+                <p className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300">
+                  <AlertTriangle className="size-3.5" /> Quité las frases con datos sin completar. Leé cómo quedó antes de mandarlo.
+                </p>
               ) : !soloLectura ? (
                 <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="size-3.5" /> Sin datos pendientes. Leelo entero antes de mandarlo.
@@ -538,11 +565,12 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    quitarIncompletas();
                     setPanelCorreo(false);
                     setPanelWhatsapp(true);
                   }}
-                  disabled={!reporte || ocupado || pendientes.length > 0 || panelWhatsapp}
-                  title={pendientes.length > 0 ? "Completá las marcas antes de enviar" : "Abre el chat del cliente con el mensaje ya escrito"}
+                  disabled={!reporte || ocupado || panelWhatsapp}
+                  title="Abre el chat del cliente con el mensaje ya escrito"
                 >
                   <MessageCircle className="size-3.5" />
                   Enviar por WhatsApp
@@ -550,11 +578,11 @@ export function ReporteDetalleDialog({ casoId, partes, reporteId, onClose, onAct
                 <Button
                   size="sm"
                   onClick={() => {
+                    quitarIncompletas();
                     setPanelWhatsapp(false);
                     setPanelCorreo(true);
                   }}
-                  disabled={!reporte || ocupado || pendientes.length > 0 || panelCorreo}
-                  title={pendientes.length > 0 ? "Completá las marcas antes de enviar" : undefined}
+                  disabled={!reporte || ocupado || panelCorreo}
                 >
                   <Mail className="size-3.5" />
                   Enviar por correo

@@ -96,6 +96,40 @@ export function marcasReporte(texto: string): string[] {
   return Array.from(new Set(texto.match(MARCA_REPORTE_RE) ?? []));
 }
 
+const TIENE_MARCA_RE = /\[(?:FALTA|REDACTAR):[^\]]*\]/;
+
+/**
+ * Saca del texto las oraciones que tienen una marca, para que un dato sin
+ * completar no trabe el envío. Si la marca viene después de dos puntos, se
+ * conserva lo de antes: «…no te preocupés todavía: [REDACTAR: …].» queda
+ * «…no te preocupés todavía.». Los párrafos que se vacían desaparecen.
+ *
+ * No se aplica sola: el detalle la corre A LA VISTA del abogado antes de
+ * abrir WhatsApp o el correo, y guarda el resultado. El server sigue
+ * rechazando un texto con marcas, así que lo que sale es siempre lo que quedó
+ * en pantalla.
+ */
+export function quitarFrasesIncompletas(texto: string): string {
+  const lineas = texto.split("\n").map((linea) => {
+    if (!TIENE_MARCA_RE.test(linea)) return linea;
+    return linea
+      .split(/(?<=[.!?])\s+/)
+      .map((oracion) => {
+        const marca = oracion.search(TIENE_MARCA_RE);
+        if (marca < 0) return oracion;
+        const dosPuntos = oracion.lastIndexOf(":", marca);
+        const antes = dosPuntos > 0 ? oracion.slice(0, dosPuntos).trim() : "";
+        return antes && !TIENE_MARCA_RE.test(antes) ? `${antes}.` : "";
+      })
+      .filter(Boolean)
+      .join(" ");
+  });
+  return lineas
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Cuántos días sin reporte disparan la tarjeta del Inicio. */
 export const DIAS_SIN_REPORTE_AVISO = 30;
 

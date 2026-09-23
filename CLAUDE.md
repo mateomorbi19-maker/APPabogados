@@ -569,6 +569,14 @@ abogado y para la fecha del juicio en P-03, sin la cual el aviso no tiene
 sentido. El pre-vuelo calcula sus faltantes con el mismo render, así que la
 lista que ve el abogado coincide con las marcas que va a encontrar.
 
+**Y las marcas que quedan tampoco traban el envío** (mismo día). En el
+detalle, «Enviar por WhatsApp» / «Enviar por correo» corren primero
+`quitarFrasesIncompletas` ([types.ts](src/lib/reporteria/types.ts)) A LA
+VISTA: se van las oraciones con marcas y el abogado ve cómo quedó antes de
+abrir nada. El envío guarda antes de salir y el 409 del server no cambió, así
+que sigue sin poder salir un `[FALTA]` y lo que sale es lo que quedó en
+pantalla. LEXIE no tiene ese atajo: su envío sigue pidiendo completar.
+
 **Las cuatro reglas del envío**, todas en `enviar-reporte.ts` y ninguna en el
 prompt:
 
