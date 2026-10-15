@@ -393,6 +393,12 @@ los datos esenciales", y llevarlo al portal judicial. Con dos flujos de
 modelos —los que cargó el estudio y los que trae cada abogado— y con LEXIE
 recomendando cuál presentar. Ver la Fase 10 más abajo.
 
+El selector muestra etiquetas **Complejo / Mero trámite** y permite filtrar por
+**Todos / Complejos / Mero trámite**, combinando búsqueda, categoría y rol.
+El criterio organizativo vive en `src/lib/escritos/complejidad.ts`: lista explícita
+de gestiones simples del catálogo y detección conservadora para modelos propios;
+los demás se consideran complejos. No requiere cambios en la base.
+
 **Los 136 modelos del estudio viven en código, no en la base**, y salen de DOS
 fuentes (`npm run escritos:catalogo` las junta):
 

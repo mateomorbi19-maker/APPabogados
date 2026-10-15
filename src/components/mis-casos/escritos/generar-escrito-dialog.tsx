@@ -66,6 +66,11 @@ import {
   type PerfilProfesional,
 } from "@/lib/escritos/types";
 import { filtrarModelos } from "@/lib/escritos/filtrar";
+import {
+  COMPLEJIDAD_ESCRITO_LABEL,
+  complejidadModelo,
+  type ComplejidadEscrito,
+} from "@/lib/escritos/complejidad";
 import { armarDatosEscrito } from "@/lib/escritos/datos-causa";
 import { ModeloForm } from "./modelo-form";
 
@@ -129,6 +134,7 @@ export function GenerarEscritoDialog({
   const [pestana, setPestana] = useState<Pestana>("estudio");
   const [q, setQ] = useState("");
   const [categoria, setCategoria] = useState<CategoriaEscrito | "">("");
+  const [complejidad, setComplejidad] = useState<ComplejidadEscrito | "">("");
   const [soloMiRol, setSoloMiRol] = useState(true);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
 
@@ -152,6 +158,7 @@ export function GenerarEscritoDialog({
       setError(null);
       setQ("");
       setCategoria("");
+      setComplejidad("");
       setSoloMiRol(true);
       setPestana("estudio");
       setCargando(true);
@@ -209,10 +216,12 @@ export function GenerarEscritoDialog({
     return filtrarModelos(base, {
       q,
       categoria: categoria || null,
+      complejidad: complejidad || null,
       rol: rolFiltro,
     });
-  }, [modelos, pestana, q, categoria, rolFiltro]);
+  }, [modelos, pestana, q, categoria, complejidad, rolFiltro]);
 
+  const estudioCount = modelos?.filter((m) => m.origen === "estudio").length ?? 0;
   const propiosCount = modelos?.filter((m) => m.origen !== "estudio").length ?? 0;
   const modeloElegido = modelos?.find((m) => m.id === seleccionado) ?? null;
 
@@ -373,11 +382,17 @@ export function GenerarEscritoDialog({
               reintentar={reintentar}
               pestana={pestana}
               setPestana={setPestana}
+              estudioCount={estudioCount}
               propiosCount={propiosCount}
               q={q}
               setQ={setQ}
               categoria={categoria}
               setCategoria={setCategoria}
+              complejidad={complejidad}
+              setComplejidad={(valor) => {
+                setComplejidad(valor);
+                setSeleccionado(null);
+              }}
               soloMiRol={soloMiRol}
               setSoloMiRol={setSoloMiRol}
               rolCaso={caso.rol}
@@ -468,11 +483,14 @@ function PasoModelo(props: {
   reintentar: () => void;
   pestana: Pestana;
   setPestana: (p: Pestana) => void;
+  estudioCount: number;
   propiosCount: number;
   q: string;
   setQ: (q: string) => void;
   categoria: CategoriaEscrito | "";
   setCategoria: (c: CategoriaEscrito | "") => void;
+  complejidad: ComplejidadEscrito | "";
+  setComplejidad: (c: ComplejidadEscrito | "") => void;
   soloMiRol: boolean;
   setSoloMiRol: (v: boolean) => void;
   rolCaso: Caso["rol"];
@@ -492,11 +510,14 @@ function PasoModelo(props: {
     reintentar,
     pestana,
     setPestana,
+    estudioCount,
     propiosCount,
     q,
     setQ,
     categoria,
     setCategoria,
+    complejidad,
+    setComplejidad,
     soloMiRol,
     setSoloMiRol,
     rolCaso,
@@ -523,8 +544,8 @@ function PasoModelo(props: {
         >
           {(
             [
-              ["estudio", "Del estudio · 50"],
-              ["propios", `Míos · ${propiosCount}`],
+              ["estudio", `Del estudio · ${estudioCount.toLocaleString("es-AR")}`],
+              ["propios", `Míos · ${propiosCount.toLocaleString("es-AR")}`],
             ] as const
           ).map(([k, label]) => (
             <button
@@ -580,6 +601,40 @@ function PasoModelo(props: {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div
+          role="group"
+          aria-label="Complejidad del escrito"
+          className="inline-flex flex-wrap gap-1 rounded-lg bg-muted p-1"
+        >
+          {([
+            ["", "Todos"],
+            ["complejo", "Complejos"],
+            ["mero_tramite", "Mero trámite"],
+          ] as const).map(([valor, etiqueta]) => (
+            <button
+              key={valor}
+              type="button"
+              aria-pressed={complejidad === valor}
+              onClick={() => setComplejidad(valor)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                complejidad === valor
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {etiqueta}
+            </button>
+          ))}
+        </div>
+        {!cargando && !errorCarga ? (
+          <span className="text-xs text-muted-foreground" role="status">
+            {visibles.length.toLocaleString("es-AR")} modelos
+          </span>
+        ) : null}
       </div>
 
       {rolCaso !== "ambos" ? (
@@ -650,6 +705,9 @@ function PasoModelo(props: {
                         {m.suma}
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-md border border-[var(--el-border)] bg-[var(--el-surface-card)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--el-text)]">
+                          {COMPLEJIDAD_ESCRITO_LABEL[complejidadModelo(m)]}
+                        </span>
                         <span className="rounded-md border border-[var(--el-border)] bg-[var(--el-glass)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--el-text-muted)]">
                           {CATEGORIA_ESCRITO_LABEL[m.categoria]}
                         </span>
@@ -775,6 +833,9 @@ function PasoDatos(props: {
             {modelo.titulo}
           </p>
           <p className="text-xs text-[var(--el-text-muted)]">{modelo.suma}</p>
+          <p className="mt-1 text-xs font-medium text-[var(--el-text-soft)]">
+            {COMPLEJIDAD_ESCRITO_LABEL[complejidadModelo(modelo)]}
+          </p>
         </div>
       ) : null}
 

@@ -5,6 +5,7 @@
 // la pantalla y en el chat.
 
 import { normalizarTexto, tokenizar } from "@/lib/repositorio/texto";
+import { complejidadModelo, type ComplejidadEscrito } from "./complejidad";
 import type {
   CategoriaEscrito,
   ModeloEscritoResumen,
@@ -15,6 +16,7 @@ export type FiltroModelos = {
   /** Texto libre. Tildes y mayúsculas no importan. */
   q?: string;
   categoria?: CategoriaEscrito | null;
+  complejidad?: ComplejidadEscrito | null;
   /**
    * Rol con el que el estudio actúa en la causa. Un modelo `ambos` matchea
    * cualquiera; `defensor` y `querellante` sólo su rol. `ambos` como filtro
@@ -60,6 +62,7 @@ export function filtrarModelos<T extends ModeloEscritoResumen>(
   const rol = filtro.rol && filtro.rol !== "ambos" ? filtro.rol : null;
   const conPuntaje = modelos
     .filter((m) => !filtro.categoria || m.categoria === filtro.categoria)
+    .filter((m) => !filtro.complejidad || complejidadModelo(m) === filtro.complejidad)
     .filter((m) => !rol || m.rol_sugerido === "ambos" || m.rol_sugerido === rol)
     .map((m) => ({ m, p: puntaje(m, tokens) }))
     .filter((x) => x.p > 0);
