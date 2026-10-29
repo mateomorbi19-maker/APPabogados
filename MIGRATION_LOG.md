@@ -739,7 +739,7 @@ SELECT nombre, limite_tokens_mensual, tokens_usados_mes, tokens_restantes,
 
 ---
 
-## 2026-10-29 · 12:00:00 UTC — `20261029120000_carga_causa.sql` — ⏳ **PENDIENTE DE APLICAR**
+## 2026-10-29 — `20261029120000_carga_causa.sql` — ✅ **APLICADA (confirmada por Mateo)**
 
 **Contexto:** alta de causa desde PDF y/o relato dictado, con revisión de la
 ficha y sin análisis previo. Plan: [carga de causa](docs/superpowers/plans/2026-10-29-carga-causa.md).
@@ -764,10 +764,11 @@ ficha y sin análisis previo. Plan: [carga de causa](docs/superpowers/plans/2026
 - El trigger existente del timeline pasa a usar `UPDATE public.casos`, porque
   hereda el `search_path` vacío de la RPC. Conserva su comportamiento anterior.
 
-**Aplicación:** pendiente de Mateo en SQL Editor. No se ejecutó SQL contra la
-base ni se instalaron herramientas. El archivo se preparó manualmente según la
-regla del repo; no requiere la migración pendiente de contacto/reportería.
-Hasta aplicarlo, las nuevas rutas deben devolver 503 antes de gastar en IA.
+**Aplicación:** Mateo confirmó el 29/10/2026 que ejecutó el SQL en SQL Editor.
+El agente no ejecutó la migración contra Supabase ni verificó directamente la
+base remota (credenciales locales vacías). El archivo no requiere la migración
+pendiente de contacto/reportería. Si la migración faltara en otra base, las
+nuevas rutas devuelven 503 antes de gastar en IA.
 No agrega etapa ni nodos del mapa; la etapa sigue derivándose del mapa.
 Si se aplica después la migración pendiente `20260915120000_reporteria_cliente.sql`,
 volver a ejecutar esta migración: aquella reemplaza el CHECK de tipos por su
@@ -810,7 +811,8 @@ alta con/sin PDF; estrategia ausente y selección completa previa; rechazo de
 selección parcial; reintento sin duplicados; conflictos de dueño/huella;
 prefijo PDF ajeno; rollback íntegro ante errores forzados en partes y evento;
 preservación de tipos instalados (incluido un tipo histórico de fixture).
-Esto **no significa aplicada en Supabase**. El runtime se instaló fuera del
+Estas pruebas locales **no verifican Supabase**; la aplicación remota consta
+por la confirmación de Mateo indicada arriba. El runtime se instaló fuera del
 repo, sin cambios a dependencias ni lockfile. Reproducción sin red una vez
 instalado ese runtime:
 

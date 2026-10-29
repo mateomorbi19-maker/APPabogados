@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/themes";
 import { esES } from "@clerk/localizations";
@@ -18,16 +18,25 @@ import "./globals.css";
 //     El remapeo de --font-serif/--font-heading → --font-display en
 //     globals.css hace que los títulos existentes adopten la grotesque sin
 //     tocar cada componente.
-const inter = Inter({
+//
+// Las dos van SERVIDAS DESDE EL REPO (src/app/fonts/, variantes latinas
+// variables bajadas de Google Fonts), no con next/font/google: esa baja las
+// fuentes de Google en cada build, y el 23/9/2026 el build de Easypanel se
+// cayó porque Google le devolvió URLs sin extensión (`/l/font?kit=…`) y
+// next/font revienta con «Cannot read properties of null (reading '1')».
+// Con los archivos en el repo el build no depende de la red.
+const inter = localFont({
+  src: "./fonts/inter-latin.woff2",
   variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "400 600",
+  display: "swap",
 });
 
-const display = Space_Grotesk({
+const display = localFont({
+  src: "./fonts/space-grotesk-latin.woff2",
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600"],
+  weight: "500 600",
+  display: "swap",
 });
 
 // Stack de fuente para el card de Clerk. La CSS variable inyectada por

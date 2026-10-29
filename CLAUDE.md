@@ -353,7 +353,8 @@ del estudio debe confirmarse para guardar. No genera una estrategia ni un mapa.
   los bytes; un fallo incierto de RPC no elimina un PDF que puede estar ligado
   a una causa ya confirmada. Puede quedar un objeto sin referencia tras un
   fallo definitivo; se reutiliza al reintentar, sin barrido automático.
-- **Requiere** `20261029120000_carga_causa.sql`, **pendiente de aplicar** según
+- **Requiere** `20261029120000_carga_causa.sql`, **aplicada en SQL Editor según
+  confirmación de Mateo el 29/10/2026** (sin verificación remota del agente), ver
   [MIGRATION_LOG.md](MIGRATION_LOG.md). Permite estrategia nula (los tres campos
   juntos) y agrega RPC restringida a `service_role`. Sin migración, devuelve
   503 antes de usar el modelo. Las causas creadas desde análisis siguen igual.
@@ -364,8 +365,9 @@ del estudio debe confirmarse para guardar. No genera una estrategia ni un mapa.
 Validación local sin credenciales: 11 pruebas de validación/persistencia y 12
 comprobaciones SQL en PostgreSQL efímero (PGlite), TypeScript, ESLint de archivos
 modificados y build webpack. La compilación usó variables ficticias sólo en el
-proceso; `.env.local` sigue sin claves. Extracción real, micrófono y QA de
-navegación con sesión autenticada pendientes. Ver plan y pasos de activación
+proceso; `.env.local` sigue sin claves. QA manual del componente en navegador
+con respuestas simuladas pasó (edición, error/reintento, tema claro/oscuro).
+Extracción real, micrófono y navegación con sesión autenticada pendientes. Ver plan y pasos de activación
 en [docs/superpowers/plans/2026-10-29-carga-causa.md](docs/superpowers/plans/2026-10-29-carga-causa.md).
 
 - `PATCH /api/casos/[id]` — edita la ficha. **Es la primera ruta de escritura
