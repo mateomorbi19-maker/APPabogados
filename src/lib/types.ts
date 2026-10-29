@@ -122,7 +122,10 @@ export type TipoEjecucion =
   | "consulta_caso"
   | "simular_mapa"
   | "simular_audiencia"
-  | "lexie";
+  | "lexie"
+  | "generar_escrito"
+  | "reporte_cliente"
+  | "importar_causa";
 
 // === Ficha de causa (Fase 9) ===
 
@@ -180,9 +183,11 @@ export type Caso = {
   contexto: Record<string, unknown> | null;
   rol: RolCaso;
   ejecucion_origen_id: string | null;
-  estrategia_seleccionada_rol: RolEstrategia;
-  estrategia_seleccionada_idx: number;
-  estrategia_snapshot: Estrategia;
+  // Las cargas directas no requieren análisis previo. Los tres campos son
+  // NULL juntos; la base impide guardar una selección incompleta.
+  estrategia_seleccionada_rol: RolEstrategia | null;
+  estrategia_seleccionada_idx: number | null;
+  estrategia_snapshot: Estrategia | null;
   creado_en: string;
   actualizado_en: string;
   // Lo escribe el mapa procesal al inicializarse, y desde la ficha (F3).

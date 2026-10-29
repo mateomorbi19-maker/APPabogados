@@ -98,6 +98,17 @@ function Contenido({ ejecucion }: { ejecucion: EjecucionRow }) {
         <CuerpoAnalizarCaso meta={meta} />
       ) : ejecucion.tipo === "pre_analisis" ? (
         <CuerpoPreAnalisis meta={meta} />
+      ) : ejecucion.tipo === "importar_causa" ? (
+        <Card className="p-6 space-y-2">
+          <p className="text-sm">
+            Preparación de la ficha de una causa para su revisión.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {meta.error ??
+              meta.parseo_error ??
+              "La extracción no crea la causa hasta que se confirma el guardado."}
+          </p>
+        </Card>
       ) : (
         <Card className="p-6">
           <p className="text-sm text-muted-foreground">

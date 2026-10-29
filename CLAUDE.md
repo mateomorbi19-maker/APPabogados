@@ -334,6 +334,40 @@ tope de tamaño y el corte automático de la grabación a los 10 minutos.
 La identidad del expediente. Ver la Fase 9 más abajo y
 [PLAN_FICHA_CAUSA.md](docs/PLAN_FICHA_CAUSA.md).
 
+**Carga directa por PDF y voz (29/10/2026):** «Cargar nueva causa» en Mis causas
+(también cuando la lista está vacía) abre un diálogo de dos pasos: PDF y/o
+relato escrito/dictado → revisión editable de ficha y personas → guardar y
+abrir. Reutiliza `DictadoVoz`; el audio se transcribe sin guardarse y nunca
+dispara la extracción automáticamente. Datos ausentes quedan vacíos; el rol
+del estudio debe confirmarse para guardar. No genera una estrategia ni un mapa.
+
+- `POST /api/casos/preparar-carga`: multipart `texto` y/o `archivo`. PDF hasta
+  10 MiB y 100 páginas, sin contraseña; texto hasta 50.000 caracteres. Valida
+  tamaño real del request y estructura del PDF antes del modelo. Verifica
+  migración y cupo antes de extraer. Registra tokens como `importar_causa`,
+  incluso si la respuesta no se puede validar. No crea una causa.
+- `POST /api/casos/importar`: multipart `datos` (`{id,ficha}` revisada) y PDF
+  opcional. Crea causa, partes y evento de incorporación mediante RPC atómica;
+  conserva el PDF en el bucket existente. UUID estable y huella evitan dobles
+  altas por reintentos. Un duplicado de Storage se acepta sólo tras comparar
+  los bytes; un fallo incierto de RPC no elimina un PDF que puede estar ligado
+  a una causa ya confirmada. Puede quedar un objeto sin referencia tras un
+  fallo definitivo; se reutiliza al reintentar, sin barrido automático.
+- **Requiere** `20261029120000_carga_causa.sql`, **pendiente de aplicar** según
+  [MIGRATION_LOG.md](MIGRATION_LOG.md). Permite estrategia nula (los tres campos
+  juntos) y agrega RPC restringida a `service_role`. Sin migración, devuelve
+  503 antes de usar el modelo. Las causas creadas desde análisis siguen igual.
+- Código: `src/lib/casos/carga-*.ts`, `src/components/mis-casos/carga/` y las
+  dos rutas. La marca `contexto.carga_inicial.huella` es interna, no un dato
+  judicial; no se inyecta en el contexto del agente.
+
+Validación local sin credenciales: 11 pruebas de validación/persistencia y 12
+comprobaciones SQL en PostgreSQL efímero (PGlite), TypeScript, ESLint de archivos
+modificados y build webpack. La compilación usó variables ficticias sólo en el
+proceso; `.env.local` sigue sin claves. Extracción real, micrófono y QA de
+navegación con sesión autenticada pendientes. Ver plan y pasos de activación
+en [docs/superpowers/plans/2026-10-29-carga-causa.md](docs/superpowers/plans/2026-10-29-carga-causa.md).
+
 - `PATCH /api/casos/[id]` — edita la ficha. **Es la primera ruta de escritura
   sobre el recurso `caso`**: hasta la Fase 9 sólo había `GET` y `DELETE`, o sea
   que `titulo` se fijaba en el `POST` inicial y no había forma de corregirlo.

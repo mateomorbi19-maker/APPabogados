@@ -70,9 +70,9 @@ type CasoLite = {
   contexto: Record<string, unknown> | null;
   rol: string;
   ejecucion_origen_id: string | null;
-  estrategia_seleccionada_idx: number;
-  estrategia_seleccionada_rol: string;
-  estrategia_snapshot: Record<string, unknown>;
+  estrategia_seleccionada_idx: number | null;
+  estrategia_seleccionada_rol: string | null;
+  estrategia_snapshot: Record<string, unknown> | null;
   // Fuero del mapa procesal. NULL en casos cuyo mapa nunca se inicializó.
   fuero: Fuero | null;
 };
@@ -279,8 +279,12 @@ export async function buildContextoCaso(
 
   // 2. Contexto del formulario dinámico
   lineas.push("## Contexto del formulario dinámico");
-  if (caso.contexto && Object.keys(caso.contexto).length > 0) {
-    for (const [k, v] of Object.entries(caso.contexto)) {
+  // carga_inicial es una marca interna de idempotencia, no un dato judicial.
+  const contextoVisible = Object.entries(caso.contexto ?? {}).filter(
+    ([k]) => k !== "carga_inicial",
+  );
+  if (contextoVisible.length > 0) {
+    for (const [k, v] of contextoVisible) {
       lineas.push(`- ${k}: ${fmtValorContexto(v)}`);
     }
   } else {
@@ -289,7 +293,7 @@ export async function buildContextoCaso(
   lineas.push("");
 
   // 3. Estrategia elegida
-  const e = caso.estrategia_snapshot as {
+  const e = (caso.estrategia_snapshot ?? {}) as {
     nombre?: string;
     tesis_central?: string;
     fundamento_legal?: string[];
@@ -298,10 +302,21 @@ export async function buildContextoCaso(
     pasos_procesales?: string[];
     doctrina_aplicable?: string;
   };
-  const numEstr = caso.estrategia_seleccionada_idx + 1;
-  lineas.push(
-    `## Estrategia elegida por el abogado (Estrategia ${numEstr} - ${caso.estrategia_seleccionada_rol})`,
-  );
+  if (
+    caso.estrategia_snapshot &&
+    caso.estrategia_seleccionada_idx !== null &&
+    caso.estrategia_seleccionada_rol
+  ) {
+    const numEstr = caso.estrategia_seleccionada_idx + 1;
+    lineas.push(
+      `## Estrategia elegida por el abogado (Estrategia ${numEstr} - ${caso.estrategia_seleccionada_rol})`,
+    );
+  } else {
+    lineas.push(
+      "## Estrategia elegida",
+      "(sin estrategia elegida; la causa se incorporó sin análisis previo)",
+    );
+  }
   if (typeof e.nombre === "string" && e.nombre)
     lineas.push(`Nombre: ${e.nombre}`);
   if (typeof e.tesis_central === "string" && e.tesis_central)

@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { usePathname } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import { Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ListaCasos, type CasoListItem } from "./lista-casos";
 import { MisCasosEmptyState } from "./empty-state";
@@ -19,6 +21,8 @@ type Estado =
   | { kind: "error"; message: string }
   | { kind: "ready"; casos: CasoListItem[] };
 
+const CargarCausaDialog = dynamic(() => import("./carga/cargar-causa-dialog"));
+
 // Shell de la sección "Mis casos". Maneja:
 //   - fetch inicial de la lista al mount
 //   - re-fetch cuando cambia el pathname (ej: vengo de /dashboard/mis-casos/abc → /dashboard/mis-casos)
@@ -27,6 +31,8 @@ type Estado =
 //   - empty state cuando no hay casos (ocupa el ancho completo, sin sidebar)
 export function MisCasosShell({ children }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [cargaAbierta, setCargaAbierta] = useState(false);
   const [estado, setEstado] = useState<Estado>({ kind: "loading" });
 
   // ID activo según la URL. /dashboard/mis-casos → null (sin selección).
@@ -107,20 +113,37 @@ export function MisCasosShell({ children }: Props) {
     ),
   );
 
+  const dialogoCarga = cargaAbierta ? (
+    <CargarCausaDialog
+      onClose={() => setCargaAbierta(false)}
+      onGuardado={(id) => {
+        setCargaAbierta(false);
+        void cargar();
+        router.push(`/dashboard/mis-casos/${id}`);
+      }}
+    />
+  ) : null;
+
   if (estado.kind === "loading") {
     return (
-      <div className="flex items-center justify-center py-16 px-4">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
+      <>
+        <div className="flex items-center justify-center py-16 px-4">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+        {dialogoCarga}
+      </>
     );
   }
 
   if (estado.kind === "error") {
     return (
-      <div className="m-4 rounded border border-destructive bg-destructive/10 p-6 text-sm text-destructive md:m-6">
-        <p className="font-medium mb-1">Error cargando casos</p>
-        <p>{estado.message}</p>
-      </div>
+      <>
+        <div className="m-4 rounded border border-destructive bg-destructive/10 p-6 text-sm text-destructive md:m-6">
+          <p className="font-medium mb-1">Error cargando casos</p>
+          <p>{estado.message}</p>
+        </div>
+        {dialogoCarga}
+      </>
     );
   }
 
@@ -129,9 +152,12 @@ export function MisCasosShell({ children }: Props) {
   // renderizarse.
   if (estado.casos.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl px-4 pt-6 pb-24 md:px-6 md:pb-6">
-        <MisCasosEmptyState />
-      </div>
+      <>
+        <div className="mx-auto max-w-6xl px-4 pt-6 pb-24 md:px-6 md:pb-6">
+          <MisCasosEmptyState onCargar={() => setCargaAbierta(true)} />
+        </div>
+        {dialogoCarga}
+      </>
     );
   }
 
@@ -149,6 +175,7 @@ export function MisCasosShell({ children }: Props) {
     // top bar de 56px): antes scrolleaba junto con el detalle, así que leer el
     // final de un expediente largo dejaba la lista de causas fuera de la
     // pantalla y había que volver arriba para cambiar de causa.
+    <>
     <div className="flex min-h-[calc(100dvh-3.5rem)]">
       <aside
         className={cn(
@@ -158,6 +185,11 @@ export function MisCasosShell({ children }: Props) {
           idActivo ? "hidden md:block" : "w-full",
         )}
       >
+        <div className="p-3 pb-1">
+          <Button className="w-full" onClick={() => setCargaAbierta(true)}>
+            <Plus className="size-4" /> Cargar nueva causa
+          </Button>
+        </div>
         <ListaCasos casos={estado.casos} idActivo={idActivo} />
       </aside>
       <section className="min-w-0 flex-1">
@@ -171,5 +203,7 @@ export function MisCasosShell({ children }: Props) {
         </div>
       </section>
     </div>
+    {dialogoCarga}
+    </>
   );
 }

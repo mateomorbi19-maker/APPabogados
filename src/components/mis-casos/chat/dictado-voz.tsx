@@ -161,6 +161,8 @@ export function DictadoVoz({
   const empezar = async () => {
     if (iniciandoRef.current || recorderRef.current || estado !== "libre") return;
     iniciandoRef.current = true;
+    // El padre también debe bloquear acciones mientras espera el permiso del mic.
+    onOcupadoRef.current?.(true);
     setEstado("iniciando");
     setError(null);
     try {
@@ -236,6 +238,9 @@ export function DictadoVoz({
       }, 1000);
     } finally {
       iniciandoRef.current = false;
+      if (!recorderRef.current && montadoRef.current) {
+        onOcupadoRef.current?.(false);
+      }
     }
   };
 

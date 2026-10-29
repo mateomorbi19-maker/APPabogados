@@ -95,7 +95,7 @@ function bloqueConfiguracion(cfg: ConfigSesion): string {
 }
 
 type CasoEstrategiaLite = {
-  estrategia_seleccionada_rol: string;
+  estrategia_seleccionada_rol: string | null;
   estrategia_snapshot: Record<string, unknown> | null;
   ejecucion_origen_id: string | null;
 };
@@ -127,7 +127,13 @@ async function bloqueEstrategia(casoId: string): Promise<string> {
     return lineas.join("\n");
   }
   const caso = casoRaw as CasoEstrategiaLite;
-  const snap = (caso.estrategia_snapshot ?? {}) as {
+  if (!caso.estrategia_snapshot) {
+    lineas.push(
+      "(sin estrategia elegida; trabajar con los datos disponibles de la ficha y del caso)",
+    );
+    return lineas.join("\n");
+  }
+  const snap = caso.estrategia_snapshot as {
     nombre?: unknown;
     tipo?: unknown;
     resumen_ejecutivo?: unknown;
@@ -146,7 +152,7 @@ async function bloqueEstrategia(casoId: string): Promise<string> {
 
   // Imputados y delitos: viven en la sección del rol elegido dentro del
   // resultado de la ejecución de origen.
-  if (caso.ejecucion_origen_id) {
+  if (caso.ejecucion_origen_id && caso.estrategia_seleccionada_rol) {
     const { data: ejec } = await supabase
       .from("ejecuciones")
       .select("metadata")

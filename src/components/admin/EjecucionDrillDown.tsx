@@ -9,7 +9,7 @@ import { Copy, Check, X as CloseIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/admin/Badge";
 import { Sheet } from "@/components/ui/sheet";
-import { fmtCosto, fmtFecha, fmtModelo, fmtNumber } from "@/lib/format";
+import { fmtCosto, fmtFecha, fmtModelo, fmtNumber, fmtTipo } from "@/lib/format";
 import type { EjecucionAdmin } from "@/lib/admin/types";
 
 const ESTADO_LABEL = {
@@ -103,7 +103,7 @@ function Contenido({
             <span>·</span>
             <span>{fmtModelo(ejecucion.modelo)}</span>
             <span>·</span>
-            <span>tipo: {ejecucion.tipo}</span>
+            <span>tipo: {fmtTipo(ejecucion.tipo)}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -178,7 +178,8 @@ function Contenido({
           {busquedas.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               No hay búsquedas registradas. (Las ejecuciones de tipo{" "}
-              <code className="font-mono">pre_analisis</code> no usan RAG.)
+              <code className="font-mono">pre_analisis</code> e{" "}
+              <code className="font-mono">importar_causa</code> no usan RAG.)
             </p>
           ) : (
             <>

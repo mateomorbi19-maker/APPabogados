@@ -736,3 +736,89 @@ SELECT nombre, limite_tokens_mensual, tokens_usados_mes, tokens_restantes,
  ORDER BY nombre;
 -- Gonzalo: limite 3000000, tokens_restantes > 0. Lautaro y Mateo: 1000000.
 ```
+
+---
+
+## 2026-10-29 · 12:00:00 UTC — `20261029120000_carga_causa.sql` — ⏳ **PENDIENTE DE APLICAR**
+
+**Contexto:** alta de causa desde PDF y/o relato dictado, con revisión de la
+ficha y sin análisis previo. Plan: [carga de causa](docs/superpowers/plans/2026-10-29-carga-causa.md).
+
+**Cambios preparados:**
+
+- Los tres campos de selección de estrategia de `casos` admiten NULL juntos.
+  El CHECK rechaza combinaciones parciales y conserva las causas con estrategia.
+- El CHECK de `ejecuciones.tipo` se extiende con `importar_causa` preservando la
+  definición instalada, incluidos `generar_escrito` y `reporte_cliente`.
+- RPC `crear_causa_importada(uuid,uuid,jsonb,jsonb,text,boolean)` con
+  `SECURITY INVOKER`, `search_path` vacío y EXECUTE sólo para `service_role`
+  (además del propietario administrativo). `p_solo_validar=true` devuelve NULL
+  sin validar un borrador ni escribir: sirve de preflight antes del modelo.
+- Alta atómica de causa, partes (incluye documento, sin teléfono/email) y un
+  evento de sistema que registra la incorporación al estudio. El PDF opcional
+  queda en ese evento, limitado a su prefijo usuario/causa y a 10 MiB.
+- Un bloqueo transaccional por id serializa reintentos. Mismo usuario, id y
+  huella devuelven el mismo id; contenido distinto u otro propietario producen
+  conflicto. Sólo se guarda `contexto.carga_inicial.huella`; no se guarda el
+  texto original del archivo/dictado en ese contexto.
+- El trigger existente del timeline pasa a usar `UPDATE public.casos`, porque
+  hereda el `search_path` vacío de la RPC. Conserva su comportamiento anterior.
+
+**Aplicación:** pendiente de Mateo en SQL Editor. No se ejecutó SQL contra la
+base ni se instalaron herramientas. El archivo se preparó manualmente según la
+regla del repo; no requiere la migración pendiente de contacto/reportería.
+Hasta aplicarlo, las nuevas rutas deben devolver 503 antes de gastar en IA.
+No agrega etapa ni nodos del mapa; la etapa sigue derivándose del mapa.
+Si se aplica después la migración pendiente `20260915120000_reporteria_cliente.sql`,
+volver a ejecutar esta migración: aquella reemplaza el CHECK de tipos por su
+lista de septiembre y retiraría `importar_causa`. El orden preferido es primero
+reportería, cuando corresponda, y luego carga; carga puede ejecutarse sola.
+
+**Verificación posterior (sólo lectura, SQL Editor):**
+
+```sql
+SELECT column_name, is_nullable FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'casos'
+  AND column_name IN ('estrategia_seleccionada_rol', 'estrategia_seleccionada_idx', 'estrategia_snapshot');
+-- Las tres: YES.
+
+SELECT pg_get_constraintdef(oid) FROM pg_constraint
+WHERE conrelid IN ('public.casos'::regclass, 'public.ejecuciones'::regclass)
+  AND contype = 'c';
+-- Estrategia completa o ausente; tipo admite importar_causa y los anteriores.
+
+SELECT prosecdef, proconfig FROM pg_proc
+WHERE oid = 'public.crear_causa_importada(uuid,uuid,jsonb,jsonb,text,boolean)'::regprocedure;
+-- prosecdef=false y search_path vacío.
+
+SELECT has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated,
+       has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role
+FROM pg_proc p
+WHERE p.oid = 'public.crear_causa_importada(uuid,uuid,jsonb,jsonb,text,boolean)'::regprocedure;
+-- false / false / true.
+
+SELECT public.crear_causa_importada(NULL, NULL, '{}'::jsonb, NULL, '', true);
+-- NULL; sin cambios de datos.
+```
+
+**Verificación local del SQL (29/10/2026):** doce verificaciones ejecutadas
+con PostgreSQL embebido PGlite 0.5.13 sobre base efímera, usando las migraciones
+reales de casos/eventos y ficha. Pasaron compilación y reaplicación de la nueva
+migración; permisos ejecutados con los tres roles; preflight sin escritura;
+alta con/sin PDF; estrategia ausente y selección completa previa; rechazo de
+selección parcial; reintento sin duplicados; conflictos de dueño/huella;
+prefijo PDF ajeno; rollback íntegro ante errores forzados en partes y evento;
+preservación de tipos instalados (incluido un tipo histórico de fixture).
+Esto **no significa aplicada en Supabase**. El runtime se instaló fuera del
+repo, sin cambios a dependencias ni lockfile. Reproducción sin red una vez
+instalado ese runtime:
+
+```powershell
+node scripts/verificar-carga-sql.mjs C:/Users/mateo/AppData/Local/Temp/lexstrategy-carga-sql-runtime/node_modules/@electric-sql/pglite/dist/index.js
+```
+
+**QA pendiente contra Supabase:** ejecutar las consultas de verificación y un
+alta real, y probar dos pedidos simultáneos con el mismo id (PGlite usa una
+sola sesión). La validación PDF de bytes/páginas/cifrado pertenece al servidor;
+la RPC valida los metadatos y no inspecciona los bytes de Storage.

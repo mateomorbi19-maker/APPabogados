@@ -24,6 +24,21 @@ type Props = {
 // maneja su propio open state.
 export function SeccionEstrategiaElegida({ caso }: Props) {
   const e = caso.estrategia_snapshot;
+  if (
+    !e ||
+    caso.estrategia_seleccionada_idx === null ||
+    caso.estrategia_seleccionada_rol === null
+  ) {
+    return (
+      <Card className="p-6 space-y-2">
+        <h3 className="font-serif text-xl">Estrategia</h3>
+        <p className="text-sm text-muted-foreground">
+          Esta causa todavía no tiene una estrategia elegida. Podés consultar a
+          LEXIE sobre la información de la ficha.
+        </p>
+      </Card>
+    );
+  }
   const numero = caso.estrategia_seleccionada_idx + 1;
   const rolLabel =
     caso.estrategia_seleccionada_rol === "defensor" ? "Defensor" : "Querellante";
